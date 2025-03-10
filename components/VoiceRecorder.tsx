@@ -4,6 +4,7 @@ import { Audio } from "expo-av"
 import { Feather, MaterialIcons } from "@expo/vector-icons"
 import * as Speech from "expo-speech"
 import axios from "axios"
+import { systemPrompts } from "@/constants/systemPrompts"
 
 interface VoiceRecorderProps {
   onSendAudio: (audioUri: string, transcript?: string, assistantResponse?: string) => void
@@ -16,7 +17,7 @@ interface FormatTimeProps {
 
 export default function VoiceRecorder({
   onSendAudio,
-  systemPrompt = "You are a compassionate and knowledgeable digital doula assistant. Your role is to provide evidence-based information, emotional support, and practical advice to pregnant individuals. Always be warm, empathetic, and respectful in your responses. Keep your answers concise (under 100 words), easy to understand, and focused on the user's specific question.",
+  systemPrompt = systemPrompts,
   apiKey = "AIzaSyD0ISmMWP4_yDqEvlrjpNJB8TnuJBkhZPs",
 }: VoiceRecorderProps) {
   const [recording, setRecording] = useState<Audio.Recording | null>(null)
