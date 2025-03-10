@@ -38,6 +38,7 @@ const PatientStack = () => {
         <Stack.Screen name='sleepup'/>
         <Stack.Screen name='wakeup'/>
         <Stack.Screen name='unitscreen'/>
+        <Stack.Screen name='weightunit'/>
     </Stack>
   )
 }

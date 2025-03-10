@@ -276,7 +276,7 @@ const WeightScreen = () => {
           <Ionicons name="chevron-back" size={20} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Weight</Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={()=>router.push('/patient/weightunit')}>
           <Feather name="more-vertical" size={20} color="#E5E5E5" />
         </TouchableOpacity>
       </View>

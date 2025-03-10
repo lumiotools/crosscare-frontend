@@ -5,7 +5,7 @@ import { StatusBar } from "react-native";
 import { router } from "expo-router";
 import { Feather, Ionicons } from "@expo/vector-icons";
 
-const unitscreen = () => {
+const weightunit = () => {
 
     const [selectedUnit, setSelectedUnit] = useState('ml');
 
@@ -25,22 +25,22 @@ const unitscreen = () => {
           <Ionicons name="chevron-back" size={20} color="black" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Units & Measurements</Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={handleSave}>
             <Text>Save</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.sectionTitle}>Volume</Text>
+        <Text style={styles.sectionTitle}>Weight</Text>
         
         <View style={styles.optionsContainer}>
           <TouchableOpacity 
             style={styles.optionRow}
             onPress={() => setSelectedUnit('ml')}
           >
-            <Text style={styles.optionText}>Milliliters (ml)</Text>
+            <Text style={styles.optionText}>Kilogrmas (kg)</Text>
             {selectedUnit === 'ml' && (
-              <Ionicons name="checkmark" size={16} color="#007AFF" />
+              <Ionicons name="checkmark" size={16} color="#E89545" />
             )}
           </TouchableOpacity>
           
@@ -50,9 +50,9 @@ const unitscreen = () => {
             style={styles.optionRow}
             onPress={() => setSelectedUnit('fl.oz')}
           >
-            <Text style={styles.optionText}>US Fluid Ounces (fl.oz)</Text>
+            <Text style={styles.optionText}>Pounds (lbs)</Text>
             {selectedUnit === 'fl.oz' && (
-              <Ionicons name="checkmark" size={16} color="#007AFF" />
+              <Ionicons name="checkmark" size={16} color="#E89545" />
             )}
           </TouchableOpacity>
         </View>
@@ -61,7 +61,7 @@ const unitscreen = () => {
   );
 };
 
-export default unitscreen;
+export default weightunit;
 
 const styles = StyleSheet.create({
   container: {
