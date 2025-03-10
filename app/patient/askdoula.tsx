@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -11,49 +11,167 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
-} from "react-native"
-import { Ionicons, Feather } from "@expo/vector-icons"
-import { SafeAreaView } from "react-native-safe-area-context"
-import { router } from "expo-router"
-import VoiceRecorder from "@/components/VoiceRecorder"
-import AudioMessage from "@/components/AudioMessage"
-import { useSelector } from "react-redux"
+} from "react-native";
+import { Ionicons, Feather } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
+import VoiceRecorder from "@/components/VoiceRecorder";
+import AudioMessage from "@/components/AudioMessage";
+import { useSelector } from "react-redux";
 
 interface Message {
-  id: string
-  isUser: boolean
-  timestamp: Date
-  type: "text" | "audio"
-  content: string // text content or audio URI
+  id: string;
+  isUser: boolean;
+  timestamp: Date;
+  type: "text" | "audio";
+  content: string; // text content or audio URI
 }
 
 export default function askdoula() {
-  const [inputText, setInputText] = useState("")
-  const [isTyping, setIsTyping] = useState(false)
+  const [inputText, setInputText] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-  const user = useSelector((state:any)=>state.user);
+  const user = useSelector((state: any) => state.user);
 
-  const [isAssistantResponding, setIsAssistantResponding] = useState(false)
+  const [isAssistantResponding, setIsAssistantResponding] = useState(false);
 
-  const scrollViewRef = useRef<ScrollView>(null)
-  const loadingAnimation = useRef(new Animated.Value(0)).current
+  const scrollViewRef = useRef<ScrollView>(null);
+  const loadingAnimation = useRef(new Animated.Value(0)).current;
 
   const systemPrompt = `
-You are a compassionate and knowledgeable digital doula assistant. Your role is to provide evidence-based information, emotional support, and practical advice to pregnant individuals. Always be warm, empathetic, and respectful in your responses. Keep your answers concise (under 100 words), easy to understand, and focused on the user's specific question. If you're unsure about something, acknowledge your limitations and suggest consulting with a healthcare provider. Never provide medical diagnoses or prescribe treatments. Prioritize the physical and emotional wellbeing of the pregnant person in all your responses. 
+You are a compassionate and knowledgeable digital doula assistant. Your role is to provide evidence-based information, emotional support, and practical advice to pregnant individuals. Always be warm, empathetic, and respectful in your responses. Keep your answers concise (under 100 words), easy to understand, and focused on the user's specific question.
 
-For this system, your role will involve:
-1. **Diet and Health Tracking**: Provide tailored advice on proper nutrition during pregnancy, based on the trimester, symptoms, and health conditions.
-2. **Exercise and Wellness**: Suggest exercises and wellness practices suitable for each stage of pregnancy.
-3. **Labor and Delivery Prep**: Guide the user on how to prepare for labor, and what to expect as they approach delivery.
-`
+1. General Pregnancy Questions
+Q: What are the early signs of pregnancy?
+A: Early signs include missed periods, nausea (morning sickness), fatigue, frequent urination, tender breasts, mood swings, and increased sense of smell.
+Q: When should I see a doctor after a positive pregnancy test?
+A: Ideally, schedule your first prenatal appointment around 6-8 weeks after your last period to confirm pregnancy and discuss prenatal care.
+Q: How often should I have prenatal checkups?
+A:
+First 28 weeks – Every 4 weeks
+28-36 weeks – Every 2 weeks
+After 36 weeks – Every week until delivery
 
-  const sendToAPI = async (messageContent: string, messageType: "text" | "audio") => {
+2. Nutrition & Diet (Meal Tracking Integration)
+Q: Why is tracking meals important during pregnancy?
+A: Tracking meals ensures you’re getting enough protein, iron, folic acid, and calcium to support your baby’s growth. It also helps manage gestational diabetes and weight gain.
+Q: I keep forgetting to eat balanced meals. What should I do?
+A: Try setting meal reminders. Aim for:
+Breakfast: Protein + fiber (e.g., eggs + whole-grain toast)
+Lunch: Lean protein + veggies (e.g., grilled chicken + salad)
+Dinner: Healthy carbs + protein (e.g., lentils + brown rice)
+Snacks: Nuts, yogurt, fruit
+Chatbot Action: If meal tracking shows irregular eating habits, suggest easy meal prep ideas.
+
+3. Water Intake Tracking
+Q: How much water should I drink daily?
+A: Pregnant women should drink 8-12 cups (2-3 liters) of water daily to support amniotic fluid levels, digestion, and circulation.
+Q: I keep forgetting to drink water. Any tips?
+A:
+Set hourly reminders in the app
+Carry a water bottle
+Flavor water with lemon or mint
+Eat water-rich foods (cucumbers, oranges, watermelon)
+Chatbot Action: If logs show low water intake, send a gentle reminder:
+"Staying hydrated keeps your baby safe! Try sipping some water now 😊"
+
+4. Sleep Tracking & Fatigue Management
+Q: Why am I so tired during pregnancy?
+A: Pregnancy hormones, increased metabolism, and carrying extra weight make you feel more fatigued, especially in the first and third trimesters.
+Q: How can I improve my sleep?
+A:
+Sleep on your left side for better circulation
+Use a pregnancy pillow for support
+Avoid caffeine before bedtime
+Keep a consistent bedtime routine
+Chatbot Action: If sleep logs show poor sleep, suggest:
+"Looks like you’ve been sleeping less. Try a relaxing bedtime routine tonight! 💙"
+
+5. Step & Activity Tracking
+Q: How much should I walk during pregnancy?
+A: Aim for 5,000-10,000 steps/day, but listen to your body. Walking reduces swelling, back pain, and stress.
+Q: I am too tired to walk. What are some alternatives?
+A:
+Gentle stretching or prenatal yoga
+Short 10-minute walks after meals
+Swimming or water aerobics for low-impact exercise
+Chatbot Action: If step logs show inactivity, send motivation:
+"Even a 5-minute walk can boost energy & mood! Want to try a short stroll? 🚶‍♀️"
+
+6. Medication & Supplement Tracking
+Q: Why should I track my prenatal vitamins?
+A: Taking folic acid, iron, calcium, and DHA daily helps prevent birth defects and supports baby’s brain development.
+Q: I forget to take my supplements. Any suggestions?
+A:
+Keep vitamins near your bedside or toothbrush
+Use the app’s medication reminders
+Take pills at the same time every day
+Chatbot Action: If medication logs show missed doses, send a reminder:
+"Your baby needs those essential nutrients! Don’t forget your prenatal today 💊"
+
+7. Weight Tracking & Healthy Pregnancy Goals
+Q: How much weight should I gain?
+A: Healthy weight gain depends on your pre-pregnancy BMI:
+Underweight (BMI <18.5): Gain 28-40 lbs
+Normal weight (BMI 18.5-24.9): Gain 25-35 lbs
+Overweight (BMI 25-29.9): Gain 15-25 lbs
+Obese (BMI ≥30): Gain 11-20 lbs
+Q: I am gaining too much weight. What should I do?
+A:
+Balance meals (more protein & fiber, less sugar)
+Stay active with walks or prenatal yoga
+Drink water before meals to reduce cravings
+Chatbot Action: If weight logs show sudden gain, suggest a diet check-in:
+"Noticed a jump in weight? Let’s review your meals to keep things balanced! 🍏"
+
+8. Emotional Well-being & Stress Management
+Q: How can I track my mood during pregnancy?
+A: Logging your mood helps identify triggers like lack of sleep, stress, or poor nutrition. If feeling overwhelmed, try:
+Breathing exercises
+Talking to a friend
+Light stretching or walking
+Q: I feel anxious often. Is this normal?
+A: Yes, but tracking anxiety levels can help. If stress is constant, talk to your doctor about pregnancy-safe therapy options.
+Chatbot Action: If mood logs show frequent anxiety, suggest mindfulness exercises:
+"Feeling a little anxious today? Try a 5-minute deep breathing session. Inhale… exhale… 💕"
+
+9. Labor & Delivery Tracking (For Third Trimester)
+Q: How can I prepare for labor?
+A:
+Track contractions (regular, intense = real labor)
+Pack your hospital bag (clothes, toiletries, baby essentials)
+Review birth plan (natural birth, epidural, C-section)
+Q: How do I know when to go to the hospital?
+A: Go to the hospital if:
+Contractions are every 5 minutes and last 60+ seconds
+Water breaks (clear fluid leaking)
+Severe pain or bleeding
+Chatbot Action: If logs show frequent contractions, suggest contacting a doctor:
+"Your contractions are getting closer. It might be time! Call your doctor. 👶💙"
+
+10. Postpartum Recovery Tracking
+Q: How can I track my postpartum health?
+A:
+Monitor postpartum bleeding (should decrease after 2 weeks)
+Track baby’s feeding schedule (breastfeeding/bottle)
+Log sleep patterns (both yours & baby’s)
+Q: How can I avoid postpartum depression?
+A: Track mood & energy levels. If feeling persistently sad, anxious, or overwhelmed, seek support from a doctor, therapist, or support group.
+Chatbot Action: If postpartum logs indicate low mood, suggest reaching out:
+"You’ve been feeling down often. You’re not alone—talking to someone might help. 💕"
+`;
+
+  const sendToAPI = async (
+    messageContent: string,
+    messageType: "text" | "audio"
+  ) => {
     try {
       // Correct Gemini API endpoint
-      const apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+      const apiUrl =
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
       // Your API key should be stored in an environment variable in production
-      const apiKey = "AIzaSyD0ISmMWP4_yDqEvlrjpNJB8TnuJBkhZPs" // Replace with your actual API key
+      const apiKey = "AIzaSyD0ISmMWP4_yDqEvlrjpNJB8TnuJBkhZPs"; // Replace with your actual API key
 
       const requestBody = {
         contents: [
@@ -74,7 +192,7 @@ For this system, your role will involve:
           topP: 0.95,
           maxOutputTokens: 100,
         },
-      }
+      };
 
       const response = await fetch(`${apiUrl}?key=${apiKey}`, {
         method: "POST",
@@ -82,39 +200,43 @@ For this system, your role will involve:
           "Content-Type": "application/json",
         },
         body: JSON.stringify(requestBody),
-      })
+      });
 
       if (!response.ok) {
-        const errorData = await response.text()
-        console.error("API Error:", errorData)
-        throw new Error(`Failed to send message to Gemini API: ${response.status}`)
+        const errorData = await response.text();
+        console.error("API Error:", errorData);
+        throw new Error(
+          `Failed to send message to Gemini API: ${response.status}`
+        );
       }
 
-      const data = await response.json()
+      const data = await response.json();
 
       // Extract the response text from Gemini's response format
       const responseText =
-        data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm sorry, I couldn't process your request at this time."
+        data.candidates?.[0]?.content?.parts?.[0]?.text ||
+        "I'm sorry, I couldn't process your request at this time.";
 
       return {
         response: responseText,
-      }
+      };
     } catch (error) {
-      console.error("Error sending message to Gemini API:", error)
+      console.error("Error sending message to Gemini API:", error);
       return {
-        response: "I'm having trouble connecting right now. Please try again later.",
-      }
+        response:
+          "I'm having trouble connecting right now. Please try again later.",
+      };
     }
-  }
+  };
 
   // Auto-scroll to bottom when messages change or when typing indicator appears
   useEffect(() => {
     if (scrollViewRef.current && (messages.length > 0 || isTyping)) {
       setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true })
-      }, 100)
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     }
-  }, [messages, isTyping])
+  }, [messages, isTyping]);
 
   // Animate the typing indicator
   useEffect(() => {
@@ -124,12 +246,12 @@ For this system, your role will involve:
           toValue: 1,
           duration: 1500,
           useNativeDriver: false,
-        }),
-      ).start()
+        })
+      ).start();
     } else {
-      loadingAnimation.setValue(0)
+      loadingAnimation.setValue(0);
     }
-  }, [isTyping, loadingAnimation])
+  }, [isTyping, loadingAnimation]);
 
   const sendMessage = async (messageContent: string = inputText) => {
     if (messageContent.trim()) {
@@ -140,19 +262,19 @@ For this system, your role will involve:
         content: messageContent,
         isUser: true,
         timestamp: new Date(),
-      }
+      };
 
-      setMessages((prevMessages) => [...prevMessages, userMessage])
-      setInputText("")
-      setIsTyping(true)
-      setIsAssistantResponding(true)
+      setMessages((prevMessages) => [...prevMessages, userMessage]);
+      setInputText("");
+      setIsTyping(true);
+      setIsAssistantResponding(true);
 
       // Send the message to the API
-      const apiResponse = await sendToAPI(messageContent, "text")
+      const apiResponse = await sendToAPI(messageContent, "text");
 
       setTimeout(() => {
-        setIsTyping(false)
-        setIsAssistantResponding(false)
+        setIsTyping(false);
+        setIsAssistantResponding(false);
 
         if (apiResponse) {
           setMessages((prevMessages) => [
@@ -160,18 +282,28 @@ For this system, your role will involve:
             {
               id: (Date.now() + 1).toString(),
               type: "text",
-              content: apiResponse?.response || "Thank you for your message. I'll address your concerns shortly.",
+              content:
+                apiResponse?.response ||
+                "Thank you for your message. I'll address your concerns shortly.",
               isUser: false,
               timestamp: new Date(),
             },
-          ])
+          ]);
         }
-      }, 1500)
+      }, 1500);
     }
-  }
+  };
 
-  const handleAudioSent = (audioUri: string, transcript?: string, assistantResponse?: string) => {
-    console.log("handleAudioSent called with:", { audioUri, transcript, assistantResponse })
+  const handleAudioSent = (
+    audioUri: string,
+    transcript?: string,
+    assistantResponse?: string
+  ) => {
+    console.log("handleAudioSent called with:", {
+      audioUri,
+      transcript,
+      assistantResponse,
+    });
 
     // Only add the audio message if we have a valid URI
     if (audioUri) {
@@ -185,26 +317,26 @@ For this system, your role will involve:
           isUser: true,
           timestamp: new Date(),
         },
-      ])
+      ]);
 
       // Show typing indicator for the assistant response
-      setIsTyping(true)
-      setIsAssistantResponding(true)
+      setIsTyping(true);
+      setIsAssistantResponding(true);
     }
 
     // If we have an assistant response, add it after a delay
     if (assistantResponse) {
-      console.log("Adding assistant response to messages:", assistantResponse)
+      console.log("Adding assistant response to messages:", assistantResponse);
 
       // Show typing indicator briefly if not already showing
       if (!isTyping) {
-        setIsTyping(true)
-        setIsAssistantResponding(true)
+        setIsTyping(true);
+        setIsAssistantResponding(true);
       }
 
       setTimeout(() => {
-        setIsTyping(false)
-        setIsAssistantResponding(false)
+        setIsTyping(false);
+        setIsAssistantResponding(false);
 
         setMessages((prevMessages) => [
           ...prevMessages,
@@ -215,53 +347,56 @@ For this system, your role will involve:
             isUser: false,
             timestamp: new Date(),
           },
-        ])
-      }, 1000)
+        ]);
+      }, 1000);
     } else if (audioUri) {
       // If we have an audio but no assistant response yet,
       // the assistant response will come in a separate call
       setTimeout(() => {
         if (isAssistantResponding) {
-          setIsTyping(false)
-          setIsAssistantResponding(false)
+          setIsTyping(false);
+          setIsAssistantResponding(false);
         }
-      }, 5000) // Timeout in case the assistant response never comes
+      }, 5000); // Timeout in case the assistant response never comes
     }
-  }
+  };
 
   const handleOptionPress = (optionText: string) => {
-    setInputText(optionText) // Update the inputText with the selected option
+    setInputText(optionText); // Update the inputText with the selected option
 
-    sendMessage(optionText)
-  }
+    sendMessage(optionText);
+  };
 
   const renderTypingIndicator = () => {
     const dot1Opacity = loadingAnimation.interpolate({
       inputRange: [0, 0.3, 0.6, 1],
       outputRange: [0.3, 1, 0.3, 0.3],
-    })
+    });
 
     const dot2Opacity = loadingAnimation.interpolate({
       inputRange: [0, 0.3, 0.6, 1],
       outputRange: [0.3, 0.3, 1, 0.3],
-    })
+    });
 
     const dot3Opacity = loadingAnimation.interpolate({
       inputRange: [0, 0.3, 0.6, 1],
       outputRange: [0.3, 0.3, 0.3, 1],
-    })
+    });
 
     return (
       <View style={styles.messageRow}>
-        <Image source={require("../../assets/images/doulaImg.png")} style={styles.doulaAvatar} />
+        <Image
+          source={require("../../assets/images/doulaImg.png")}
+          style={styles.doulaAvatar}
+        />
         <View style={styles.typingIndicator}>
           <Animated.View style={[styles.typingDot, { opacity: dot1Opacity }]} />
           <Animated.View style={[styles.typingDot, { opacity: dot2Opacity }]} />
           <Animated.View style={[styles.typingDot, { opacity: dot3Opacity }]} />
         </View>
       </View>
-    )
-  }
+    );
+  };
 
   return (
     <KeyboardAvoidingView
@@ -287,18 +422,21 @@ For this system, your role will involve:
         <ScrollView
           ref={scrollViewRef}
           style={styles.chatContainer}
-          keyboardShouldPersistTaps="handled" 
+          keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.chatContent}
           onContentSizeChange={() => {
             if (messages.length > 0 || isTyping) {
-              scrollViewRef.current?.scrollToEnd({ animated: true })
+              scrollViewRef.current?.scrollToEnd({ animated: true });
             }
           }}
         >
           {messages.length === 0 ? (
             <View style={styles.profileSection}>
               <View style={styles.profileImageContainer}>
-                <Image source={require("../../assets/images/doulaImg.png")} style={styles.profileImage} />
+                <Image
+                  source={require("../../assets/images/doulaImg.png")}
+                  style={styles.profileImage}
+                />
               </View>
 
               <Text style={styles.greeting}>
@@ -318,26 +456,50 @@ For this system, your role will involve:
               {messages.map((message) => (
                 <View
                   key={message.id}
-                  style={[styles.messageRow, message.isUser ? styles.userMessageRow : styles.doulaMessageRow]}
+                  style={[
+                    styles.messageRow,
+                    message.isUser
+                      ? styles.userMessageRow
+                      : styles.doulaMessageRow,
+                  ]}
                 >
                   {!message.isUser && (
-                    <Image source={require("../../assets/images/doulaImg.png")} style={styles.doulaAvatar} />
+                    <Image
+                      source={require("../../assets/images/doulaImg.png")}
+                      style={styles.doulaAvatar}
+                    />
                   )}
 
                   {message.type === "text" ? (
-                    <View style={[styles.messageBubble, message.isUser ? styles.userBubble : styles.doulaBubble]}>
+                    <View
+                      style={[
+                        styles.messageBubble,
+                        message.isUser ? styles.userBubble : styles.doulaBubble,
+                      ]}
+                    >
                       <Text
-                        style={[styles.messageText, message.isUser ? styles.userMessageText : styles.doulaMessageText]}
+                        style={[
+                          styles.messageText,
+                          message.isUser
+                            ? styles.userMessageText
+                            : styles.doulaMessageText,
+                        ]}
                       >
                         {message.content}
                       </Text>
                     </View>
                   ) : (
-                    <AudioMessage audioUri={message.content} isUser={message.isUser} />
+                    <AudioMessage
+                      audioUri={message.content}
+                      isUser={message.isUser}
+                    />
                   )}
 
                   {message.isUser && (
-                    <Image source={require("../../assets/images/doulaImg.png")} style={styles.userAvatar} />
+                    <Image
+                      source={require("../../assets/images/doulaImg.png")}
+                      style={styles.userAvatar}
+                    />
                   )}
                 </View>
               ))}
@@ -357,17 +519,28 @@ For this system, your role will involve:
             gap: 10,
           }}
         >
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionsContainer} keyboardShouldPersistTaps="handled" >
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.optionsContainer}
+            keyboardShouldPersistTaps="handled"
+          >
             <TouchableOpacity
               style={styles.optionButton}
-              onPress={() => handleOptionPress("What foods should I eat during my third trimester?")}
+              onPress={() =>
+                handleOptionPress(
+                  "What foods should I eat during my third trimester?"
+                )
+              }
               disabled={isAssistantResponding}
             >
               <Text style={styles.optionText}>Nutrition Advice</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.optionButton}
-              onPress={() => handleOptionPress("What exercises are safe during pregnancy?")}
+              onPress={() =>
+                handleOptionPress("What exercises are safe during pregnancy?")
+              }
               disabled={isAssistantResponding}
             >
               <Text style={styles.optionText}>Exercise Tips</Text>
@@ -381,7 +554,9 @@ For this system, your role will involve:
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.optionButton}
-              onPress={() => handleOptionPress("Is it safe to travel during pregnancy?")}
+              onPress={() =>
+                handleOptionPress("Is it safe to travel during pregnancy?")
+              }
               disabled={isAssistantResponding}
             >
               <Text style={styles.optionText}>Travel Safety</Text>
@@ -399,11 +574,17 @@ For this system, your role will involve:
                 onSubmitEditing={(e) => sendMessage(e.nativeEvent.text)}
                 editable={!isAssistantResponding}
               />
-              <VoiceRecorder onSendAudio={handleAudioSent} systemPrompt={systemPrompt} />
+              <VoiceRecorder
+                onSendAudio={handleAudioSent}
+                systemPrompt={systemPrompt}
+              />
             </View>
 
             <TouchableOpacity
-              style={[styles.sendButton, (!inputText.trim() || isTyping) && styles.sendButtonDisabled]}
+              style={[
+                styles.sendButton,
+                (!inputText.trim() || isTyping) && styles.sendButtonDisabled,
+              ]}
               onPress={() => sendMessage()}
               disabled={!inputText.trim() || isTyping}
             >
@@ -413,7 +594,7 @@ For this system, your role will involve:
         </View>
       </SafeAreaView>
     </KeyboardAvoidingView>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -430,7 +611,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   headerTitle: {
-    color:'#434343',
+    color: "#434343",
     fontSize: 16,
     fontFamily: "DMSans600",
   },
@@ -603,7 +784,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontFamily:'DMSans400',
+    fontFamily: "DMSans400",
     fontSize: 12,
     height: "100%",
   },
@@ -620,10 +801,10 @@ const styles = StyleSheet.create({
     borderColor: "#F989D9",
     alignItems: "center",
     marginLeft: 8,
-    boxShadow: "0px 0px 4px 0px rgba(0, 0, 0, 0.25) inset, 0px 0px 2.6px 0px rgba(0, 0, 0, 0.32);",
+    boxShadow:
+      "0px 0px 4px 0px rgba(0, 0, 0, 0.25) inset, 0px 0px 2.6px 0px rgba(0, 0, 0, 0.32);",
   },
   sendButtonDisabled: {
     opacity: 0.5,
   },
-})
-
+});
