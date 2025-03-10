@@ -39,7 +39,7 @@ export default function VoiceRecorder({
     const loadVoices = async () => {
       try {
         const voices = await Speech.getAvailableVoicesAsync()
-        console.log("Available voices:", voices)
+        // console.log("Available voices:", voices)
 
         // Find a female voice - look for voices with "female" in the identifier or name
         // or common female voice identifiers
@@ -57,10 +57,10 @@ export default function VoiceRecorder({
         )
 
         if (femaleVoices.length > 0) {
-          console.log("Selected female voice:", femaleVoices[0])
+          // console.log("Selected female voice:", femaleVoices[0])
           setFemaleVoice(femaleVoices[0])
         } else {
-          console.log("No female voice found, using default")
+          // console.log("No female voice found, using default")
         }
       } catch (error) {
         console.error("Error loading voices:", error)

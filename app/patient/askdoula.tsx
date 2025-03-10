@@ -405,7 +405,7 @@ Chatbot Action: If postpartum logs indicate low mood, suggest reaching out:
       keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
     >
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" />
+        <StatusBar barStyle="dark-content"  backgroundColor={'white'}/>
 
         {/* Header */}
         <View style={styles.header}>
