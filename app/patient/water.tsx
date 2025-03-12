@@ -25,6 +25,10 @@ import { router } from "expo-router";
 import { Modal } from "react-native";
 import GlassIcon from "@/assets/images/Svg/GlassIcon";
 import WaterWaveAnimation from "@/components/waterwaveanimation";
+import { useWaterStore } from "@/zustandStore/waterStore";
+import { useSelector } from "react-redux";
+import axios from "axios";
+
 
 const MAX_HEIGHT = 200;
 const BAR_WIDTH = 20;
@@ -42,8 +46,8 @@ interface CustomBarProps {
   isSelected: boolean;
 }
 export default function water() {
-  const [glassCount, setGlassCount] = useState(0);
-  const [maxGlasses, setMaxGlasses] = useState(10);
+  const { glassCount, setGlassCount, maxGlasses, setMaxGlasses } = useWaterStore();
+  const user = useSelector((state:any)=>state.user);
   const [goalSet, setGoalSet] = useState(false);
   const [tooltipAnim] = useState(new Animated.Value(0)); // Start with 0 opacity
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -54,6 +58,26 @@ export default function water() {
    // Calculate water percentage for the animation
    const waterPercentage = maxGlasses > 0 ? (glassCount / maxGlasses) * 100 : 0
 
+   useEffect(() => {
+    const postWaterIntake = async () => {
+      try {
+        const response = await fetch(`http://10.0.2.2:8000/api/user/activity/${user.user_id}/water`,{
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            water: glassCount
+          }),
+        })
+        const data = await response.json();
+        console.log(data);
+      } catch (error) {
+        console.log(error);
+      }
+    }
+    postWaterIntake();
+   }, [glassCount])
   // Function to open the goal setting modal
   const openGoalModal = () => {
     setNewGoal(maxGlasses.toString());

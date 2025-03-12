@@ -12,7 +12,8 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSMicrophoneUsageDescription": "This app requires access to your microphone for voice processing."
-      }
+      },
+      "bundleIdentifier": "com.crosscare.tech"
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +23,9 @@
       "package": "com.crosscare.tech",
       "permissions": [
         "RECORD_AUDIO",
-        "INTERNET"
+        "INTERNET",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
