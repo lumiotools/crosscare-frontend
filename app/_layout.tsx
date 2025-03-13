@@ -16,6 +16,7 @@ import { useColorScheme } from "@/hooks/useColorScheme";
 import { supabase } from "@/supabase/supabase";
 import { store } from "../store/store";
 import { setToken, setUser } from "../store/userSlice";
+import { FloatingProvider } from "@/context/FloatingContext";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -23,6 +24,7 @@ SplashScreen.preventAutoHideAsync();
 const RootLayoutNav = () => {
   const dispatch = useDispatch();
   const user = useSelector((state: any) => state.user);
+  
   const router = useRouter();
   const colorScheme = useColorScheme();
   const token = useSelector((state: any) => state.user.token);
@@ -112,7 +114,10 @@ const RootLayoutNav = () => {
 export default function RootLayout() {
   return (
     <Provider store={store}>
+       <FloatingProvider>
+
         <RootLayoutNav />
+       </FloatingProvider>
     </Provider>
   );
 }

@@ -162,7 +162,7 @@ export default function tracksleep() {
     setLoading(true); // Show loader
     try {
       const response = await fetch(
-        `https://87f0-45-117-109-34.ngrok-free.app/api/user/activity/${user.user_id}/sleepstatus`,
+        `https://eae5-45-117-109-34.ngrok-free.app/api/user/activity/${user.user_id}/sleepstatus`,
         {
           method: "GET",
           headers: {
@@ -172,7 +172,7 @@ export default function tracksleep() {
       );
 
       const data = await response.json();
-      // console.log(data);
+      console.log(data);
       setSleepLogs(data);
     } catch (error) {
       console.error("Error fetching sleep data:", error);
@@ -187,7 +187,7 @@ export default function tracksleep() {
 
   const handleDeleteLog = async(id: string) => {
     console.log(id);
-    const response = await fetch(`https://a5c1-45-117-109-34.ngrok-free.app/api/user/activity/${user.user_id}/sleepstatus/delete/${id}`,{
+    const response = await fetch(`https://eae5-45-117-109-34.ngrok-free.app/api/user/activity/${user.user_id}/sleepstatus/delete/${id}`,{
       method: 'DELETE',
       headers: {
         "Content-Type": "application/json",
