@@ -39,7 +39,7 @@ const WeightModal = ({ visible, onClose, onSave, reload }: WeightModalProps) => 
 
     try {
       const response = await fetch(
-        `https://87f0-45-117-109-34.ngrok-free.app/api/user/activity/${user.user_id}/weight`,
+        `http://192.168.1.102:8000/api/user/activity/${user.user_id}/weight`,
         {
           method: "POST",
           headers: {

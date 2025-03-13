@@ -84,7 +84,7 @@ const WeightScreen = () => {
   
 
   const getWeightStatus = async()=>{
-    const response = await fetch(`https://87f0-45-117-109-34.ngrok-free.app/api/user/activity/${user.user_id}/weightStatus`,{
+    const response = await fetch(`https://eae5-45-117-109-34.ngrok-free.app/api/user/activity/${user.user_id}/weightStatus`,{
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
