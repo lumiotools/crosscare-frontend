@@ -78,6 +78,7 @@ export default function water() {
     }
     postWaterIntake();
    }, [glassCount])
+   
   // Function to open the goal setting modal
   const openGoalModal = () => {
     setNewGoal(maxGlasses.toString());
@@ -90,6 +91,7 @@ export default function water() {
     if (!isNaN(parsedGoal) && parsedGoal > 0) {
       // Update the maximum glasses
       setMaxGlasses(parsedGoal);
+      console.log(parsedGoal, "i am saved as the new goal");
       setGoalSet(true);
       setModalVisible(false);
     }
