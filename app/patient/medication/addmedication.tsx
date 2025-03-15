@@ -13,8 +13,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { useSelector } from "react-redux";
 
 interface MedicationState {
+  setMedicationName: string;
   selectedDays: string[];
   isStartDatePickerVisible: boolean;
   isEndDatePickerVisible: boolean;
@@ -26,6 +28,7 @@ interface MedicationState {
 
 export default function addmedication() {
   const [state, setState] = useState<MedicationState>({
+    setMedicationName: "",
     selectedDays: ["T"],
     isStartDatePickerVisible: false,
     isEndDatePickerVisible: false,
@@ -35,12 +38,14 @@ export default function addmedication() {
     selectedTimes: [],
   });
 
+  const user = useSelector((state:any)=>state.user);
+
   const days = ["SU", "M", "T", "W", "TH", "F", "SA"];
 
   const formatDate = (date: Date | null): string => {
     if (!date) return "";
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
   };
@@ -115,6 +120,71 @@ export default function addmedication() {
     }));
   };
 
+  const handleSubmit = async () => {
+    if (!state.setMedicationName.trim()) {
+      alert("Please enter the medication name.");
+      return;
+    }
+  
+    if (!state.startDate) {
+      alert("Please select a start date.");
+      return;
+    }
+  
+    if (!state.endDate) {
+      alert("Please select an end date.");
+      return;
+    }
+  
+    if (state.selectedDays.length === 0) {
+      alert("Please select at least one day.");
+      return;
+    }
+  
+    if (state.selectedTimes.length === 0) {
+      alert("Please add at least one time.");
+      return;
+    }
+  
+    try {
+      const apiUrl = `http://192.168.1.102:8000/api/user/activity/${user.user_id}/addMedication`;
+
+  
+      const payload = {
+        medicationName: state.setMedicationName,
+        days: state.selectedDays,
+        startDate: state.startDate.toISOString().split("T")[0],
+        endDate: state.endDate.toISOString().split("T")[0],
+        times: state.selectedTimes,
+      };
+  
+      console.log("Submitting Data: ", payload);
+  
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+  
+      const data = await response.json();
+  
+      if (response.ok) { // Changed from response.success to response.ok
+        console.log("Success:", data);
+        alert("Medication added successfully!");
+        router.back();
+      } else {
+        console.log("Error:", data);
+        alert("Failed to add medication!");
+      }
+    } catch (error: any) {
+      console.log("Error occurred", error.message);
+      alert("Something went wrong!");
+    }
+  };
+  
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -137,6 +207,13 @@ export default function addmedication() {
               placeholderTextColor={"#7B7B7B"}
               placeholder="Medicine Name"
               style={styles.input}
+              value={state.setMedicationName}
+              onChangeText={(text) =>
+                setState((prevState) => ({
+                  ...prevState,
+                  setMedicationName: text,
+                }))
+              }
             />
           </View>
 
@@ -225,12 +302,14 @@ export default function addmedication() {
           {/* Time Selection */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Time</Text>
-            
+
             {state.selectedTimes.length === 0 ? (
               // Show this when no times are added
-              <TouchableOpacity 
-                style={styles.addTimeButtonEmpty} 
-                onPress={() => setState((prev) => ({ ...prev, isTimePickerVisible: true }))}
+              <TouchableOpacity
+                style={styles.addTimeButtonEmpty}
+                onPress={() =>
+                  setState((prev) => ({ ...prev, isTimePickerVisible: true }))
+                }
               >
                 <Ionicons name="add" size={16} color="#00A991" />
                 <Text style={styles.addTimeText}>Add Time</Text>
@@ -241,7 +320,10 @@ export default function addmedication() {
                 {state.selectedTimes.map((time, index) => (
                   <View key={index} style={styles.timeChip}>
                     <Text style={styles.timeChipText}>{time}</Text>
-                    <TouchableOpacity onPress={() => removeTime(time)} style={styles.removeTimeButton}>
+                    <TouchableOpacity
+                      onPress={() => removeTime(time)}
+                      style={styles.removeTimeButton}
+                    >
                       <Ionicons name="close" size={16} color="#00A991" />
                     </TouchableOpacity>
                   </View>
@@ -249,25 +331,30 @@ export default function addmedication() {
 
                 <TouchableOpacity
                   style={styles.addTimeButton}
-                  onPress={() => setState((prev) => ({ ...prev, isTimePickerVisible: true }))}
+                  onPress={() =>
+                    setState((prev) => ({ ...prev, isTimePickerVisible: true }))
+                  }
                 >
                   <Ionicons name="add" size={16} color="#00A991" />
                 </TouchableOpacity>
               </View>
             )}
-            
+
             {state.isTimePickerVisible && (
-              <DateTimePicker 
-                value={new Date()} 
-                mode="time" 
-                display="default" 
-                onChange={handleTimeConfirm} 
+              <DateTimePicker
+                value={new Date()}
+                mode="time"
+                display="default"
+                onChange={handleTimeConfirm}
               />
             )}
           </View>
 
           {/* Add Medication Button */}
-          <TouchableOpacity style={styles.addMedicationButton}>
+          <TouchableOpacity
+            style={styles.addMedicationButton}
+            onPress={handleSubmit}
+          >
             <Text style={styles.addMedicationText}>Save & Continue</Text>
           </TouchableOpacity>
         </View>
@@ -308,7 +395,7 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     height: 45,
-    paddingLeft:12,
+    paddingLeft: 12,
     color: "#00A991",
     fontSize: 14,
     fontFamily: "Inter400",
@@ -347,10 +434,10 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
   },
   addTimeText: {
-    color: '#00A991',
+    color: "#00A991",
     fontSize: 14,
     marginLeft: 4,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   addTimeButtonEmpty: {
     flexDirection: "row",
@@ -412,8 +499,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#E6F6F4",
     paddingVertical: 8,
-    borderWidth:1,
-    borderColor:'#B0E4DD',
+    borderWidth: 1,
+    borderColor: "#B0E4DD",
     paddingLeft: 12,
     paddingRight: 8,
     borderRadius: 20,
@@ -450,15 +537,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   addTimeButton: {
-    borderWidth:1,
-    borderColor:'#D9F2EF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent:'center',
-    backgroundColor: '#F5FFFD',
+    borderWidth: 1,
+    borderColor: "#D9F2EF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F5FFFD",
     // paddingVertical: 12,
-    height:40,
-    width:40,
+    height: 40,
+    width: 40,
     // paddingHorizontal: 14,
     borderRadius: 20,
   },

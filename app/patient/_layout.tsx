@@ -11,7 +11,7 @@ const PatientStack = () => {
         <Stack.Screen name="(tabs)"  />
         <Stack.Screen name='track'/>
         <Stack.Screen name='health'/>
-        <Stack.Screen name='step'/>
+        <Stack.Screen name='steps'/>
         <Stack.Screen name='water'/>
         <Stack.Screen name='heart'/>
         <Stack.Screen name='newnotes' options={{

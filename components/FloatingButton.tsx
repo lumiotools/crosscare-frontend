@@ -33,6 +33,7 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({ onPress, onPositionChan
   useEffect(() => {
     const updatePosition = () => {
       const { width, height } = Dimensions.get("window");
+      
       // Keep button within screen bounds after rotation
       if (pan.x._value > width - 60) {
         pan.x.setValue(width - 60);

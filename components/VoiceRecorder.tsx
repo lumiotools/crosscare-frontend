@@ -371,16 +371,17 @@ const processUserInput = async (userText: string) => {
 const logData = async ({ category, value, unit }) => {
     const userId = user.user_id;
     const waterCount = value / 250;
+    console.log(waterCount);
 
     try {
         let responseMessage = "";
 
         if (category === "water_intake") {
-            await axios.post(`https://eae5-45-117-109-34.ngrok-free.app/api/user/activity/${userId}/water`, { water: waterCount });
+            await axios.post(`https://crosscare-backends.onrender.com/api/user/activity/${userId}/water`, { water: waterCount });
             console.log("✅ Water intake logged.");
             responseMessage = `I have logged your water intake of ${value} milliliters. Keep staying hydrated!`;
         } else if (category === "weight") {
-            await axios.post(`https://eae5-45-117-109-34.ngrok-free.app/api/user/activity/${userId}/weight`, { weight: value, weight_unit: unit });
+            await axios.post(`https://crosscare-backends.onrender.com/api/user/activity/${userId}/weight`, { weight: value, weight_unit: unit });
             console.log("✅ Weight logged.");
             responseMessage = `Your weight of ${value} ${unit} has been recorded.`;
         }

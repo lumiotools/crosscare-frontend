@@ -80,7 +80,7 @@ const Login: FC = () => {
     try {
       // console.log(`${process.env.DATABASE_URL}`);
       const response = await fetch(
-        `https://a5c1-45-117-109-34.ngrok-free.app/api/login`,
+        `https://crosscare-backends.onrender.com/api/login`,
         {
           method: "POST",
           headers: {

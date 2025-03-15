@@ -46,7 +46,7 @@ interface CustomBarProps {
   isSelected: boolean;
 }
 export default function water() {
-  const { glassCount, setGlassCount, maxGlasses, setMaxGlasses } = useWaterStore();
+  const { glassCount, setGlassCount, maxGlasses, setMaxGlasses} = useWaterStore();
   const user = useSelector((state:any)=>state.user);
   const [goalSet, setGoalSet] = useState(false);
   const [tooltipAnim] = useState(new Animated.Value(0)); // Start with 0 opacity
@@ -61,7 +61,7 @@ export default function water() {
    useEffect(() => {
     const postWaterIntake = async () => {
       try {
-        const response = await fetch(`http://10.0.2.2:8000/api/user/activity/${user.user_id}/water`,{
+        const response = await fetch(`https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/water`,{
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -85,13 +85,38 @@ export default function water() {
   };
 
   // Function to save the new goal and close the modal
-  const saveGoal = () => {
-    const parsedGoal = Number.parseInt(newGoal);
+  const saveGoal = async () => {
+    const parsedGoal = Number.parseFloat(newGoal); // Supports decimal inputs
+    
     if (!isNaN(parsedGoal) && parsedGoal > 0) {
-      // Update the maximum glasses
-      setMaxGlasses(parsedGoal);
-      setGoalSet(true);
-      setModalVisible(false);
+      try {
+        console.log(`🚀 Saving water goal: ${parsedGoal} glasses`);
+        console.log("📤 Sending request body:", { waterGoal: parsedGoal });
+  
+        // API Call to Save Water Goal
+        const response = await axios.post(
+          `http://192.168.1.102:8000/api/user/activity/${user.user_id}/waterGoal`, 
+          { waterGoal: parsedGoal },
+          { headers: { "Content-Type": "application/json" } } // ✅ Ensure JSON format
+        );
+  
+        console.log("✅ API Response:", response.data);
+  
+        if (response.data) {
+          console.log("✅ Water goal saved successfully!");
+  
+          // Update UI
+          setMaxGlasses(parsedGoal);
+          setGoalSet(true);
+          setModalVisible(false);
+        } else {
+          console.error("❌ Failed to save water goal. Response:", response.data);
+        }
+      } catch (error:any) {
+        console.error("❌ API Error:", error.response ? error.response.data : error.message);
+      }
+    } else {
+      console.error("❌ Invalid input. Please enter a valid number greater than zero.");
     }
   };
 
@@ -313,7 +338,7 @@ export default function water() {
                 }}
               >
                 {" "}
-                {goalSet ? ` of ${maxGlasses} Glasses` : " Glasses"}
+                {glassCount ? ` of ${maxGlasses} Glasses` : " Glasses"}
               </Text>
             </Text>
             <TouchableOpacity onPress={openGoalModal}>
