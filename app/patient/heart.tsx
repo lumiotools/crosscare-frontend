@@ -38,7 +38,7 @@ type CustomBarProps = {
 
 export default function HeartRateScreen() {
   // Mock data for the weekly chart
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(3); // Default to Wednesday (index 3)
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null); // Default to Wednesday (index 3)
   const [tooltipAnim] = useState(new Animated.Value(0)); // Start with 0 opacity
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 

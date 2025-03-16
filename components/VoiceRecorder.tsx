@@ -396,65 +396,259 @@ const logData = async ({ category, value, unit }) => {
 };
 
 
+const processUserQuery = async (query: string) => {
+  try {
+    console.log("processUserQuery started with:", query)
 
-  const processUserQuery = async (query: string) => {
-    try {
-      console.log("Sending to Gemini API...");
+    // Always fetch health data regardless of query
+    let healthData = null
 
-      const response = await axios({
-        method: "post",
-        url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
-        params: {
-          key: apiKey,
-        },
-        headers: {
-          "Content-Type": "application/json",
-        },
-        data: {
-          contents: [
-            {
-              parts: [{ text: systemPrompt }, { text: query }],
+    if (user && user.user_id) {
+      console.log(`User ID available: ${user.user_id}`)
+      try {
+        const apiUrl = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}`
+        console.log(`Making API call to: ${apiUrl}`)
+
+        // Make the API call
+        const response = await axios.get(apiUrl)
+
+        console.log("API response status:", response.status)
+        console.log("API response data type:", typeof response.data)
+        console.log("API response is array:", Array.isArray(response.data) ? response.data.length : "N/A")
+        console.log("API response length:", Array.isArray(response.data) ? response.data.length : "N/A")
+
+        // Process the data if we got a response
+        if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+          console.log("API data found. First record:", JSON.stringify(response.data[0], null, 2))
+
+          // Sort by date (newest first)
+          const sortedRecords = [...response.data].sort(
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+          )
+
+          console.log("Sorted records - count:", sortedRecords.length)
+
+          // Get the most recent record
+          const latestRecord = sortedRecords[0]
+          console.log("Latest record details structure:", JSON.stringify(latestRecord.details || {}, null, 2))
+
+          // Get the last 7 days of records
+          const last7Days = sortedRecords.slice(0, 7)
+
+          // Extract weight data - add detailed logging
+          let currentWeight = 0
+          let weightUnit = "kg"
+
+          if (latestRecord.details && latestRecord.details.weight) {
+            currentWeight = latestRecord.details.weight.value || 0
+            weightUnit = latestRecord.details.weight.unit || "kg"
+            console.log("Found weight data:", currentWeight, weightUnit)
+          } else {
+            console.log(
+              "No weight data in latest record:",
+              latestRecord.details ? "Has details but no weight" : "No details property",
+            )
+          }
+
+          // Add direct access to properties for nested values
+          const stepsToday =
+            latestRecord.details && typeof latestRecord.details.steps === "number" ? latestRecord.details.steps : 0
+
+          const waterToday =
+            latestRecord.details && typeof latestRecord.details.water === "number" ? latestRecord.details.water : 0
+
+          // Find previous weight record
+          const prevWeightRecord = sortedRecords.find(
+            (r) =>
+              r !== latestRecord &&
+              r.details &&
+              r.details.weight &&
+              typeof r.details.weight.value === "number" &&
+              r.details.weight.value > 0,
+          )
+
+          // Create health data object with safer property access
+          healthData = {
+            steps: {
+              today: stepsToday,
+              weekly: last7Days.reduce(
+                (sum, record) =>
+                  sum + (record.details && typeof record.details.steps === "number" ? record.details.steps : 0),
+                0,
+              ),
             },
-          ],
-          generationConfig: {
-            maxOutputTokens: 100,
-            temperature: 1.0, 
-          },
-        },
-      });
+            water: {
+              today: waterToday,
+              weekly: last7Days.reduce(
+                (sum, r) => sum + (r.details && typeof r.details.water === "number" ? r.details.water : 0),
+                0,
+              ),
+            },
+            weight: {
+              current: currentWeight,
+              unit: weightUnit,
+              previous:
+                prevWeightRecord && prevWeightRecord.details && prevWeightRecord.details.weight
+                  ? prevWeightRecord.details.weight.value
+                  : 0,
+            },
+          }
 
-      console.log("Gemini API response:", response.data);
-
-      if (
-        response.data &&
-        response.data.candidates &&
-        response.data.candidates.length > 0
-      ) {
-        const assistantMessage =
-          response.data.candidates[0]?.content?.parts[0]?.text.trim();
-
-        if (assistantMessage) {
-          // Speak the response
-          speakResponse(assistantMessage);
-
-          // Send the assistant's response to the parent component
-          // We're using a different approach here to avoid duplicate messages
-          onSendAudio("", "", assistantMessage);
+          console.log("Health data extracted successfully:", JSON.stringify(healthData, null, 2))
         } else {
-          throw new Error("No valid content in response.");
+          console.log("No valid data in API response")
         }
-      } else {
-        throw new Error("Invalid response structure or no candidates found.");
+      } catch (error: any) {
+        console.error("API call error:", error.message)
+        console.error("Error stack:", error.stack)
+        if (error.response) {
+          console.error("API error response status:", error.response.status)
+          console.error("API error response data:", JSON.stringify(error.response.data, null, 2))
+        }
       }
-    } catch (error) {
-      console.error("Error getting response from Gemini API:", error);
-      setIsProcessing(false);
-      Alert.alert(
-        "API Error",
-        "Sorry, I'm having trouble connecting right now. Please try again later."
-      );
+    } else {
+      console.log("No user ID available")
     }
-  };
+
+    // Create enhanced prompt with health data if available
+    let enhancedPrompt = systemPrompt
+
+    if (healthData) {
+      enhancedPrompt += `\n\nUser's health data:\n`
+
+      if (healthData.steps) {
+        enhancedPrompt += `- Steps: Today: ${healthData.steps.today}, Weekly total: ${healthData.steps.weekly}\n`
+      }
+
+      if (healthData.water) {
+        enhancedPrompt += `- Water: Today: ${healthData.water.today} glasses, Weekly total: ${healthData.water.weekly} glasses\n`
+      }
+
+      if (healthData.weight && healthData.weight.current > 0) {
+        enhancedPrompt += `- Weight: Current: ${healthData.weight.current} ${healthData.weight.unit}`
+        if (healthData.weight.previous > 0) {
+          const change = healthData.weight.current - healthData.weight.previous
+          enhancedPrompt += `, Previous: ${healthData.weight.previous} ${healthData.weight.unit}, Change: ${change > 0 ? "+" : ""}${change} ${healthData.weight.unit}`
+        }
+        enhancedPrompt += `\n`
+      }
+
+      enhancedPrompt += `\nPlease answer the user's question about their health metrics using this data. Be specific and encouraging.`
+
+      console.log("HEALTH DATA SUMMARY:")
+      console.log(`- Steps today: ${healthData.steps.today}`)
+      console.log(`- Water today: ${healthData.water.today} glasses`)
+      console.log(`- Current weight: ${healthData.weight.current} ${healthData.weight.unit}`)
+      console.log("Health data successfully added to prompt")
+    } else {
+      console.log("WARNING: No health data available to add to prompt")
+    }
+
+    console.log("Calling Gemini API")
+
+    // Call Gemini API
+    const response = await axios({
+      method: "post",
+      url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+      params: {
+        key: apiKey,
+      },
+      headers: {
+        "Content-Type": "application/json",
+      },
+      data: {
+        contents: [
+          {
+            parts: [{ text: enhancedPrompt }, { text: query }],
+          },
+        ],
+        generationConfig: {
+          maxOutputTokens: 100,
+          temperature: 1.0,
+        },
+      },
+    })
+
+    console.log("Gemini API response received")
+
+    if (response.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      const assistantMessage = response.data.candidates[0].content.parts[0].text.trim()
+      console.log("Assistant response:", assistantMessage)
+
+      // Speak the response
+      speakResponse(assistantMessage)
+
+      // Send to parent component
+      onSendAudio("", "", assistantMessage)
+    } else {
+      throw new Error("No valid response from Gemini API")
+    }
+  } catch (error: any) {
+    console.error("Error in processUserQuery:", error.message)
+    console.error("Error stack:", error.stack)
+    setIsProcessing(false)
+    Alert.alert("Error", "I couldn't process your request. Please try again.")
+  }
+}
+
+  // const processUserQuery = async (query: string) => {
+  //   try {
+  //     console.log("Sending to Gemini API...");
+
+  //     const response = await axios({
+  //       method: "post",
+  //       url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+  //       params: {
+  //         key: apiKey,
+  //       },
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       data: {
+  //         contents: [
+  //           {
+  //             parts: [{ text: systemPrompt }, { text: query }],
+  //           },
+  //         ],
+  //         generationConfig: {
+  //           maxOutputTokens: 100,
+  //           temperature: 1.0, 
+  //         },
+  //       },
+  //     });
+
+  //     console.log("Gemini API response:", response.data);
+
+  //     if (
+  //       response.data &&
+  //       response.data.candidates &&
+  //       response.data.candidates.length > 0
+  //     ) {
+  //       const assistantMessage =
+  //         response.data.candidates[0]?.content?.parts[0]?.text.trim();
+
+  //       if (assistantMessage) {
+  //         // Speak the response
+  //         speakResponse(assistantMessage);
+
+  //         // Send the assistant's response to the parent component
+  //         // We're using a different approach here to avoid duplicate messages
+  //         onSendAudio("", "", assistantMessage);
+  //       } else {
+  //         throw new Error("No valid content in response.");
+  //       }
+  //     } else {
+  //       throw new Error("Invalid response structure or no candidates found.");
+  //     }
+  //   } catch (error) {
+  //     console.error("Error getting response from Gemini API:", error);
+  //     setIsProcessing(false);
+  //     Alert.alert(
+  //       "API Error",
+  //       "Sorry, I'm having trouble connecting right now. Please try again later."
+  //     );
+  //   }
+  // };
 
   const speakResponse = (text: string) => {
     setIsSpeaking(true);

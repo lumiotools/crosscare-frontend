@@ -1,3 +1,5 @@
+"use client"
+
 import {
   View,
   Text,
@@ -9,52 +11,69 @@ import {
   Platform,
   Animated,
   Dimensions,
-} from "react-native";
-import {
-  Ionicons,
-  FontAwesome,
-  MaterialCommunityIcons,
-  MaterialIcons,
-  Feather,
-} from "@expo/vector-icons";
-import * as Progress from "react-native-progress";
-import { BarChart } from "react-native-chart-kit";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
-import HeartCard from "@/components/HeartCard";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { LinearGradient } from "expo-linear-gradient";
-import MoonIcon from "@/assets/images/Svg/MoonIcon";
-import SleepLogModal from "./modal/sleepmodal";
-import { MenuProvider } from "react-native-popup-menu";
-import DeleteMenu from "./modal/deletemodal";
-import MoonIcon1 from "@/assets/images/Svg/MoonIcon1";
-import { useSelector } from "react-redux";
-import { ActivityIndicator } from "react-native";
+  Modal,
+} from "react-native"
+import { Ionicons, MaterialIcons, Feather } from "@expo/vector-icons"
+import { SafeAreaView } from "react-native-safe-area-context"
+import { router } from "expo-router"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { LinearGradient } from "expo-linear-gradient"
+import MoonIcon from "@/assets/images/Svg/MoonIcon"
+import SleepLogModal from "./modal/sleepmodal"
+import { MenuProvider } from "react-native-popup-menu"
+import DeleteMenu from "./modal/deletemodal"
+import MoonIcon1 from "@/assets/images/Svg/MoonIcon1"
+import { useSelector } from "react-redux"
+import { ActivityIndicator } from "react-native"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 
-const { width } = Dimensions.get("window");
-const BAR_WIDTH = 20;
-const SPACING = (width - BAR_WIDTH * 10) / 8;
-const MAX_HEIGHT = 200;
+const { width } = Dimensions.get("window")
+const BAR_WIDTH = 20
+const SPACING = (width - BAR_WIDTH * 10) / 8
+const MAX_HEIGHT = 200
+
 type CustomBarProps = {
-  item: { day: string; hours: number; date: string };
-  index: number;
-  isSelected: boolean;
-};
+  item: {
+    day: string
+    hours: number
+    date: string
+    isRangeLabel?: boolean
+    rangeLabel?: string
+  }
+  index: number
+  isSelected: boolean
+  timeRange: string
+}
 
 interface ChartDataEntry {
-  day: string;
-  hours: number;
-  date: string;
+  day: string
+  hours: number
+  date: string
+  isRangeLabel?: boolean
+  rangeLabel?: string
+  id?: string
 }
 
 interface SleepEntry {
-  id: string;
-  date: string;
-  sleepStart: string;
-  sleepEnd: string;
-  duration: string;
+  id: string
+  date: string
+  sleepStart: string
+  sleepEnd: string
+  duration: string
 }
+
+// Time range options
+type TimeRangeOption = {
+  id: string
+  label: string
+}
+
+const timeRangeOptions: TimeRangeOption[] = [
+  { id: "today", label: "Today" },
+  { id: "week", label: "Last 7 Days" },
+  { id: "month", label: "This Month" },
+  { id: "lastMonth", label: "Last Month" },
+]
 
 const sleepData: SleepEntry[] = [
   {
@@ -71,70 +90,248 @@ const sleepData: SleepEntry[] = [
     sleepEnd: "7:30 AM",
     duration: "8 hr",
   },
-];
+]
+
+// Default empty chart data
+const emptyChartData = [
+  { day: "S", hours: 0, date: "" },
+  { day: "M", hours: 0, date: "" },
+  { day: "T", hours: 0, date: "" },
+  { day: "W", hours: 0, date: "" },
+  { day: "T", hours: 0, date: "" },
+  { day: "F", hours: 0, date: "" },
+  { day: "S", hours: 0, date: "" },
+]
+
+// Default empty today data
+const emptyTodayData = [{ day: "Today", hours: 0, date: new Date().toISOString().split("T")[0] }]
 
 export default function tracksleep() {
   // Mock data for the weekly chart
-  const [logAdded, setLogAdded] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null); // Default to Wednesday (index 3)
-  const [tooltipAnim] = useState(new Animated.Value(0)); // Start with 0 opacity
-  const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [sleepLogs, setSleepLogs] = useState<SleepEntry[]>(sleepData);
-  const [CharData, setChartData] = useState<ChartDataEntry[]>([]);
+  const [logAdded, setLogAdded] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
+  const [tooltipAnim] = useState(new Animated.Value(0)) // Start with 0 opacity
+  const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [sleepLogs, setSleepLogs] = useState<SleepEntry[]>(sleepData)
+  const [chartData, setChartData] = useState<ChartDataEntry[]>(emptyChartData)
+  const [lastResetDate, setLastResetDate] = useState<Date | null>(null)
+  const [timeRange, setTimeRange] = useState("week") // "today", "week", "month", "lastMonth"
+  const [filteredData, setFilteredData] = useState<ChartDataEntry[]>([])
 
-  const user = useSelector((state: any) => state.user);
+  // Dropdown state
+  const [dropdownVisible, setDropdownVisible] = useState(false)
 
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const user = useSelector((state: any) => state.user)
+
+  const [isModalVisible, setIsModalVisible] = useState(false)
+
+  // Get the current selected time range label
+  const getTimeRangeLabel = () => {
+    const option = timeRangeOptions.find((option) => option.id === timeRange)
+    return option ? option.label : "Last 7 Days"
+  }
+
+  // Generate all days for the selected time range
+  const generateAllDays = (timeRange: string): ChartDataEntry[] => {
+    const today = new Date()
+    const days = []
+    let startDate: Date
+    let endDate: Date
+
+    if (timeRange === "today") {
+      // Today view - just show today
+      const todayStr = today.toISOString().split("T")[0]
+      const dayName = today.toLocaleDateString("en-US", { weekday: "long" })
+
+      return [
+        {
+          id: `today-${todayStr}`,
+          date: todayStr,
+          day: "Today",
+          hours: 0,
+        },
+      ]
+    } else if (timeRange === "week") {
+      // Weekly view - show each day
+      startDate = new Date(today)
+      const dayOfWeek = startDate.getDay()
+      startDate.setDate(startDate.getDate() - dayOfWeek)
+
+      endDate = new Date(startDate)
+      endDate.setDate(startDate.getDate() + 6)
+
+      const currentDate = new Date(startDate)
+      while (currentDate <= endDate) {
+        const dateString = currentDate.toISOString().split("T")[0]
+        days.push({
+          id: `empty-${dateString}`,
+          date: dateString,
+          day: currentDate.toLocaleDateString("en-US", { weekday: "short" }).charAt(0),
+          hours: 0,
+        })
+        currentDate.setDate(currentDate.getDate() + 1)
+      }
+    } else if (timeRange === "month" || timeRange === "lastMonth") {
+      // For month views, create date ranges around key dates
+      const dateRanges = [
+        { label: "1", start: 1, end: 4 },
+        { label: "5", start: 5, end: 9 },
+        { label: "10", start: 10, end: 14 },
+        { label: "15", start: 15, end: 19 },
+        { label: "20", start: 20, end: 24 },
+        { label: "25", start: 25, end: 29 },
+        { label: "30", start: 30, end: 31 },
+      ]
+
+      if (timeRange === "month") {
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1)
+        endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+      } else {
+        startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+        endDate = new Date(today.getFullYear(), today.getMonth(), 0)
+      }
+
+      const lastDay = endDate.getDate()
+
+      // Generate entries for each date range
+      for (const range of dateRanges) {
+        if (range.start <= lastDay) {
+          // Add the main label date
+          const labelDate = new Date(startDate)
+          labelDate.setDate(range.start)
+          const labelDateString = labelDate.toISOString().split("T")[0]
+
+          days.push({
+            id: `label-${labelDateString}`,
+            date: labelDateString,
+            day: range.label,
+            hours: 0,
+            isRangeLabel: true, // Mark this as a label for the range
+          })
+
+          // Add individual days in the range
+          for (let day = range.start; day <= Math.min(range.end, lastDay); day++) {
+            const currentDate = new Date(startDate)
+            currentDate.setDate(day)
+            const dateString = currentDate.toISOString().split("T")[0]
+
+            days.push({
+              id: `day-${dateString}`,
+              date: dateString,
+              day: "", // Empty string for non-label days
+              hours: 0,
+              rangeLabel: range.label, // Reference to which label this belongs to
+            })
+          }
+        }
+      }
+    }
+
+    return days
+  }
+
+  // Function to get the current week number
+  const getWeekNumber = (date: Date) => {
+    const firstDayOfYear = new Date(date.getFullYear(), 0, 1)
+    const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000
+    return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7)
+  }
+
+  // Function to check if we need to reset the chart data
+  const checkAndResetWeeklyData = async () => {
+    try {
+      // Get current date
+      const currentDate = new Date()
+      const currentWeek = getWeekNumber(currentDate)
+      const currentYear = currentDate.getFullYear()
+
+      // Get the stored last reset info from AsyncStorage
+      const lastResetInfo = await AsyncStorage.getItem("lastChartResetInfo")
+      let lastResetWeek = 0
+      let lastResetYear = 0
+
+      if (lastResetInfo) {
+        const parsedInfo = JSON.parse(lastResetInfo)
+        lastResetWeek = parsedInfo.week
+        lastResetYear = parsedInfo.year
+        setLastResetDate(new Date(parsedInfo.date))
+      }
+
+      console.log("Current week/year:", currentWeek, currentYear)
+      console.log("Last reset week/year:", lastResetWeek, lastResetYear)
+
+      // Reset if it's a new week or a new year
+      if (!lastResetInfo || lastResetWeek !== currentWeek || lastResetYear !== currentYear) {
+        console.log("Resetting chart data for new week")
+
+        // Reset chart data
+        setChartData(emptyChartData)
+
+        // Store the current week info
+        const resetInfo = {
+          week: currentWeek,
+          year: currentYear,
+          date: currentDate.toISOString(),
+        }
+
+        await AsyncStorage.setItem("lastChartResetInfo", JSON.stringify(resetInfo))
+        setLastResetDate(currentDate)
+
+        return true // Indicate that we reset the data
+      }
+
+      return false // No reset needed
+    } catch (error) {
+      console.error("Error in checkAndResetWeeklyData:", error)
+      return false
+    }
+  }
 
   // Add these functions to handle the modal
   const handleOpenModal = () => {
-    setIsModalVisible(true);
-  };
+    setIsModalVisible(true)
+  }
 
   const handleCloseModal = () => {
-    setIsModalVisible(false);
-  };
+    setIsModalVisible(false)
+  }
 
   const handleSaveSleepLog = (date: Date, sleepTime: Date, wakeTime: Date) => {
-    // Format the times for display
+    // Format the times for display using toLocaleTimeString
     const formattedSleepTime = sleepTime.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
-    });
+    })
 
     const formattedWakeTime = wakeTime.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
-    });
+    })
 
     // Calculate duration (this is a simple calculation, might need adjustment)
-    const sleepMs = sleepTime.getTime();
-    const wakeMs = wakeTime.getTime();
-    let durationMs = wakeMs - sleepMs;
+    const sleepMs = sleepTime.getTime()
+    const wakeMs = wakeTime.getTime()
+    let durationMs = wakeMs - sleepMs
 
     // If wake time is earlier than sleep time, assume it's the next day
     if (durationMs < 0) {
-      durationMs += 24 * 60 * 60 * 1000;
+      durationMs += 24 * 60 * 60 * 1000
     }
 
-    const durationHours = Math.floor(durationMs / (60 * 60 * 1000));
-    const durationMinutes = Math.floor(
-      (durationMs % (60 * 60 * 1000)) / (60 * 1000)
-    );
+    const durationHours = Math.floor(durationMs / (60 * 60 * 1000))
+    const durationMinutes = Math.floor((durationMs % (60 * 60 * 1000)) / (60 * 1000))
 
-    const formattedDuration = `${durationHours} hr${
-      durationMinutes > 0 ? ` ${durationMinutes} min` : ""
-    }`;
+    const formattedDuration = `${durationHours} hr${durationMinutes > 0 ? ` ${durationMinutes} min` : ""}`
 
-    // Format the date
+    // Format the date using toLocaleDateString
     const formattedDate = date.toLocaleDateString("en-US", {
       day: "numeric",
       month: "short",
       year: "numeric",
-    });
+    })
 
     // Create a new sleep entry
     const newEntry: SleepEntry = {
@@ -143,183 +340,286 @@ export default function tracksleep() {
       sleepStart: formattedSleepTime,
       sleepEnd: formattedWakeTime,
       duration: formattedDuration,
-    };
+    }
 
     // Add the new entry to the sleep data
-    // Note: In a real app, you would likely use state management or API calls here
-    setSleepLogs((prevLogs) => [newEntry, ...prevLogs]);
+    setSleepLogs((prevLogs) => [newEntry, ...prevLogs])
+    setIsModalVisible(false)
 
-    // Force a re-render (in a real app, you'd use state management)
-    // This is just for demonstration
-    setIsModalVisible(false);
-  };
+    // Refresh the chart data
+    getSleepStatus()
+  }
 
-  // Sample data for the last 7 days
-  // const data = [
-  //   { day: "S", hours: 7.5, date: "FEB 25, 2025" },
-  //   { day: "M", hours: 8.2, date: "FEB 26, 2025" },
-  //   { day: "T", hours: 6.5, date: "FEB 27, 2025" },
-  //   { day: "W", hours: 7.8, date: "FEB 28, 2025" },
-  //   { day: "T", hours: 5.5, date: "FEB 29, 2025" },
-  //   { day: "F", hours: 8.5, date: "MAR 1, 2025" },
-  //   { day: "S", hours: 7.2, date: "MAR 2, 2025" },
-  // ];
+  // Process and filter data based on time range
+  const processDataForTimeRange = (data: any[], timeRange: string) => {
+    const allDays = generateAllDays(timeRange)
+
+    if (data.length === 0) {
+      return allDays
+    }
+
+    const dataMap = new Map()
+    data.forEach((item) => {
+      if (item.date) {
+        const dateKey = new Date(item.date).toISOString().split("T")[0]
+        dataMap.set(dateKey, item)
+      }
+    })
+
+    // For "today" view, we need to specifically check if today's data exists
+    if (timeRange === "today") {
+      const todayStr = new Date().toISOString().split("T")[0]
+      const todayData = dataMap.get(todayStr)
+
+      if (todayData) {
+        return [
+          {
+            id: `today-${todayStr}`,
+            date: todayStr,
+            day: "Today",
+            hours: todayData.hours || 0,
+          },
+        ]
+      } else {
+        return allDays // Return empty today template
+      }
+    }
+
+    // For other views, map the data as before
+    return allDays.map((day) => {
+      const existingData = dataMap.get(day.date)
+      if (existingData) {
+        return {
+          ...day,
+          hours: existingData.hours || 0,
+          isRangeLabel: day.isRangeLabel,
+          rangeLabel: day.rangeLabel,
+        }
+      }
+      return day
+    })
+  }
 
   const getSleepStatus = async () => {
-    setLoading(true); // Show loader
+    setLoading(true) // Show loader
     try {
-      const response = await fetch(
-        `http://192.168.1.102:8000/api/user/activity/${user.user_id}/sleepstatus`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
+      // Check if we need to reset weekly data first
+      const wasReset = await checkAndResetWeeklyData()
+
+      // If we just reset the data, we might want to show empty chart initially
+      if (wasReset) {
+        console.log("Chart was reset, showing empty data")
+        // You could choose to return early here if you want to show empty chart
+        // return;
+      }
+
+      const response = await fetch(`http://192.168.1.102:8000/api/user/activity/${user.user_id}/sleepstatus`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      const data = await response.json()
+      console.log("API data:", data)
+      setSleepLogs(data)
+
+      const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"]
+      const fullWeekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
+      // Create a map to store unique sleep data
+      const sleepMap = new Map()
+
+      // Process all data regardless of time range
+      data.forEach((entry: { date: string | number | Date; duration: string }) => {
+        const entryDate = new Date(entry.date)
+        const fullDay = entryDate.toLocaleString("en-US", { weekday: "long" }) // Get full weekday name
+        const dayIndex = fullWeekdays.indexOf(fullDay) // Get unique index
+
+        if (dayIndex === -1) return // Skip invalid dates
+
+        const dayLetter = fixedWeekdays[dayIndex] // Get S, M, T, W...
+
+        // Extract sleep duration
+        let hours = 0
+        let minutes = 0
+
+        if (entry.duration) {
+          const durationParts = entry.duration.split(" ")
+          if (durationParts.length >= 1) {
+            hours = Number.parseFloat(durationParts[0]) || 0
+          }
+          if (durationParts.length >= 3) {
+            minutes = Number.parseFloat(durationParts[2]) || 0
+          }
         }
-      );
 
-      const data = await response.json();
-      console.log(data);
-      setSleepLogs(data);
+        const totalHours = hours + minutes / 60
+        const dateString = entryDate.toISOString().split("T")[0]
 
-      const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"];
-    const fullWeekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        // Store data with ISO date string as key
+        sleepMap.set(dateString, {
+          day: dayLetter,
+          hours: totalHours,
+          date: dateString,
+        })
+      })
 
-    // Create a map to store unique sleep data
-    const sleepMap = new Map();
+      // Convert map to array
+      const processedData = Array.from(sleepMap.values())
+      setChartData(processedData)
 
-    data.forEach((entry: { date: string | number | Date; duration: { split: (arg0: string) => { (): any; new(): any; map: { (arg0: (part: any, index: any) => number): [any, any]; new(): any; }; }; }; }) => {
-      const date = new Date(entry.date);
-      const fullDay = date.toLocaleString("en-US", { weekday: "long" }); // Get full weekday name
-      const dayIndex = fullWeekdays.indexOf(fullDay); // Get unique index
-
-      if (dayIndex === -1) return; // Skip invalid dates
-
-      const dayLetter = fixedWeekdays[dayIndex]; // Get S, M, T, W...
-      
-      // Extract sleep duration
-      const [hours, minutes] = entry.duration.split(" ").map((part: string, index: number) => {
-        if (index === 0) return parseFloat(part); // Extract hours
-        if (index === 2) return parseFloat(part) / 60; // Convert minutes to fraction of an hour
-        return 0;
-      });
-
-      // Store data uniquely per day
-      sleepMap.set(dayIndex, {
-        day: dayLetter,
-        hours: hours + minutes,
-        date: entry.date,
-      });
-    });
-
-    // Ensure all weekdays exist, filling missing ones with zero
-    const chartData = fixedWeekdays.map((day, index) => {
-      return sleepMap.get(index) || { day, hours: 0, date: "" };
-    });
-
-      setChartData(chartData);
+      // Process data for current time range
+      const filteredData = processDataForTimeRange(processedData, timeRange)
+      setFilteredData(filteredData)
     } catch (error) {
-      console.error("Error fetching sleep data:", error);
+      console.error("Error fetching sleep data:", error)
+
+      // If there's an error, still set filtered data based on time range
+      const filteredData = processDataForTimeRange([], timeRange)
+      setFilteredData(filteredData)
     } finally {
-      setLoading(false); // Hide loader
+      setLoading(false) // Hide loader
     }
-  };
+  }
 
+  // Update filtered data when time range changes
   useEffect(() => {
-    getSleepStatus();
-  }, []);
+    const filtered = processDataForTimeRange(chartData, timeRange)
+    setFilteredData(filtered)
 
-  const handleDeleteLog = async(id: string) => {
-    console.log(id);
-    const response = await fetch(`http://192.168.1.102:8000/api/user/activity/${user.user_id}/sleepstatus/delete/${id}`,{
-      method: 'DELETE',
-      headers: {
-        "Content-Type": "application/json",
+    // Reset selected index when changing time range
+    setSelectedIndex(null)
+  }, [timeRange, chartData])
+
+  // Initialize data when component mounts
+  useEffect(() => {
+    const initializeData = async () => {
+      // Load the last reset date from storage
+      const lastResetInfo = await AsyncStorage.getItem("lastChartResetInfo")
+      if (lastResetInfo) {
+        const parsedInfo = JSON.parse(lastResetInfo)
+        setLastResetDate(new Date(parsedInfo.date))
+      }
+
+      // Check for reset and fetch data
+      await getSleepStatus()
+    }
+
+    initializeData()
+
+    // Set up a check that runs when the app is opened or comes to foreground
+    const checkInterval = setInterval(() => {
+      checkAndResetWeeklyData().then((wasReset) => {
+        if (wasReset) {
+          // If data was reset, refresh the sleep status
+          getSleepStatus()
+        }
+      })
+    }, 3600000) // Check every hour
+
+    return () => clearInterval(checkInterval)
+  }, [])
+
+  const handleDeleteLog = async (id: string) => {
+    console.log(id)
+    const response = await fetch(
+      `http://192.168.1.102:8000/api/user/activity/${user.user_id}/sleepstatus/delete/${id}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
       },
-    });
-    const data = await response.json();
-    console.log(data);
-    setSleepLogs(sleepLogs.filter((log) => log.id !== id));
-  };
+    )
+    const data = await response.json()
+    console.log(data)
+    setSleepLogs(sleepLogs.filter((log) => log.id !== id))
 
+    // Refresh chart data after deletion
+    getSleepStatus()
+  }
 
   // ✅ Convert "10.0" to "10 hr 0 min" format
   const formatDuration = (duration: string | null | undefined) => {
-    if (!duration) return "0 hr 0 min"; // Default if missing
-    const totalMinutes = parseFloat(duration) * 60;
-    if (isNaN(totalMinutes)) return "0 hr 0 min"; // Handle invalid numbers
+    if (!duration) return "0 hr 0 min" // Default if missing
+    const totalMinutes = Number.parseFloat(duration) * 60
+    if (isNaN(totalMinutes)) return "0 hr 0 min" // Handle invalid numbers
 
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = Math.round(totalMinutes % 60);
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = Math.round(totalMinutes % 60)
 
-    return minutes > 0 ? `${hours} hr ${minutes} min` : `${hours} hr`;
-  };
+    return minutes > 0 ? `${hours} hr ${minutes} min` : `${hours} hr`
+  }
 
   // ✅ Convert "03/08/2025" to "08 March, 25"
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-
-    const day = date.getDate();
-    const month = date.toLocaleString("en-US", { month: "short" });
-    const year = date.getFullYear();
-
-    // Function to add ordinal suffix (st, nd, rd, th)
-    const getOrdinalSuffix = (day: number) => {
-      if (day > 3 && day < 21) return "th"; // Covers 4th-20th
-      switch (day % 10) {
-        case 1:
-          return "st";
-        case 2:
-          return "nd";
-        case 3:
-          return "rd";
-        default:
-          return "th";
-      }
-    };
-
-    return `${day}${getOrdinalSuffix(day)} ${month}, ${year}`;
-  };
+  const formatDate = (dateString: string) => {
+    if (!dateString) return ""
+    try {
+      const date = new Date(dateString)
+      return date
+        .toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+        .toUpperCase()
+    } catch (e) {
+      return dateString // Return original if parsing fails
+    }
+  }
 
   // Calculate y-axis values using useMemo to prevent recalculation on every render
   const { yAxisLabels, roundedMax, roundedMin } = useMemo(() => {
-    const maxWeight = Math.max(...CharData.map((item) => item.hours));
-    const minWeight = Math.min(...CharData.map((item) => item.hours));
+    // Filter out zero values for calculation
+    const nonZeroValues = filteredData.filter((item) => !item.isRangeLabel && item.hours > 0).map((item) => item.hours)
 
-    // Calculate rounded max for y-axis (round up to nearest 5)
-    const roundedMax = Math.ceil(maxWeight / 5) * 5;
-    // Calculate rounded min for y-axis (round down to nearest 5)
-    const roundedMin = Math.floor(minWeight / 5) * 5;
+    // If no non-zero values, use default range
+    if (nonZeroValues.length === 0) {
+      return { yAxisLabels: [10, 8, 6, 4, 2, 0], roundedMax: 10, roundedMin: 0 }
+    }
+
+    const maxWeight = Math.max(...nonZeroValues)
+    const minWeight = Math.min(...nonZeroValues)
+
+    // Add padding to the range - increase the padding for the max value
+    const paddedMax = maxWeight * 1.1 // Add 10% padding to max value
+    const paddedMin = Math.max(0, minWeight - 1)
+
+    // Calculate rounded max for y-axis (round up to nearest 1)
+    const roundedMax = Math.ceil(paddedMax)
+    // Calculate rounded min for y-axis (round down to nearest 1)
+    const roundedMin = Math.floor(paddedMin)
 
     // Create appropriate y-axis labels based on data range
-    const range = roundedMax - roundedMin;
-    const step = Math.ceil(range / 4); // We want about 4 labels
+    const range = roundedMax - roundedMin
+    const step = Math.max(1, Math.ceil(range / 5)) // We want about 5 labels, minimum step of 1
 
-    const labels = [];
-    for (let i = 0; i <= 4; i++) {
-      const value = roundedMin + step * i;
+    const labels = []
+    for (let i = 0; i <= 5; i++) {
+      const value = roundedMin + step * i
       if (value <= roundedMax) {
-        labels.push(value);
+        labels.push(value)
       }
     }
 
     // Make sure max value is included
     if (labels[labels.length - 1] < roundedMax) {
-      labels.push(roundedMax);
+      labels.push(roundedMax)
     }
 
     return {
       yAxisLabels: labels.reverse(), // Reverse for top-to-bottom display
       roundedMax,
       roundedMin,
-    };
-  }, [CharData]); // Only recalculate when data changes
+    }
+  }, [filteredData]) // Recalculate when filtered data changes
 
   // Function to hide tooltip after a delay
   const hideTooltipAfterDelay = () => {
     // Clear any existing timeout
     if (tooltipTimeoutRef.current) {
-      clearTimeout(tooltipTimeoutRef.current);
+      clearTimeout(tooltipTimeoutRef.current)
     }
 
     // Set a new timeout to hide the tooltip after 3 seconds
@@ -329,14 +629,23 @@ export default function tracksleep() {
         duration: 200,
         useNativeDriver: true,
       }).start(() => {
-        setSelectedIndex(null);
-      });
-    }, 3000);
-  };
+        setSelectedIndex(null)
+      })
+    }, 3000)
+  }
 
   const handleBarPress = (index: number): void => {
+    // Get the actual item
+    const item = filteredData[index]
+
+    // Skip if it's a range label or has no data
+    if (item.isRangeLabel || item.hours <= 0) {
+      return
+    }
+
     if (selectedIndex === index) {
-      return; // Already selected
+      setSelectedIndex(null) // Deselect if already selected
+      return
     }
 
     // Animate tooltip disappearing and reappearing
@@ -351,61 +660,100 @@ export default function tracksleep() {
         duration: 300,
         useNativeDriver: true,
       }),
-    ]).start();
+    ]).start()
 
-    setSelectedIndex(index);
-
-    Animated.timing(tooltipAnim, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
+    setSelectedIndex(index)
 
     // Set timeout to hide tooltip after delay
-    hideTooltipAfterDelay();
-  };
+    hideTooltipAfterDelay()
+  }
 
   // Clean up timeout on unmount
   useEffect(() => {
     return () => {
       if (tooltipTimeoutRef.current) {
-        clearTimeout(tooltipTimeoutRef.current);
+        clearTimeout(tooltipTimeoutRef.current)
       }
-    };
-  }, []);
-  
+    }
+  }, [])
 
-  const CustomBar = ({ item, index, isSelected }: CustomBarProps) => {
+  const CustomBar = ({ item, index, isSelected, timeRange }: CustomBarProps) => {
+    // Check if this is a month view
+    const isMonthView = timeRange !== "week" && timeRange !== "today"
+
+    // Skip rendering for range labels in month view - they're just for organization
+    if (isMonthView && item.isRangeLabel) {
+      return (
+        <View style={styles.dateRangeContainer}>
+          <Text style={styles.dateRangeLabel}>{item.day}</Text>
+        </View>
+      )
+    }
+
+    // Check if the bar has data
+    const hasData = item.hours > 0
+
     // Calculate bar height based on data range
-    const dataRange = roundedMax - roundedMin;
-    const normalizedWeight = item.hours - roundedMin; // Adjust for minimum value
-    const barHeight = (normalizedWeight / dataRange) * MAX_HEIGHT;
+    const dataRange = roundedMax - roundedMin
+    // Ensure we don't exceed the maximum height for very large values
+    const normalizedWeight = Math.min(item.hours - roundedMin, dataRange)
+    const barHeight = dataRange > 0 ? (normalizedWeight / dataRange) * MAX_HEIGHT : 0
+
+    // Use thinner bars for month views, wider for today view
+    let barWidth = BAR_WIDTH
+    if (isMonthView) {
+      barWidth = 4
+    } else if (timeRange === "today") {
+      barWidth = BAR_WIDTH * 2 // Wider bar for today view
+    }
 
     return (
       <TouchableOpacity
         activeOpacity={0.8}
-        onPress={() => handleBarPress(index)}
-        style={styles.barContainer}
+        onPress={() => (hasData ? handleBarPress(index) : null)}
+        style={[
+          styles.barContainer,
+          timeRange === "today" && {
+            width: barWidth,
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "flex-end",
+          },
+          isMonthView && {
+            width: barWidth,
+            marginRight: 2, // Tighter spacing for clustered bars
+            marginLeft: item.rangeLabel && index > 0 && filteredData[index - 1].rangeLabel !== item.rangeLabel ? 10 : 0, // Add space between ranges
+          },
+        ]}
+        disabled={!hasData} // Disable touch for bars with no data
       >
-        <View style={styles.barLabelContainer}>
-          <Text style={styles.barLabel}>{item.day}</Text>
-        </View>
+        {/* Show day label for week view and today view */}
+        {(timeRange === "week" || timeRange === "today") && (
+          <View style={styles.barLabelContainer}>
+            <Text style={styles.barLabel}>{item.day}</Text>
+          </View>
+        )}
 
-        <View style={[styles.barWrapper, { height: barHeight }]}>
-          <LinearGradient
-            colors={
-              isSelected ? ["#B0C0D0", "#B0C0D0"] : ["#8AA1B9", "#8AA1B9"]
-            }
-            style={[styles.bar, { height: "100%" }]}
-          />
-        </View>
+        {hasData && (
+          <View style={[styles.barWrapper, { height: barHeight || 0 }, { width: barWidth }]}>
+            <LinearGradient
+              colors={isSelected ? ["#B0C0D0", "#B0C0D0"] : ["#8AA1B9", "#8AA1B9"]}
+              style={[
+                styles.bar,
+                { height: "100%" },
+                isMonthView && { borderTopLeftRadius: 2, borderTopRightRadius: 2 },
+              ]}
+            />
+          </View>
+        )}
 
-        {isSelected && (
-          <View style={styles.tooltip}>
+        {/* Only show tooltip if selected AND has data */}
+        {isSelected && hasData && (
+          <Animated.View style={[styles.tooltip, { opacity: tooltipAnim }]}>
             <View style={styles.tooltipContent}>
               <Text style={styles.tooltipTitle}>SLEEP</Text>
               <Text style={styles.tooltipWeight}>
-                ~{item.hours}{" "}
+                ~{item.hours.toFixed(1)}{" "}
                 <Text
                   style={{
                     fontSize: 16,
@@ -415,15 +763,14 @@ export default function tracksleep() {
                   hr
                 </Text>
               </Text>
-              <Text style={styles.tooltipDate}>{item.date}</Text>
+              <Text style={styles.tooltipDate}>{formatDate(item.date)}</Text>
             </View>
             <View style={styles.tooltipArrow} />
-          </View>
+          </Animated.View>
         )}
       </TouchableOpacity>
-    );
-  };
-
+    )
+  }
 
   return (
     <MenuProvider>
@@ -432,10 +779,7 @@ export default function tracksleep() {
 
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={20} color="white" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Track Sleep</Text>
@@ -776,10 +1120,7 @@ export default function tracksleep() {
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>Connect to Application</Text>
             <View style={styles.connectItem}>
-              <Image
-                source={require("../../assets/images/applehealth.png")}
-                style={{ width: 24, height: 24 }}
-              />
+              <Image source={require("../../assets/images/applehealth.png")} style={{ width: 24, height: 24 }} />
               <Text style={styles.connectText}>Health App</Text>
               <TouchableOpacity>
                 <Text style={styles.connectButton}>CONNECT</Text>
@@ -791,10 +1132,7 @@ export default function tracksleep() {
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>Connect to Device</Text>
             <View style={styles.connectItem}>
-              <Image
-                source={require("../../assets/images/fitbit.png")}
-                style={{ width: 24, height: 24 }}
-              />
+              <Image source={require("../../assets/images/fitbit.png")} style={{ width: 24, height: 24 }} />
               <Text style={styles.connectText}>Fitbit</Text>
               <TouchableOpacity>
                 <Text style={styles.connectButton}>CONNECT</Text>
@@ -809,14 +1147,14 @@ export default function tracksleep() {
                 <MaterialIcons name="bar-chart" size={18} color="#547698" />
                 <Text style={styles.analysisTabText}>Analysis</Text>
               </View>
-              <TouchableOpacity style={styles.periodSelector}>
-                <Text style={styles.periodText}>Last 7 Days</Text>
+              <TouchableOpacity style={styles.periodSelector} onPress={() => setDropdownVisible(true)}>
+                <Text style={styles.periodText}>{getTimeRangeLabel()}</Text>
                 <Ionicons name="chevron-down" size={14} color="#E5E5E5" />
               </TouchableOpacity>
             </View>
-
-            {/* Chart */}
           </View>
+
+          {/* Chart */}
           <View style={styles.customChartContainer}>
             {/* Y-axis labels */}
             <View style={styles.yAxisContainer}>
@@ -831,25 +1169,52 @@ export default function tracksleep() {
             <View style={styles.chartContainer}>
               {/* Horizontal grid lines */}
               {yAxisLabels.map((_, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.gridLine,
-                    { top: (index / (yAxisLabels.length - 1)) * MAX_HEIGHT },
-                  ]}
-                />
+                <View key={index} style={[styles.gridLine, { top: (index / (yAxisLabels.length - 1)) * MAX_HEIGHT }]} />
               ))}
 
+              {/* For month views, render date labels at the bottom */}
+              {(timeRange === "month" || timeRange === "lastMonth") && (
+                <View style={styles.dateLabelsContainer}>
+                  {filteredData
+                    .filter((item) => item.isRangeLabel)
+                    .map((item, index) => (
+                      <Text key={index} style={styles.monthDateLabel}>
+                        {item.day}
+                      </Text>
+                    ))}
+                </View>
+              )}
+
               {/* Bars */}
-              <View style={styles.barsContainer}>
-                {CharData.map((item, index) => (
-                  <CustomBar
-                    key={index}
-                    item={item}
-                    index={index}
-                    isSelected={selectedIndex === index}
-                  />
-                ))}
+              <View
+                style={[
+                  styles.barsContainer,
+                  timeRange === "today" && styles.todayBarsContainer,
+                  (timeRange === "month" || timeRange === "lastMonth") && { paddingHorizontal: 10 },
+                ]}
+              >
+                {loading ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#8AA1B9" />
+                  </View>
+                ) : filteredData.length === 0 ? (
+                  <View style={styles.noDataContainer}>
+                    <Text style={styles.noDataText}>No data available</Text>
+                  </View>
+                ) : (
+                  // For month views, filter out the range labels as they're shown separately
+                  filteredData
+                    .filter((item) => timeRange === "week" || timeRange === "today" || !item.isRangeLabel)
+                    .map((item, index) => (
+                      <CustomBar
+                        key={index}
+                        item={item}
+                        index={filteredData.findIndex((d) => d.date === item.date)} // Use original index for reference
+                        isSelected={selectedIndex === filteredData.findIndex((d) => d.date === item.date)}
+                        timeRange={timeRange}
+                      />
+                    ))
+                )}
               </View>
             </View>
           </View>
@@ -857,10 +1222,8 @@ export default function tracksleep() {
           {/* Bottom Message */}
           <View style={styles.bottomContainer}>
             <View style={styles.messageContainer}>
-              <Text style={styles.messageTitle}>Get a good night’s sleep</Text>
-              <Text style={styles.messageSubtitle}>
-                Set a reminder and stay on track.
-              </Text>
+              <Text style={styles.messageTitle}>Get a good night's sleep</Text>
+              <Text style={styles.messageSubtitle}>Set a reminder and stay on track.</Text>
             </View>
             <TouchableOpacity style={styles.reminderButton}>
               <Ionicons name="alarm" size={16} color="#FEF8FD" />
@@ -868,6 +1231,34 @@ export default function tracksleep() {
             </TouchableOpacity>
           </View>
         </ScrollView>
+
+        {/* Time Range Dropdown Modal */}
+        <Modal
+          transparent={true}
+          visible={dropdownVisible}
+          animationType="fade"
+          onRequestClose={() => setDropdownVisible(false)}
+        >
+          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setDropdownVisible(false)}>
+            <View style={styles.dropdownContainer}>
+              {timeRangeOptions.map((option) => (
+                <TouchableOpacity
+                  key={option.id}
+                  style={[styles.dropdownItem, timeRange === option.id && styles.dropdownItemSelected]}
+                  onPress={() => {
+                    setTimeRange(option.id)
+                    setDropdownVisible(false)
+                  }}
+                >
+                  <Text style={[styles.dropdownItemText, timeRange === option.id && styles.dropdownItemTextSelected]}>
+                    {option.label}
+                  </Text>
+                  {timeRange === option.id && <Ionicons name="checkmark" size={16} color="#E5E5E5" />}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </Modal>
 
         <SleepLogModal
           isVisible={isModalVisible}
@@ -877,7 +1268,7 @@ export default function tracksleep() {
         />
       </SafeAreaView>
     </MenuProvider>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -921,7 +1312,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     position: "relative",
   },
-
   progressCircle: {
     position: "absolute",
   },
@@ -992,7 +1382,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 16,
   },
-
   connectionItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -1047,6 +1436,10 @@ const styles = StyleSheet.create({
     height: "100%",
     paddingLeft: SPACING,
   },
+  todayBarsContainer: {
+    justifyContent: "center",
+    paddingLeft: 0,
+  },
   barContainer: {
     width: BAR_WIDTH,
     marginRight: SPACING,
@@ -1094,12 +1487,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  // tooltipArrow: {
-  //   width: 2, // Width of the line
-  //   height: "170%", // Height of the line - adjust as needed
-  //   backgroundColor: "#B0C0D0", // Same color as tooltip
-  //   // marginRight: 4, // Small gap between line and tooltip content
-  // },
   tooltipArrow: {
     width: 0,
     height: 0,
@@ -1130,7 +1517,6 @@ const styles = StyleSheet.create({
   connectionText: {
     fontSize: 15,
   },
-
   connectButtonText: {
     color: "#FF3B30",
     fontWeight: "500",
@@ -1170,7 +1556,6 @@ const styles = StyleSheet.create({
     color: "#666",
     marginRight: 4,
   },
-
   yAxisLabels: {
     width: 20,
     height: 120,
@@ -1178,12 +1563,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 5,
   },
-
   barColumn: {
     alignItems: "center",
     width: 30,
   },
-
   dayLabel: {
     marginTop: 5,
     fontSize: 12,
@@ -1278,4 +1661,91 @@ const styles = StyleSheet.create({
     fontFamily: "Inter600",
     lineHeight: 22,
   },
-});
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    height: MAX_HEIGHT,
+  },
+  noDataContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    height: MAX_HEIGHT,
+  },
+  noDataText: {
+    color: "#999",
+    fontFamily: "Inter400",
+    fontSize: 14,
+  },
+  dateRangeContainer: {
+    alignItems: "center",
+    width: 20,
+    height: "100%",
+  },
+  dateRangeLabel: {
+    position: "absolute",
+    bottom: -25,
+    fontSize: 12,
+    color: "#888888",
+    fontFamily: "Inter500",
+  },
+  dateLabelsContainer: {
+    position: "absolute",
+    bottom: -25,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 15,
+  },
+  monthDateLabel: {
+    fontSize: 12,
+    color: "#888888",
+    fontFamily: "Inter500",
+  },
+  // Dropdown styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  dropdownContainer: {
+    position: "absolute",
+    top: 220, // Position below the period selector
+    right: 20,
+    backgroundColor: "#1A3352",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#547698",
+    width: 160,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  dropdownItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(229, 229, 229, 0.1)",
+  },
+  dropdownItemSelected: {
+    backgroundColor: "#335C85",
+  },
+  dropdownItemText: {
+    color: "#E5E5E5",
+    fontSize: 14,
+    fontFamily: "Inter400",
+  },
+  dropdownItemTextSelected: {
+    fontFamily: "Inter600",
+  },
+})
+

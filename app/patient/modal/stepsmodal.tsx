@@ -1,19 +1,66 @@
 import { useState } from "react"
-import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput } from "react-native"
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Alert } from "react-native"
+import { useSelector } from "react-redux"
 
 interface StepGoalModalProps {
   visible: boolean
   onClose: () => void
-  onSave: (steps: string) => void
+  onSave: (steps: string) => void;
+  reload: ()=>void;
 }
 
-const StepsModal = ({ visible, onClose, onSave }: StepGoalModalProps) => {
+const StepsModal = ({ visible, onClose, onSave, reload }: StepGoalModalProps) => {
   const [steps, setSteps] = useState("")
+  const [loading, setLoading] = useState(false);
+  const user = useSelector((state:any)=>state.user);
 
-  const handleSave = () => {
-    onSave(steps)
-    setSteps("")
-  }
+  // const handleSave = () => {
+  //   onSave(steps)
+  //   setSteps("")
+  // }
+
+  const handleSave = async () => {
+    if (!steps) {
+      Alert.alert("Error", "Please enter your weight.");
+      return;
+    }
+
+    setLoading(true);
+
+    const stepsData = {
+      stepsGoal: parseInt(steps),
+    };
+
+    try {
+      const response = await fetch(
+        `http://192.168.1.102:8000/api/user/activity/${user.user_id}/steps`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(stepsData),
+        }
+      );
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(responseData.message || "Failed to save weight.");
+      }
+
+      console.log("API Response:", responseData);
+      onSave(steps);
+      setSteps("");
+      onClose();
+      reload();
+    } catch (error: any) {
+      console.error("Error adding weight:", error);
+      Alert.alert("Error", error.message || "Failed to save weight.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCancel = () => {
     setSteps("")

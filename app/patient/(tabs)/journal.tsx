@@ -79,7 +79,7 @@ export default function Journal() {
       setError(null);
 
       const response = await fetch(
-        `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/notes`,
+        `http://192.168.1.102:8000/api/user/activity/${user.user_id}/notes`,
         {
           method: "GET",
           headers: {
