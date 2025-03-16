@@ -1,4 +1,4 @@
-"use client"
+//
 
 import { useEffect, useRef, useState, useCallback } from "react"
 import { View, StyleSheet, Animated, Easing } from "react-native"

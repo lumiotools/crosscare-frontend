@@ -1,4 +1,4 @@
-"use client"
+//
 
 import React from "react"
 import { TouchableOpacity, StyleSheet, View, Text, TextInput } from "react-native"

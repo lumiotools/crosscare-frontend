@@ -1,4 +1,4 @@
-"use client"
+//
 
 import { StyleSheet, Text, View, StatusBar, ScrollView, Animated, Dimensions } from "react-native"
 import React, { useEffect, useMemo, useRef, useState } from "react"
