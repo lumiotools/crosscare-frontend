@@ -80,7 +80,7 @@ const Login: FC = () => {
     try {
       // console.log(`${process.env.DATABASE_URL}`);
       const response = await fetch(
-        `http://10.0.2.2:8000/api/login`,
+        `https://crosscare-backends.onrender.com/api/login`,
         {
           method: "POST",
           headers: {

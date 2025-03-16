@@ -42,6 +42,12 @@ type CustomBarProps = {
   isSelected: boolean;
 };
 
+interface ChartDataEntry {
+  day: string;
+  hours: number;
+  date: string;
+}
+
 interface SleepEntry {
   id: string;
   date: string;
@@ -75,7 +81,8 @@ export default function tracksleep() {
   const [tooltipAnim] = useState(new Animated.Value(0)); // Start with 0 opacity
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [sleepLogs, setSleepLogs] = useState<SleepEntry[]>(sleepData);
-  
+  const [CharData, setChartData] = useState<ChartDataEntry[]>([]);
+
   const user = useSelector((state: any) => state.user);
 
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -148,21 +155,21 @@ export default function tracksleep() {
   };
 
   // Sample data for the last 7 days
-  const data = [
-    { day: "S", hours: 7.5, date: "FEB 25, 2025" },
-    { day: "M", hours: 8.2, date: "FEB 26, 2025" },
-    { day: "T", hours: 6.5, date: "FEB 27, 2025" },
-    { day: "W", hours: 7.8, date: "FEB 28, 2025" },
-    { day: "T", hours: 5.5, date: "FEB 29, 2025" },
-    { day: "F", hours: 8.5, date: "MAR 1, 2025" },
-    { day: "S", hours: 7.2, date: "MAR 2, 2025" },
-  ];
+  // const data = [
+  //   { day: "S", hours: 7.5, date: "FEB 25, 2025" },
+  //   { day: "M", hours: 8.2, date: "FEB 26, 2025" },
+  //   { day: "T", hours: 6.5, date: "FEB 27, 2025" },
+  //   { day: "W", hours: 7.8, date: "FEB 28, 2025" },
+  //   { day: "T", hours: 5.5, date: "FEB 29, 2025" },
+  //   { day: "F", hours: 8.5, date: "MAR 1, 2025" },
+  //   { day: "S", hours: 7.2, date: "MAR 2, 2025" },
+  // ];
 
   const getSleepStatus = async () => {
     setLoading(true); // Show loader
     try {
       const response = await fetch(
-        `https://87f0-45-117-109-34.ngrok-free.app/api/user/activity/${user.user_id}/sleepstatus`,
+        `http://192.168.1.102:8000/api/user/activity/${user.user_id}/sleepstatus`,
         {
           method: "GET",
           headers: {
@@ -172,8 +179,45 @@ export default function tracksleep() {
       );
 
       const data = await response.json();
-      // console.log(data);
+      console.log(data);
       setSleepLogs(data);
+
+      const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"];
+    const fullWeekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+    // Create a map to store unique sleep data
+    const sleepMap = new Map();
+
+    data.forEach((entry: { date: string | number | Date; duration: { split: (arg0: string) => { (): any; new(): any; map: { (arg0: (part: any, index: any) => number): [any, any]; new(): any; }; }; }; }) => {
+      const date = new Date(entry.date);
+      const fullDay = date.toLocaleString("en-US", { weekday: "long" }); // Get full weekday name
+      const dayIndex = fullWeekdays.indexOf(fullDay); // Get unique index
+
+      if (dayIndex === -1) return; // Skip invalid dates
+
+      const dayLetter = fixedWeekdays[dayIndex]; // Get S, M, T, W...
+      
+      // Extract sleep duration
+      const [hours, minutes] = entry.duration.split(" ").map((part: string, index: number) => {
+        if (index === 0) return parseFloat(part); // Extract hours
+        if (index === 2) return parseFloat(part) / 60; // Convert minutes to fraction of an hour
+        return 0;
+      });
+
+      // Store data uniquely per day
+      sleepMap.set(dayIndex, {
+        day: dayLetter,
+        hours: hours + minutes,
+        date: entry.date,
+      });
+    });
+
+    // Ensure all weekdays exist, filling missing ones with zero
+    const chartData = fixedWeekdays.map((day, index) => {
+      return sleepMap.get(index) || { day, hours: 0, date: "" };
+    });
+
+      setChartData(chartData);
     } catch (error) {
       console.error("Error fetching sleep data:", error);
     } finally {
@@ -187,14 +231,14 @@ export default function tracksleep() {
 
   const handleDeleteLog = async(id: string) => {
     console.log(id);
-    const response = await fetch(`https://a5c1-45-117-109-34.ngrok-free.app/api/user/activity/${user.user_id}/sleepstatus/delete/${id}`,{
+    const response = await fetch(`http://192.168.1.102:8000/api/user/activity/${user.user_id}/sleepstatus/delete/${id}`,{
       method: 'DELETE',
       headers: {
         "Content-Type": "application/json",
       },
     });
     const data = await response.json();
-    // console.log(data);
+    console.log(data);
     setSleepLogs(sleepLogs.filter((log) => log.id !== id));
   };
 
@@ -239,8 +283,8 @@ export default function tracksleep() {
 
   // Calculate y-axis values using useMemo to prevent recalculation on every render
   const { yAxisLabels, roundedMax, roundedMin } = useMemo(() => {
-    const maxWeight = Math.max(...data.map((item) => item.hours));
-    const minWeight = Math.min(...data.map((item) => item.hours));
+    const maxWeight = Math.max(...CharData.map((item) => item.hours));
+    const minWeight = Math.min(...CharData.map((item) => item.hours));
 
     // Calculate rounded max for y-axis (round up to nearest 5)
     const roundedMax = Math.ceil(maxWeight / 5) * 5;
@@ -269,7 +313,7 @@ export default function tracksleep() {
       roundedMax,
       roundedMin,
     };
-  }, [data]); // Only recalculate when data changes
+  }, [CharData]); // Only recalculate when data changes
 
   // Function to hide tooltip after a delay
   const hideTooltipAfterDelay = () => {
@@ -329,6 +373,7 @@ export default function tracksleep() {
       }
     };
   }, []);
+  
 
   const CustomBar = ({ item, index, isSelected }: CustomBarProps) => {
     // Calculate bar height based on data range
@@ -379,19 +424,6 @@ export default function tracksleep() {
     );
   };
 
-  // Optional: Simulate changing heart rate
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     setHeartRate((prevRate) => {
-  //       // Random fluctuation between 55-85
-  //       const newRate = prevRate + (Math.random() + 0.05); // Random fluctuation
-  //       // Round to the nearest integer and clamp between 90 and 200
-  //       return Math.min(Math.max(parseFloat(newRate.toFixed(1)), 90), 200); // Ensure the rate is an integer
-  //     });
-  //   }, 1000);
-
-  //   return () => clearInterval(interval);
-  // }, []);
 
   return (
     <MenuProvider>
@@ -810,7 +842,7 @@ export default function tracksleep() {
 
               {/* Bars */}
               <View style={styles.barsContainer}>
-                {data.map((item, index) => (
+                {CharData.map((item, index) => (
                   <CustomBar
                     key={index}
                     item={item}

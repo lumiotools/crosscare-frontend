@@ -21,7 +21,7 @@ export default function NewNotes() {
   const handleSave = async () => {
     try {
       const response = await fetch(
-        `https://a5c1-45-117-109-34.ngrok-free.app/api/user/activity/${user.user_id}/note`,
+        `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/note`,
         {
           method: "POST",
           headers: {

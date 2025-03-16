@@ -1,5 +1,3 @@
-"use client";
-
 import type React from "react";
 import { useState, useCallback, useMemo } from "react";
 import {
@@ -110,8 +108,9 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
   };
 
   const formatDisplayDate = (date: dayjs.Dayjs | null) => {
-    return date ? date.format("DD-MM-YY") : "";
-  };
+  return date ? date.format("YYYY-MM-DD") : "";
+};
+
 
   return (
     <Modal visible={visible} transparent animationType="fade">

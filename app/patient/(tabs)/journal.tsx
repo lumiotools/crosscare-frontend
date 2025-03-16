@@ -79,7 +79,7 @@ export default function Journal() {
       setError(null);
 
       const response = await fetch(
-        `https://a5c1-45-117-109-34.ngrok-free.app/api/user/activity/${user.user_id}/notes`,
+        `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/notes`,
         {
           method: "GET",
           headers: {

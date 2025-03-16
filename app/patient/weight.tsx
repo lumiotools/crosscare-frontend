@@ -81,25 +81,76 @@ const WeightScreen = () => {
   // Replace your DUMMY constant with this function
   const DUMMY = generatePastWeekDates();
 
-  
-
-  const getWeightStatus = async()=>{
-    const response = await fetch(`https://87f0-45-117-109-34.ngrok-free.app/api/user/activity/${user.user_id}/weightStatus`,{
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
+  const getWeightStatus = async () => {
+    try {
+      const response = await fetch(`http://192.168.1.102:8000/api/user/activity/${user.user_id}/weightStatus`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
         },
-    });
-    const data = await response.json();
-    console.log(data.data);
-    setCurrentWeight(data.data.lastWeight);
-    if (data.data.weightData && data.data.weightData.length > 0) {
-      setWeightData(data.data.weightData);
-    } else {
-      // Use default days with zero weight
+      });
+      
+      const data = await response.json();
+      console.log(data);
+      
+      if (data.data) {
+        setCurrentWeight(data.data.lastWeight);
+        
+        if (data.data.weightData && data.data.weightData.length > 0) {
+          // Set the weight data directly from the API response
+          setWeightData(data.data.weightData);
+          
+          const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"];
+          const fullWeekdays = [
+            "Sunday",
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+          ];
+          
+          // Create a map to store unique weight data for each day
+          const weightMap = new Map();
+          
+          data.data.weightData.forEach((entry: { date: string | number | Date; weight: any; }) => {
+            const date = new Date(entry.date);
+            const fullDay = date.toLocaleString("en-US", { weekday: "long" });
+            const dayIndex = fullWeekdays.indexOf(fullDay);
+            
+            if (dayIndex === -1) return; // Skip invalid dates
+            
+            const dayLetter = fixedWeekdays[dayIndex];
+            
+            // Store data uniquely per day
+            weightMap.set(dayIndex, {
+              day: dayLetter,
+              weight: entry.weight,
+              date: entry.date,
+            });
+          });
+          
+          // Ensure all weekdays exist, filling missing ones with default weight
+          const processedData = fixedWeekdays.map((day, index) => {
+            return weightMap.get(index) || { day, weight: 0, date: "" };
+          });
+          
+          // Update the weight data with the processed data
+          setWeightData(processedData);
+        } else {
+          // Use default days with zero weight
+          setWeightData(DUMMY);
+        }
+      } else {
+        // Handle case where data.data is undefined
+        setWeightData(DUMMY);
+      }
+    } catch (error) {
+      console.error("Error fetching weight status:", error);
       setWeightData(DUMMY);
     }
-  }
+  };
 
   useEffect(()=>{
     getWeightStatus();
@@ -232,7 +283,7 @@ const WeightScreen = () => {
         style={styles.barContainer}
       >
         <View style={styles.barLabelContainer}>
-          <Text style={styles.barLabel}>{dayAbbreviation}</Text>
+          <Text style={styles.barLabel}>{item.day}</Text>
         </View>
 
         <View style={[styles.barWrapper, { height: barHeight }]}>

@@ -10,6 +10,7 @@ import {
   Animated,
   Dimensions,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
 import {
   Ionicons,
@@ -29,15 +30,19 @@ import { useWaterStore } from "@/zustandStore/waterStore";
 import { useSelector } from "react-redux";
 import axios from "axios";
 
-
 const MAX_HEIGHT = 200;
 const BAR_WIDTH = 20;
 const SPACING = (Dimensions.get("window").width - BAR_WIDTH * 10) / 8;
+
 interface DataItem {
+  id: string;
   day: string;
   waterMl: number;
   waterL: number;
   date: string;
+  goalMl: number;
+  isRangeLabel?: boolean;
+  rangeLabel?: string;
 }
 
 interface CustomBarProps {
@@ -45,8 +50,9 @@ interface CustomBarProps {
   index: number;
   isSelected: boolean;
 }
+
 export default function water() {
-  const { glassCount, setGlassCount, maxGlasses, setMaxGlasses } = useWaterStore();
+  const { glassCount, setGlassCount, maxGlasses, setMaxGlasses} = useWaterStore();
   const user = useSelector((state:any)=>state.user);
   const [goalSet, setGoalSet] = useState(false);
   const [tooltipAnim] = useState(new Animated.Value(0)); // Start with 0 opacity
@@ -54,14 +60,265 @@ export default function water() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [newGoal, setNewGoal] = useState("");
+  
+  // New state variables for dynamic data
+  const [waterData, setWaterData] = useState<DataItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [timeRange, setTimeRange] = useState("week"); // "week", "month", "lastMonth"
 
-   // Calculate water percentage for the animation
-   const waterPercentage = maxGlasses > 0 ? (glassCount / maxGlasses) * 100 : 0
+  // Calculate water percentage for the animation
+  const waterPercentage = maxGlasses > 0 ? (glassCount / maxGlasses) * 100 : 0;
 
-   useEffect(() => {
+  // Modify the generateAllDays function to create date ranges instead of single dates
+  const generateAllDays = (timeRange: string): DataItem[] => {
+    const today = new Date();
+    const days = [];
+    let startDate: Date;
+    let endDate: Date;
+    
+    if (timeRange === "week") {
+      // Weekly view remains the same - show each day
+      startDate = new Date(today);
+      const dayOfWeek = startDate.getDay();
+      startDate.setDate(startDate.getDate() - dayOfWeek);
+      
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      
+      const currentDate = new Date(startDate);
+      while (currentDate <= endDate) {
+        const dateString = currentDate.toISOString().split('T')[0];
+        days.push({
+          id: `empty-${dateString}`,
+          date: dateString,
+          day: currentDate.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0),
+          waterMl: 0,
+          waterL: 0,
+          goalMl: 0
+        });
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    } else if (timeRange === "month" || timeRange === "lastMonth") {
+      // For month views, create date ranges around key dates
+      const dateRanges = [
+        { label: "1", start: 1, end: 4 },
+        { label: "5", start: 5, end: 9 },
+        { label: "10", start: 10, end: 14 },
+        { label: "15", start: 15, end: 19 },
+        { label: "20", start: 20, end: 24 },
+        { label: "25", start: 25, end: 29 },
+        { label: "30", start: 30, end: 31 }
+      ];
+      
+      if (timeRange === "month") {
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      } else {
+        startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        endDate = new Date(today.getFullYear(), today.getMonth(), 0);
+      }
+      
+      const lastDay = endDate.getDate();
+      
+      // Generate entries for each date range
+      for (const range of dateRanges) {
+        if (range.start <= lastDay) {
+          // Add the main label date
+          const labelDate = new Date(startDate);
+          labelDate.setDate(range.start);
+          const labelDateString = labelDate.toISOString().split('T')[0];
+          
+          days.push({
+            id: `label-${labelDateString}`,
+            date: labelDateString,
+            day: range.label,
+            waterMl: 0,
+            waterL: 0,
+            goalMl: 0,
+            isRangeLabel: true // Mark this as a label for the range
+          });
+          
+          // Add individual days in the range
+          for (let day = range.start; day <= Math.min(range.end, lastDay); day++) {
+            const currentDate = new Date(startDate);
+            currentDate.setDate(day);
+            const dateString = currentDate.toISOString().split('T')[0];
+            
+            days.push({
+              id: `day-${dateString}`,
+              date: dateString,
+              day: "", // Empty string for non-label days
+              waterMl: 0,
+              waterL: 0,
+              goalMl: 0,
+              rangeLabel: range.label // Reference to which label this belongs to
+            });
+          }
+        }
+      }
+    }
+    
+    return days;
+  };
+
+  // Update the generateDummyData function to include data for specific dates in months
+  const generateDummyData = (): DataItem[] => {
+    const today = new Date();
+    const dummyData = [];
+    
+    // Generate data for the current month
+    const targetDates = [1, 5, 10, 15, 20, 25, 30];
+    const daysInCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    
+    // Add data for each day (for weekly view)
+    for (let i = 1; i <= daysInCurrentMonth; i++) {
+      const date = new Date(today.getFullYear(), today.getMonth(), i);
+      const dateString = date.toISOString().split('T')[0];
+      const dayChar = date.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0);
+      
+      // Generate water intake based on the day
+      let waterMl;
+      if (date.getDate() === today.getDate()) {
+        // Today's data
+        waterMl = 2500; // 10 glasses
+      } else if (date > today) {
+        // Future days in current month (no data)
+        waterMl = 0;
+      } else {
+        // Past days in current month
+        // Create a pattern: higher on weekends, lower on weekdays
+        const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+          waterMl = Math.floor(Math.random() * 1000) + 1500; // 1500-2500ml on weekends
+        } else {
+          waterMl = Math.floor(Math.random() * 1000) + 500; // 500-1500ml on weekdays
+        }
+      }
+      
+      dummyData.push({
+        id: `current-month-${i}`,
+        date: dateString,
+        day: targetDates.includes(i) ? i.toString() : dayChar, // Use date number for target dates
+        waterMl: waterMl,
+        waterL: waterMl / 1000,
+        goalMl: 2000 // 8 glasses
+      });
+    }
+    
+    // Generate data for the last month
+    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const daysInLastMonth = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+    
+    for (let i = 1; i <= daysInLastMonth; i++) {
+      const date = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), i);
+      const dateString = date.toISOString().split('T')[0];
+      const dayChar = date.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0);
+      
+      // Generate water intake for last month
+      // Create a pattern: gradually increasing throughout the month
+      const progressFactor = i / daysInLastMonth; // 0 to 1 as month progresses
+      const baseAmount = 500; // Minimum amount
+      const variableAmount = 2000; // Maximum additional amount
+      const waterMl = Math.round(baseAmount + (variableAmount * progressFactor) + (Math.random() * 500 - 250));
+      
+      dummyData.push({
+        id: `last-month-${i}`,
+        date: dateString,
+        day: targetDates.includes(i) ? i.toString() : dayChar, // Use date number for target dates
+        waterMl: waterMl,
+        waterL: waterMl / 1000,
+        goalMl: 2000 // 8 glasses
+      });
+    }
+    
+    return dummyData;
+  };
+
+  // Modify the fetchWaterData function in the useEffect to use dummy data
+  useEffect(() => {
+    const fetchWaterData = async () => {
+      setIsLoading(true);
+      try {
+        // Comment out the API call for testing with dummy data
+        /*
+        const response = await fetch(
+          `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/waterstatus`
+        );
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch water data');
+        }
+        
+        const data = await response.json();
+        console.log("Refreshed water data:", data);
+        
+        // Process the data
+        const processedData = data.map((item: any) => ({
+          ...item,
+          waterMl: item.waterMl || 0,
+          waterL: (item.waterMl || 0) / 1000,
+          day: item.day || new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' }).charAt(0)
+        }));
+        */
+        
+        // Use dummy data instead
+        const dummyData = generateDummyData();
+        console.log("Using dummy data:", dummyData);
+        
+        setWaterData(dummyData);
+        
+        // Set initial glass count and max glasses from today's data
+        const todayData = dummyData.find(item => {
+          const itemDate = new Date(item.date);
+          const today = new Date();
+          return itemDate.getDate() === today.getDate() && 
+                 itemDate.getMonth() === today.getMonth() && 
+                 itemDate.getFullYear() === today.getFullYear();
+        });
+        
+        if (todayData) {
+          setGlassCount(Math.round(todayData.waterMl / 250)); // Convert ml to glasses
+          setMaxGlasses(Math.round(todayData.goalMl / 250)); // Convert ml to glasses
+          setGoalSet(true);
+        }
+      } catch (error) {
+        console.error("Error fetching water data:", error);
+        // Use dummy data as fallback
+        const dummyData = generateDummyData();
+        setWaterData(dummyData);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchWaterData();
+  }, [user.user_id]);
+
+  // Update water intake when slider changes
+  useEffect(() => {
+    // For testing with dummy data, just update the local state
+    const updateDummyData = () => {
+      setWaterData(prevData => {
+        const today = new Date().toISOString().split('T')[0];
+        return prevData.map(item => {
+          if (item.date === today) {
+            return {
+              ...item,
+              waterMl: glassCount * 250,
+              waterL: (glassCount * 250) / 1000
+            };
+          }
+          return item;
+        });
+      });
+    };
+    
+    updateDummyData();
+    
+    /* Comment out the API call for testing
     const postWaterIntake = async () => {
       try {
-        const response = await fetch(`http://10.0.2.2:8000/api/user/activity/${user.user_id}/water`,{
+        const response = await fetch(`https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/water`,{
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -77,8 +334,70 @@ export default function water() {
       }
     }
     postWaterIntake();
-   }, [glassCount])
-   
+    */
+  }, [glassCount]);
+
+  // Modify the getFilteredData function to handle the new data structure
+  const getFilteredData = useMemo(() => {
+    const allDays = generateAllDays(timeRange);
+    
+    if (isLoading || waterData.length === 0) {
+      return allDays;
+    }
+    
+    const dataMap = new Map();
+    waterData.forEach(item => {
+      dataMap.set(item.date, item);
+    });
+    
+    return allDays.map(day => {
+      const existingData = dataMap.get(day.date);
+      if (existingData) {
+        return {
+          ...existingData,
+          day: day.day,
+          isRangeLabel: day.isRangeLabel,
+          rangeLabel: day.rangeLabel
+        };
+      }
+      return day;
+    });
+  }, [waterData, timeRange, isLoading]);
+
+  // Modify the y-axis calculation to have a more appropriate range
+  const { yAxisLabels, roundedMax, roundedMin } = useMemo(() => {
+    const dataToUse = getFilteredData;
+    
+    // Find the maximum water intake in liters
+    const maxWater = Math.max(...dataToUse.map((item) => item.waterL || 0));
+    
+    // Set a minimum max value of 3L for better visualization
+    const effectiveMax = Math.max(maxWater, 3);
+    
+    // Round up to the nearest 0.5L
+    const roundedMax = Math.ceil(effectiveMax * 2) / 2;
+    const roundedMin = 0; // Start from 0L
+    
+    // Create y-axis labels with appropriate steps
+    const step = roundedMax > 3 ? 1 : 0.5; // Use 0.5L steps for smaller ranges, 1L for larger
+    
+    const labels = [];
+    for (let value = 0; value <= roundedMax; value += step) {
+      labels.push(Number(value.toFixed(1)));
+    }
+    
+    // Make sure max value is included
+    if (labels[labels.length - 1] < roundedMax) {
+      labels.push(Number(roundedMax.toFixed(1)));
+    }
+    
+    return {
+      yAxisLabels: labels.reverse(), // Reverse for top-to-bottom display
+      roundedMax,
+      roundedMin,
+    };
+  }, [getFilteredData]);
+
   // Function to open the goal setting modal
   const openGoalModal = () => {
     setNewGoal(maxGlasses.toString());
@@ -86,61 +405,55 @@ export default function water() {
   };
 
   // Function to save the new goal and close the modal
-  const saveGoal = () => {
-    const parsedGoal = Number.parseInt(newGoal);
+  const saveGoal = async () => {
+    const parsedGoal = Number.parseFloat(newGoal); // Supports decimal inputs
+    
     if (!isNaN(parsedGoal) && parsedGoal > 0) {
-      // Update the maximum glasses
-      setMaxGlasses(parsedGoal);
-      console.log(parsedGoal, "i am saved as the new goal");
-      setGoalSet(true);
-      setModalVisible(false);
+      try {
+        console.log(`🚀 Saving water goal: ${parsedGoal} glasses`);
+        
+        // For testing with dummy data, just update the local state
+        setMaxGlasses(parsedGoal);
+        setGoalSet(true);
+        setModalVisible(false);
+        
+        // Refresh with dummy data
+        const dummyData = generateDummyData();
+        // Update the goal in dummy data
+        const updatedDummyData = dummyData.map(item => ({
+          ...item,
+          goalMl: parsedGoal * 250 // Convert glasses to ml
+        }));
+        setWaterData(updatedDummyData);
+        
+        /* Comment out the API call for testing
+        // API Call to Save Water Goal
+        const response = await axios.post(
+          `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/waterGoal`, 
+          { waterGoal: parsedGoal },
+          { headers: { "Content-Type": "application/json" } }
+        );
+        
+        console.log("✅ API Response:", response.data);
+        
+        if (response.data) {
+          console.log("✅ Water goal saved successfully!");
+          
+          // Update UI
+          setMaxGlasses(parsedGoal);
+          setGoalSet(true);
+          setModalVisible(false);
+        } else {
+          console.error("❌ Failed to save water goal. Response:", response.data);
+        }
+        */
+      } catch (error: any) {
+        console.error("❌ API Error:", error.response ? error.response.data : error.message);
+      }
+    } else {
+      console.error("❌ Invalid input. Please enter a valid number greater than zero.");
     }
   };
-
-  // Sample data for the last 7 days
-  const data = [
-    { day: "S", waterMl: 2200, waterL: 2.2, date: "FEB 25, 2025" },
-    { day: "M", waterMl: 2300, waterL: 2.3, date: "FEB 26, 2025" },
-    { day: "T", waterMl: 2500, waterL: 2.5, date: "FEB 27, 2025" },
-    { day: "W", waterMl: 2400, waterL: 2.4, date: "FEB 28, 2025" },
-    { day: "T", waterMl: 2600, waterL: 2.6, date: "FEB 29, 2025" },
-    { day: "F", waterMl: 2700, waterL: 2.7, date: "MAR 1, 2025" },
-    { day: "S", waterMl: 2200, waterL: 2.2, date: "MAR 2, 2025" },
-  ];
-
-  // Calculate y-axis values using useMemo to prevent recalculation on every render
-  const { yAxisLabels, roundedMax, roundedMin } = useMemo(() => {
-    const maxWeight = Math.max(...data.map((item) => item.waterL));
-    const minWeight = Math.min(...data.map((item) => item.waterL));
-
-    // Calculate rounded max for y-axis (round up to nearest 5)
-    const roundedMax = Math.ceil(maxWeight / 5) * 5;
-    // Calculate rounded min for y-axis (round down to nearest 5)
-    const roundedMin = Math.floor(minWeight / 5) * 5;
-
-    // Create appropriate y-axis labels based on data range
-    const range = roundedMax - roundedMin;
-    const step = Math.ceil(range / 4); // We want about 4 labels
-
-    const labels = [];
-    for (let i = 0; i <= 4; i++) {
-      const value = roundedMin + step * i;
-      if (value <= roundedMax) {
-        labels.push(value);
-      }
-    }
-
-    // Make sure max value is included
-    if (labels[labels.length - 1] < roundedMax) {
-      labels.push(roundedMax);
-    }
-
-    return {
-      yAxisLabels: labels.reverse(), // Reverse for top-to-bottom display
-      roundedMax,
-      roundedMin,
-    };
-  }, [data]); // Only recalculate when data changes
 
   // Function to hide tooltip after a delay
   const hideTooltipAfterDelay = () => {
@@ -201,28 +514,64 @@ export default function water() {
     };
   }, []);
 
+  // Update the CustomBar component to handle date ranges with multiple bars
   const CustomBar = ({ item, index, isSelected }: CustomBarProps) => {
-    // Calculate bar height based on data range
+    // Check if this is a month view
+    const isMonthView = timeRange !== "week";
+    
+    // Skip rendering for range labels in month view - they're just for organization
+    if (isMonthView && item.isRangeLabel) {
+      return (
+        <View style={styles.dateRangeContainer}>
+          <Text style={styles.dateRangeLabel}>{item.day}</Text>
+        </View>
+      );
+    }
+    
+    // For regular bars (weekly view) or individual day bars (monthly view)
     const dataRange = roundedMax - roundedMin;
-    const normalizedWeight = item.waterL - roundedMin; // Adjust for minimum value
-    const barHeight = (normalizedWeight / dataRange) * MAX_HEIGHT;
-
+    const normalizedWeight = item.waterL - roundedMin;
+    
+    const calculatedHeight = (normalizedWeight / dataRange) * MAX_HEIGHT;
+    const barHeight = item.waterL > 0 ? Math.max(calculatedHeight, 2) : 2;
+    
+    // Use thinner bars for month views
+    const barWidth = isMonthView ? 4 : BAR_WIDTH;
+    
     return (
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={() => handleBarPress(index)}
-        style={styles.barContainer}
+        style={[
+          styles.barContainer,
+          isMonthView && { 
+            width: barWidth, 
+            marginRight: 2, // Tighter spacing for clustered bars
+            marginLeft: item.rangeLabel && index > 0 && 
+                       getFilteredData[index-1].rangeLabel !== item.rangeLabel ? 10 : 0 // Add space between ranges
+          }
+        ]}
       >
-        <View style={styles.barLabelContainer}>
-          <Text style={styles.barLabel}>{item.day}</Text>
-        </View>
+        {!isMonthView && (
+          <View style={styles.barLabelContainer}>
+            <Text style={styles.barLabel}>{item.day}</Text>
+          </View>
+        )}
 
-        <View style={[styles.barWrapper, { height: barHeight }]}>
+        <View style={[
+          styles.barWrapper, 
+          { height: barHeight },
+          isMonthView && { width: barWidth }
+        ]}>
           <LinearGradient
             colors={
               isSelected ? ["#67B6FF", "#67B6FF"] : ["#B9DDFF", "#B9DDFF"]
             }
-            style={[styles.bar, { height: "100%" }]}
+            style={[
+              styles.bar, 
+              { height: "100%" },
+              isMonthView && { borderTopLeftRadius: 2, borderTopRightRadius: 2 }
+            ]}
           />
         </View>
 
@@ -231,15 +580,8 @@ export default function water() {
             <View style={styles.tooltipContent}>
               <Text style={styles.tooltipTitle}>WATER</Text>
               <Text style={styles.tooltipWeight}>
-                {item.waterL}{" "}
-                <Text
-                  style={{
-                    fontSize: 16,
-                    color: "#67B6FF",
-                  }}
-                >
-                  L
-                </Text>
+                {item.waterL.toFixed(2)}{" "}
+                <Text style={{ fontSize: 16, color: "#67B6FF" }}>L</Text>
               </Text>
               <Text style={styles.tooltipDate}>{item.date}</Text>
             </View>
@@ -297,8 +639,8 @@ export default function water() {
             minimumValue={0}
             maximumValue={maxGlasses}
             step={1}
-            value={glassCount}
-            onValueChange={setGlassCount}
+            value={Number(glassCount)}
+            onValueChange={(value) => setGlassCount(Number(value))}
             minimumTrackTintColor="#4dabff"
             maximumTrackTintColor="#e0e0e0"
             thumbTintColor="#4dabff"
@@ -315,7 +657,7 @@ export default function water() {
                 }}
               >
                 {" "}
-                {goalSet ? ` of ${maxGlasses} Glasses` : " Glasses"}
+                {glassCount ? ` of ${maxGlasses} Glasses` : " Glasses"}
               </Text>
             </Text>
             <TouchableOpacity onPress={openGoalModal}>
@@ -331,14 +673,25 @@ export default function water() {
               <MaterialIcons name="bar-chart" size={18} color="#99CEFF" />
               <Text style={styles.analysisTabText}>Analysis</Text>
             </View>
-            <TouchableOpacity style={styles.periodSelector}>
-              <Text style={styles.periodText}>Last 7 Days</Text>
+            <TouchableOpacity 
+              style={styles.periodSelector}
+              onPress={() => {
+                // Toggle between week, month, and last month
+                if (timeRange === "week") setTimeRange("month");
+                else if (timeRange === "month") setTimeRange("lastMonth");
+                else setTimeRange("week");
+              }}
+            >
+              <Text style={styles.periodText}>
+                {timeRange === "week" ? "Last 7 Days" : 
+                 timeRange === "month" ? "This Month" : "Last Month"}
+              </Text>
               <Ionicons name="chevron-down" size={14} color="#4dabff" />
             </TouchableOpacity>
           </View>
-
-          {/* Chart */}
         </View>
+
+        {/* Chart */}
         <View style={styles.customChartContainer}>
           {/* Y-axis labels */}
           <View style={styles.yAxisContainer}>
@@ -362,16 +715,45 @@ export default function water() {
               />
             ))}
 
+            {/* For month views, render date labels at the bottom */}
+            {timeRange !== "week" && (
+              <View style={styles.dateLabelsContainer}>
+                {getFilteredData
+                  .filter(item => item.isRangeLabel)
+                  .map((item, index) => (
+                    <Text key={index} style={styles.monthDateLabel}>
+                      {item.day}
+                    </Text>
+                  ))}
+              </View>
+            )}
+
             {/* Bars */}
-            <View style={styles.barsContainer}>
-              {data.map((item, index) => (
-                <CustomBar
-                  key={index}
-                  item={item}
-                  index={index}
-                  isSelected={selectedIndex === index}
-                />
-              ))}
+            <View style={[
+              styles.barsContainer,
+              timeRange !== "week" && { paddingHorizontal: 10 }
+            ]}>
+              {isLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#67B6FF" />
+                </View>
+              ) : getFilteredData.length === 0 ? (
+                <View style={styles.noDataContainer}>
+                  <Text style={styles.noDataText}>No data available</Text>
+                </View>
+              ) : (
+                // For month views, filter out the range labels as they're shown separately
+                getFilteredData
+                  .filter(item => timeRange === "week" || !item.isRangeLabel)
+                  .map((item, index) => (
+                    <CustomBar
+                      key={index}
+                      item={item}
+                      index={getFilteredData.findIndex(d => d.date === item.date)} // Use original index for reference
+                      isSelected={selectedIndex === getFilteredData.findIndex(d => d.date === item.date)}
+                    />
+                  ))
+              )}
             </View>
           </View>
         </View>
@@ -434,6 +816,23 @@ export default function water() {
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: MAX_HEIGHT,
+  },
+  noDataContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: MAX_HEIGHT,
+  },
+  noDataText: {
+    color: '#999',
+    fontFamily: 'Inter400',
+    fontSize: 14,
+  },
   container: {
     flex: 1,
     backgroundColor: "#fff",
@@ -798,5 +1197,36 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 12,
     fontFamily: "Inter500",
+  },
+  thinBar: {
+    width: 4,
+    borderTopLeftRadius: 2,
+    borderTopRightRadius: 2,
+  },
+  dateRangeContainer: {
+    alignItems: 'center',
+    width: 20,
+    height: '100%',
+  },
+  dateRangeLabel: {
+    position: 'absolute',
+    bottom: -25,
+    fontSize: 12,
+    color: '#888888',
+    fontFamily: 'Inter500',
+  },
+  dateLabelsContainer: {
+    position: 'absolute',
+    bottom: -25,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 15,
+  },
+  monthDateLabel: {
+    fontSize: 12,
+    color: '#888888',
+    fontFamily: 'Inter500',
   },
 });
