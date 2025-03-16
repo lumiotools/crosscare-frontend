@@ -52,16 +52,16 @@ interface CustomBarProps {
 }
 
 export default function water() {
-  const { glassCount, setGlassCount, maxGlasses, setMaxGlasses} = useWaterStore();
+  const { glassCount, setGlassCount, maxGlasses, setMaxGlasses } = useWaterStore();
   const user = useSelector((state:any)=>state.user);
   const [goalSet, setGoalSet] = useState(false);
-  const [tooltipAnim] = useState(new Animated.Value(0)); // Start with 0 opacity
+  const [tooltipAnim] = useState(new Animated.Value(0));
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [newGoal, setNewGoal] = useState("");
   
-  // New state variables for dynamic data
+  // State variables for water data
   const [waterData, setWaterData] = useState<DataItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [timeRange, setTimeRange] = useState("week"); // "week", "month", "lastMonth"
@@ -69,7 +69,7 @@ export default function water() {
   // Calculate water percentage for the animation
   const waterPercentage = maxGlasses > 0 ? (glassCount / maxGlasses) * 100 : 0;
 
-  // Modify the generateAllDays function to create date ranges instead of single dates
+  // Generate all days for the selected time range
   const generateAllDays = (timeRange: string): DataItem[] => {
     const today = new Date();
     const days = [];
@@ -77,7 +77,7 @@ export default function water() {
     let endDate: Date;
     
     if (timeRange === "week") {
-      // Weekly view remains the same - show each day
+      // Weekly view - show each day
       startDate = new Date(today);
       const dayOfWeek = startDate.getDay();
       startDate.setDate(startDate.getDate() - dayOfWeek);
@@ -161,86 +161,32 @@ export default function water() {
     return days;
   };
 
-  // Update the generateDummyData function to include data for specific dates in months
-  const generateDummyData = (): DataItem[] => {
-    const today = new Date();
-    const dummyData = [];
+  // Add this function to check if it's a new day
+  const isNewDay = () => {
+    // Get the last accessed date from the store or local storage
+    const lastAccessedDate = useWaterStore.getState().lastAccessedDate;
+    const today = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
     
-    // Generate data for the current month
-    const targetDates = [1, 5, 10, 15, 20, 25, 30];
-    const daysInCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-    
-    // Add data for each day (for weekly view)
-    for (let i = 1; i <= daysInCurrentMonth; i++) {
-      const date = new Date(today.getFullYear(), today.getMonth(), i);
-      const dateString = date.toISOString().split('T')[0];
-      const dayChar = date.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0);
-      
-      // Generate water intake based on the day
-      let waterMl;
-      if (date.getDate() === today.getDate()) {
-        // Today's data
-        waterMl = 2500; // 10 glasses
-      } else if (date > today) {
-        // Future days in current month (no data)
-        waterMl = 0;
-      } else {
-        // Past days in current month
-        // Create a pattern: higher on weekends, lower on weekdays
-        const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
-        if (dayOfWeek === 0 || dayOfWeek === 6) {
-          waterMl = Math.floor(Math.random() * 1000) + 1500; // 1500-2500ml on weekends
-        } else {
-          waterMl = Math.floor(Math.random() * 1000) + 500; // 500-1500ml on weekdays
-        }
-      }
-      
-      dummyData.push({
-        id: `current-month-${i}`,
-        date: dateString,
-        day: targetDates.includes(i) ? i.toString() : dayChar, // Use date number for target dates
-        waterMl: waterMl,
-        waterL: waterMl / 1000,
-        goalMl: 2000 // 8 glasses
-      });
-    }
-    
-    // Generate data for the last month
-    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const daysInLastMonth = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
-    
-    for (let i = 1; i <= daysInLastMonth; i++) {
-      const date = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), i);
-      const dateString = date.toISOString().split('T')[0];
-      const dayChar = date.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0);
-      
-      // Generate water intake for last month
-      // Create a pattern: gradually increasing throughout the month
-      const progressFactor = i / daysInLastMonth; // 0 to 1 as month progresses
-      const baseAmount = 500; // Minimum amount
-      const variableAmount = 2000; // Maximum additional amount
-      const waterMl = Math.round(baseAmount + (variableAmount * progressFactor) + (Math.random() * 500 - 250));
-      
-      dummyData.push({
-        id: `last-month-${i}`,
-        date: dateString,
-        day: targetDates.includes(i) ? i.toString() : dayChar, // Use date number for target dates
-        waterMl: waterMl,
-        waterL: waterMl / 1000,
-        goalMl: 2000 // 8 glasses
-      });
-    }
-    
-    return dummyData;
+    // If there's no last accessed date or it's different from today, it's a new day
+    return !lastAccessedDate || lastAccessedDate !== today;
   };
 
-  // Modify the fetchWaterData function in the useEffect to use dummy data
+  // Modify the fetchWaterData function in the useEffect
   useEffect(() => {
     const fetchWaterData = async () => {
       setIsLoading(true);
       try {
-        // Comment out the API call for testing with dummy data
-        /*
+        // Check if it's a new day
+        if (isNewDay()) {
+          // Reset glass count to 0 for the new day
+          setGlassCount(0);
+          
+          // Update the last accessed date in the store
+          useWaterStore.getState().setLastAccessedDate(new Date().toISOString().split('T')[0]);
+          
+          console.log("New day detected - resetting glass count to 0");
+        }
+        
         const response = await fetch(
           `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/waterstatus`
         );
@@ -259,16 +205,11 @@ export default function water() {
           waterL: (item.waterMl || 0) / 1000,
           day: item.day || new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' }).charAt(0)
         }));
-        */
         
-        // Use dummy data instead
-        const dummyData = generateDummyData();
-        console.log("Using dummy data:", dummyData);
+        setWaterData(processedData);
         
-        setWaterData(dummyData);
-        
-        // Set initial glass count and max glasses from today's data
-        const todayData = dummyData.find(item => {
+        // Only set max glasses if it's not already set in the store
+        const todayData = processedData.find((item: any) => {
           const itemDate = new Date(item.date);
           const today = new Date();
           return itemDate.getDate() === today.getDate() && 
@@ -277,47 +218,62 @@ export default function water() {
         });
         
         if (todayData) {
-          setGlassCount(Math.round(todayData.waterMl / 250)); // Convert ml to glasses
-          setMaxGlasses(Math.round(todayData.goalMl / 250)); // Convert ml to glasses
-          setGoalSet(true);
+          // For a new day, we've already reset glassCount to 0
+          // Only set maxGlasses if it's not already set
+          if (maxGlasses === 0) {
+            setMaxGlasses(Math.round(todayData.goalMl / 250)); // Convert ml to glasses
+            setGoalSet(true);
+          }
+          
+          // Update the water data with the current store values for today
+          setWaterData(prevData => {
+            const today = new Date().toISOString().split('T')[0];
+            return prevData.map(item => {
+              if (item.date === today) {
+                return {
+                  ...item,
+                  waterMl: glassCount * 250,
+                  waterL: (glassCount * 250) / 1000,
+                  goalMl: maxGlasses * 250
+                };
+              }
+              return item;
+            });
+          });
         }
       } catch (error) {
         console.error("Error fetching water data:", error);
-        // Use dummy data as fallback
-        const dummyData = generateDummyData();
-        setWaterData(dummyData);
       } finally {
         setIsLoading(false);
       }
     };
     
     fetchWaterData();
-  }, [user.user_id]);
+  }, [user.user_id, maxGlasses, setGlassCount, setMaxGlasses]);
 
   // Update water intake when slider changes
   useEffect(() => {
-    // For testing with dummy data, just update the local state
-    const updateDummyData = () => {
-      setWaterData(prevData => {
-        const today = new Date().toISOString().split('T')[0];
-        return prevData.map(item => {
-          if (item.date === today) {
-            return {
-              ...item,
-              waterMl: glassCount * 250,
-              waterL: (glassCount * 250) / 1000
-            };
-          }
-          return item;
-        });
-      });
-    };
+    // Skip the initial render when glassCount is 0
+    if (glassCount === 0) return;
     
-    updateDummyData();
-    
-    /* Comment out the API call for testing
     const postWaterIntake = async () => {
       try {
+        // Update local water data for today first for immediate UI feedback
+        setWaterData(prevData => {
+          const today = new Date().toISOString().split('T')[0];
+          return prevData.map(item => {
+            if (item.date === today) {
+              return {
+                ...item,
+                waterMl: glassCount * 250,
+                waterL: (glassCount * 250) / 1000
+              };
+            }
+            return item;
+          });
+        });
+        
+        // Then update the API
         const response = await fetch(`https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/water`,{
           method: 'POST',
           headers: {
@@ -326,16 +282,17 @@ export default function water() {
           body: JSON.stringify({
             water: glassCount
           }),
-        })
+        });
         const data = await response.json();
         console.log(data);
       } catch (error) {
         console.log(error);
+        // Even if API fails, keep the user's input in the store and local data
       }
-    }
+    };
+    
     postWaterIntake();
-    */
-  }, [glassCount]);
+  }, [glassCount, user.user_id]);
 
   // Modify the getFilteredData function to handle the new data structure
   const getFilteredData = useMemo(() => {
@@ -406,27 +363,25 @@ export default function water() {
 
   // Function to save the new goal and close the modal
   const saveGoal = async () => {
-    const parsedGoal = Number.parseFloat(newGoal); // Supports decimal inputs
+    const parsedGoal = Number.parseFloat(newGoal);
     
     if (!isNaN(parsedGoal) && parsedGoal > 0) {
       try {
         console.log(`🚀 Saving water goal: ${parsedGoal} glasses`);
         
-        // For testing with dummy data, just update the local state
+        // Update the store first for immediate UI feedback
         setMaxGlasses(parsedGoal);
         setGoalSet(true);
         setModalVisible(false);
         
-        // Refresh with dummy data
-        const dummyData = generateDummyData();
-        // Update the goal in dummy data
-        const updatedDummyData = dummyData.map(item => ({
-          ...item,
-          goalMl: parsedGoal * 250 // Convert glasses to ml
-        }));
-        setWaterData(updatedDummyData);
+        // Update local water data with new goal
+        setWaterData(prevData => {
+          return prevData.map(item => ({
+            ...item,
+            goalMl: parsedGoal * 250 // Convert glasses to ml
+          }));
+        });
         
-        /* Comment out the API call for testing
         // API Call to Save Water Goal
         const response = await axios.post(
           `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/waterGoal`, 
@@ -436,19 +391,14 @@ export default function water() {
         
         console.log("✅ API Response:", response.data);
         
-        if (response.data) {
-          console.log("✅ Water goal saved successfully!");
-          
-          // Update UI
-          setMaxGlasses(parsedGoal);
-          setGoalSet(true);
-          setModalVisible(false);
-        } else {
+        if (!response.data) {
           console.error("❌ Failed to save water goal. Response:", response.data);
+          // If API fails, we could revert the changes, but since the store is persisted,
+          // we'll keep the user's input to avoid confusion
         }
-        */
       } catch (error: any) {
         console.error("❌ API Error:", error.response ? error.response.data : error.message);
+        // Even if API fails, keep the user's input in the store
       }
     } else {
       console.error("❌ Invalid input. Please enter a valid number greater than zero.");

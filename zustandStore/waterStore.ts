@@ -5,21 +5,23 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 interface WaterStore {
   glassCount: number
   maxGlasses: number
+  lastAccessedDate: string | null
 
   setGlassCount: (count: number) => void
   setMaxGlasses: (max: number) => void
-  
+  setLastAccessedDate: (date: string) => void
 }
 
 export const useWaterStore = create<WaterStore>()(
     persist(
       (set) => ({
         glassCount: 0,
-        maxGlasses: 10,
+        maxGlasses: 0,
+        lastAccessedDate: null,
         
         setGlassCount: (count) => set({ glassCount: Number(count) }),
         setMaxGlasses: (max) => set({ maxGlasses: Number(max) }),
-        
+        setLastAccessedDate: (date) => set({ lastAccessedDate: date }),
       }),
       {
         name: 'water-storage', // unique name for this storage
