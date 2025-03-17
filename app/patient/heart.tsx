@@ -116,6 +116,10 @@ export default function HeartRateScreen() {
   const [filteredData, setFilteredData] = useState<DataItem[]>([])
   const [currentHeartRate, setCurrentHeartRate] = useState<number>(75)
 
+  // Add a ref for the period selector button
+  const periodSelectorRef = useRef<TouchableOpacity>(null)
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 })
+
   // Function to get the current week number
   const getWeekNumber = (date: Date) => {
     const firstDayOfYear = new Date(date.getFullYear(), 0, 1)
@@ -863,7 +867,25 @@ export default function HeartRateScreen() {
               <MaterialIcons name="bar-chart" size={18} color="#F2C3C8" />
               <Text style={styles.analysisTabText}>Analysis</Text>
             </View>
-            <TouchableOpacity style={styles.periodSelector} onPress={() => setDropdownVisible(true)}>
+            {/* Update the TouchableOpacity for the period selector to include the ref and measure its position */}
+            <TouchableOpacity
+              ref={periodSelectorRef}
+              style={styles.periodSelector}
+              onPress={() => {
+                // Measure the position of the period selector button
+                if (periodSelectorRef.current) {
+                  periodSelectorRef.current.measure((x: any, y: any, width: number, height: any, pageX: any, pageY: any) => {
+                    setDropdownPosition({
+                      top: pageY +10, // Position below the button with a small gap
+                      right: width > 0 ? Dimensions.get("window").width - (pageX + width) : 20,
+                    })
+                    setDropdownVisible(true)
+                  })
+                } else {
+                  setDropdownVisible(true)
+                }
+              }}
+            >
               <Text style={styles.periodText}>{getTimeRangeLabel()}</Text>
               <Ionicons name="chevron-down" size={14} color="#D53E4F" />
             </TouchableOpacity>
@@ -958,7 +980,8 @@ export default function HeartRateScreen() {
         onRequestClose={() => setDropdownVisible(false)}
       >
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setDropdownVisible(false)}>
-          <View style={styles.dropdownContainer}>
+          {/* Update the dropdown container style to use the measured position */}
+          <View style={[styles.dropdownContainer, { top: dropdownPosition.top, right: dropdownPosition.right }]}>
             {timeRangeOptions.map((option) => (
               <TouchableOpacity
                 key={option.id}
@@ -1280,14 +1303,13 @@ const styles = StyleSheet.create({
   // Dropdown styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    // backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
   },
+  // Update the dropdownContainer style to remove the fixed positioning
   dropdownContainer: {
     position: "absolute",
-    top: 220, // Position below the period selector
-    right: 20,
     backgroundColor: "#FFFFFF",
     borderRadius: 8,
     borderWidth: 1,
