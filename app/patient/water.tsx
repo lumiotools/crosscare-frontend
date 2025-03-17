@@ -69,7 +69,7 @@ export default function water() {
   // Calculate water percentage for the animation
   const waterPercentage = maxGlasses > 0 ? (glassCount / maxGlasses) * 100 : 0;
 
-  // Generate all days for the selected time range
+  // Modify the generateAllDays function to use the correct date format
   const generateAllDays = (timeRange: string): DataItem[] => {
     const today = new Date();
     const days = [];
@@ -84,6 +84,9 @@ export default function water() {
       
       endDate = new Date(startDate);
       endDate.setDate(startDate.getDate() + 6);
+      
+      // For debugging
+      console.log("Week view date range:", startDate.toISOString().split('T')[0], "to", endDate.toISOString().split('T')[0]);
       
       const currentDate = new Date(startDate);
       while (currentDate <= endDate) {
@@ -161,6 +164,18 @@ export default function water() {
     return days;
   };
 
+  // Add a function to format dates consistently
+  const formatDate = (dateString: string): string => {
+    // Ensure date is in YYYY-MM-DD format
+    try {
+      const date = new Date(dateString);
+      return date.toISOString().split('T')[0];
+    } catch (e) {
+      console.error("Invalid date format:", dateString);
+      return dateString;
+    }
+  };
+
   // Add this function to check if it's a new day
   const isNewDay = () => {
     // Get the last accessed date from the store or local storage
@@ -171,7 +186,7 @@ export default function water() {
     return !lastAccessedDate || lastAccessedDate !== today;
   };
 
-  // Modify the fetchWaterData function in the useEffect
+  // Fetch water data from API
   useEffect(() => {
     const fetchWaterData = async () => {
       setIsLoading(true);
@@ -198,49 +213,73 @@ export default function water() {
         const data = await response.json();
         console.log("Refreshed water data:", data);
         
-        // Process the data
-        const processedData = data.map((item: any) => ({
-          ...item,
-          waterMl: item.waterMl || 0,
-          waterL: (item.waterMl || 0) / 1000,
-          day: item.day || new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' }).charAt(0)
-        }));
+        // Process the data - ensure all fields are properly formatted
+        const processedData = data.map((item: any) => {
+          const formattedDate = formatDate(item.date);
+          
+          // Check if the value is small (likely glasses) or large (likely milliliters)
+          const isGlassCount = item.waterMl !== null && item.waterMl < 100;
+          
+          // Convert to milliliters if it's a glass count
+          const waterMl = isGlassCount ? item.waterMl * 250 : item.waterMl;
+          
+          return {
+            ...item,
+            date: formattedDate,
+            waterMl: waterMl || 0,
+            waterL: waterMl / 1000 || 0,
+            goalMl: item.goalMl !== null ? Number(item.goalMl) * 250 : 0, // Assuming goalMl is also in glasses
+            day: item.day || new Date(formattedDate).toLocaleDateString('en-US', { weekday: 'short' }).charAt(0)
+          };
+        });
         
+        console.log("Processed data:", processedData);
         setWaterData(processedData);
         
-        // Only set max glasses if it's not already set in the store
-        const todayData = processedData.find((item: any) => {
-          const itemDate = new Date(item.date);
-          const today = new Date();
-          return itemDate.getDate() === today.getDate() && 
-                 itemDate.getMonth() === today.getMonth() && 
-                 itemDate.getFullYear() === today.getFullYear();
-        });
+        // Find today's data
+        const today = new Date().toISOString().split('T')[0];
+        const todayData = processedData.find((item: any) => item.date === today);
         
         if (todayData) {
           // For a new day, we've already reset glassCount to 0
+          // Only update glassCount from API if we haven't set it yet
+          if (glassCount === 0 && todayData.waterMl > 0) {
+            setGlassCount(Math.round(todayData.waterMl / 250)); // Convert ml to glasses
+          }
+          
           // Only set maxGlasses if it's not already set
-          if (maxGlasses === 0) {
+          if (maxGlasses === 0 && todayData.goalMl > 0) {
             setMaxGlasses(Math.round(todayData.goalMl / 250)); // Convert ml to glasses
             setGoalSet(true);
           }
+        } else {
+          // If there's no data for today but we have data for other days,
+          // use the goal from the most recent day
+          const sortedData = [...processedData].sort((a, b) => 
+            new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
           
-          // Update the water data with the current store values for today
-          setWaterData(prevData => {
-            const today = new Date().toISOString().split('T')[0];
-            return prevData.map(item => {
-              if (item.date === today) {
-                return {
-                  ...item,
-                  waterMl: glassCount * 250,
-                  waterL: (glassCount * 250) / 1000,
-                  goalMl: maxGlasses * 250
-                };
-              }
-              return item;
-            });
-          });
+          if (sortedData.length > 0 && maxGlasses === 0 && sortedData[0].goalMl > 0) {
+            setMaxGlasses(Math.round(sortedData[0].goalMl / 250));
+            setGoalSet(true);
+          }
         }
+        
+        // Update the water data with the current store values for today
+        setWaterData(prevData => {
+          const today = new Date().toISOString().split('T')[0];
+          return prevData.map(item => {
+            if (item.date === today) {
+              return {
+                ...item,
+                waterMl: glassCount * 250,
+                waterL: (glassCount * 250) / 1000,
+                goalMl: maxGlasses * 250
+              };
+            }
+            return item;
+          });
+        });
       } catch (error) {
         console.error("Error fetching water data:", error);
       } finally {
@@ -273,28 +312,27 @@ export default function water() {
           });
         });
         
-        // Then update the API
+        // Then update the API - send the glass count directly as that's what the backend expects
         const response = await fetch(`https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/water`,{
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            water: glassCount
+            water: glassCount // Send the number of glasses, not milliliters
           }),
         });
         const data = await response.json();
         console.log(data);
       } catch (error) {
         console.log(error);
-        // Even if API fails, keep the user's input in the store and local data
       }
     };
     
     postWaterIntake();
   }, [glassCount, user.user_id]);
 
-  // Modify the getFilteredData function to handle the new data structure
+  // Modify the getFilteredData function to better handle date matching
   const getFilteredData = useMemo(() => {
     const allDays = generateAllDays(timeRange);
     
@@ -302,14 +340,34 @@ export default function water() {
       return allDays;
     }
     
+    // Create a map of existing data by date
     const dataMap = new Map();
+    
+    // Process and add each water data item to the map
     waterData.forEach(item => {
-      dataMap.set(item.date, item);
+      const formattedDate = formatDate(item.date);
+      
+      // For dates with multiple entries, use the one with the highest water value
+      const existingItem = dataMap.get(formattedDate);
+      if (!existingItem || (item.waterMl && item.waterMl > existingItem.waterMl)) {
+        dataMap.set(formattedDate, {
+          ...item,
+          date: formattedDate, // Ensure consistent date format
+          waterMl: item.waterMl !== null ? Number(item.waterMl) : 0,
+          waterL: item.waterMl !== null ? Number(item.waterMl) / 1000 : 0
+        });
+      }
     });
     
-    return allDays.map(day => {
+    // For debugging
+    console.log("Data map dates:", Array.from(dataMap.keys()));
+    console.log("All days dates:", allDays.map(day => day.date));
+    
+    // Merge existing data with all days
+    const mergedData = allDays.map(day => {
       const existingData = dataMap.get(day.date);
       if (existingData) {
+        console.log("Found data for day:", day.date, "with water:", existingData.waterMl);
         return {
           ...existingData,
           day: day.day,
@@ -319,6 +377,8 @@ export default function water() {
       }
       return day;
     });
+    
+    return mergedData;
   }, [waterData, timeRange, isLoading]);
 
   // Modify the y-axis calculation to have a more appropriate range
