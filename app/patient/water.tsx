@@ -1,6 +1,6 @@
-//;
+"use client"
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   StyleSheet,
   Text,
@@ -14,111 +14,82 @@ import {
   TextInput,
   ActivityIndicator,
   Modal,
-} from "react-native";
-import {
-  Ionicons,
-  Feather,
-  FontAwesome5,
-  MaterialIcons,
-} from "@expo/vector-icons";
-import Slider from "@react-native-community/slider";
-import { LinearGradient } from "expo-linear-gradient";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
-import GlassIcon from "@/assets/images/Svg/GlassIcon";
-import WaterWaveAnimation from "@/components/waterwaveanimation";
-import { useWaterStore } from "@/zustandStore/waterStore";
-import { useSelector } from "react-redux";
-import axios from "axios";
+} from "react-native"
+import { Ionicons, Feather, FontAwesome5, MaterialIcons } from "@expo/vector-icons"
+import Slider from "@react-native-community/slider"
+import { LinearGradient } from "expo-linear-gradient"
+import { SafeAreaView } from "react-native-safe-area-context"
+import { router } from "expo-router"
+import GlassIcon from "@/assets/images/Svg/GlassIcon"
+import WaterWaveAnimation from "@/components/waterwaveanimation"
+import { useWaterStore } from "@/zustandStore/waterStore"
+import { useSelector } from "react-redux"
+import axios from "axios"
 
-const MAX_HEIGHT = 200;
-const BAR_WIDTH = 20;
-const SPACING = (Dimensions.get("window").width - BAR_WIDTH * 10) / 8;
+const MAX_HEIGHT = 200
+const BAR_WIDTH = 20
+const SPACING = (Dimensions.get("window").width - BAR_WIDTH * 10) / 8
 
 interface DataItem {
-  id: string;
-  day: string;
-
-  waterMl: number;
-
-  waterL: number;
-
-  date: string;
-
-  goalMl: number;
-
-  isRangeLabel?: boolean;
-
-  rangeLabel?: string;
+  id: string
+  day: string
+  waterMl: number
+  waterL: number
+  date: string
+  goalMl: number
+  isRangeLabel?: boolean
+  rangeLabel?: string
 }
 
 interface CustomBarProps {
-  item: DataItem;
-
-  index: number;
-
-  isSelected: boolean;
-
-  timeRange: string;
+  item: DataItem
+  index: number
+  isSelected: boolean
+  timeRange: string
 }
 
 // Time range options
-
 type TimeRangeOption = {
-  id: string;
-
-  label: string;
-};
+  id: string
+  label: string
+}
 
 const timeRangeOptions: TimeRangeOption[] = [
-  {
-    id: "today",
-    label: "Today",
-  },
-  {
-    id: "week",
-    label: "Last 7 Days",
-  },
-  {
-    id: "month",
-    label: "This Month",
-  },
-  {
-    id: "lastMonth",
-    label: "Last Month",
-  },
-];
+  { id: "today", label: "Today" },
+  { id: "week", label: "Last 7 Days" },
+  { id: "month", label: "This Month" },
+  { id: "lastMonth", label: "Last Month" },
+]
 
 export default function water() {
-  const { glassCount, setGlassCount, maxGlasses, setMaxGlasses } =
-    useWaterStore();
-  const user = useSelector((state: any) => state.user);
-  const [goalSet, setGoalSet] = useState(false);
-  const [tooltipAnim] = useState(new Animated.Value(0));
-  const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [newGoal, setNewGoal] = useState("");
+  const { glassCount, setGlassCount, maxGlasses, setMaxGlasses } = useWaterStore()
+  const user = useSelector((state: any) => state.user)
+  const [goalSet, setGoalSet] = useState(false)
+  const [tooltipAnim] = useState(new Animated.Value(0))
+  const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
+  const [modalVisible, setModalVisible] = useState(false)
+  const [newGoal, setNewGoal] = useState("")
+  const [dropdownVisible, setDropdownVisible] = useState(false)
 
   // State variables for water data
-  const [waterData, setWaterData] = useState<DataItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState("week"); // "today", "week", "month", "lastMonth"
-  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [waterData, setWaterData] = useState<DataItem[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [timeRange, setTimeRange] = useState("week") // "today", "week", "month", "lastMonth"
 
   // Calculate water percentage for the animation
-  const waterPercentage = maxGlasses > 0 ? (glassCount / maxGlasses) * 100 : 0;
+  const waterPercentage = maxGlasses > 0 ? (glassCount / maxGlasses) * 100 : 0
 
   // Generate all days for the selected time range
   const generateAllDays = (timeRange: string): DataItem[] => {
-    const today = new Date();
-    const days = [];
-    let startDate: Date;
-    let endDate: Date;
+    const today = new Date()
+    const days = []
+    let startDate: Date
+    let endDate: Date
 
     if (timeRange === "today") {
       // Today view - just show today
-      const todayStr = today.toISOString().split("T")[0];
+      const todayStr = today.toISOString().split("T")[0]
 
       return [
         {
@@ -129,30 +100,28 @@ export default function water() {
           waterL: 0,
           goalMl: 0,
         },
-      ];
+      ]
     } else if (timeRange === "week") {
       // Weekly view - show each day
-      startDate = new Date(today);
-      const dayOfWeek = startDate.getDay();
-      startDate.setDate(startDate.getDate() - dayOfWeek);
+      startDate = new Date(today)
+      const dayOfWeek = startDate.getDay()
+      startDate.setDate(startDate.getDate() - dayOfWeek)
 
-      endDate = new Date(startDate);
-      endDate.setDate(startDate.getDate() + 6);
+      endDate = new Date(startDate)
+      endDate.setDate(startDate.getDate() + 6)
 
-      const currentDate = new Date(startDate);
+      const currentDate = new Date(startDate)
       while (currentDate <= endDate) {
-        const dateString = currentDate.toISOString().split("T")[0];
+        const dateString = currentDate.toISOString().split("T")[0]
         days.push({
           id: `empty-${dateString}`,
           date: dateString,
-          day: currentDate
-            .toLocaleDateString("en-US", { weekday: "short" })
-            .charAt(0),
+          day: currentDate.toLocaleDateString("en-US", { weekday: "short" }).charAt(0),
           waterMl: 0,
           waterL: 0,
           goalMl: 0,
-        });
-        currentDate.setDate(currentDate.getDate() + 1);
+        })
+        currentDate.setDate(currentDate.getDate() + 1)
       }
     } else if (timeRange === "month" || timeRange === "lastMonth") {
       // For month views, create date ranges around key dates
@@ -164,25 +133,25 @@ export default function water() {
         { label: "20", start: 20, end: 24 },
         { label: "25", start: 25, end: 29 },
         { label: "30", start: 30, end: 31 },
-      ];
+      ]
 
       if (timeRange === "month") {
-        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-        endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1)
+        endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0)
       } else {
-        startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        endDate = new Date(today.getFullYear(), today.getMonth(), 0);
+        startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+        endDate = new Date(today.getFullYear(), today.getMonth(), 0)
       }
 
-      const lastDay = endDate.getDate();
+      const lastDay = endDate.getDate()
 
       // Generate entries for each date range
       for (const range of dateRanges) {
         if (range.start <= lastDay) {
           // Add the main label date
-          const labelDate = new Date(startDate);
-          labelDate.setDate(range.start);
-          const labelDateString = labelDate.toISOString().split("T")[0];
+          const labelDate = new Date(startDate)
+          labelDate.setDate(range.start)
+          const labelDateString = labelDate.toISOString().split("T")[0]
 
           days.push({
             id: `label-${labelDateString}`,
@@ -192,17 +161,13 @@ export default function water() {
             waterL: 0,
             goalMl: 0,
             isRangeLabel: true, // Mark this as a label for the range
-          });
+          })
 
           // Add individual days in the range
-          for (
-            let day = range.start;
-            day <= Math.min(range.end, lastDay);
-            day++
-          ) {
-            const currentDate = new Date(startDate);
-            currentDate.setDate(day);
-            const dateString = currentDate.toISOString().split("T")[0];
+          for (let day = range.start; day <= Math.min(range.end, lastDay); day++) {
+            const currentDate = new Date(startDate)
+            currentDate.setDate(day)
+            const dateString = currentDate.toISOString().split("T")[0]
 
             days.push({
               id: `day-${dateString}`,
@@ -212,90 +177,84 @@ export default function water() {
               waterL: 0,
               goalMl: 0,
               rangeLabel: range.label, // Reference to which label this belongs to
-            });
+            })
           }
         }
       }
     }
 
-    return days;
-  };
+    return days
+  }
 
   // Add this function to check if it's a new day
   const isNewDay = () => {
     // Get the last accessed date from the store or local storage
-    const lastAccessedDate = useWaterStore.getState().lastAccessedDate;
-    const today = new Date().toISOString().split("T")[0]; // Format: YYYY-MM-DD
+    const lastAccessedDate = useWaterStore.getState().lastAccessedDate
+    const today = new Date().toISOString().split("T")[0] // Format: YYYY-MM-DD
 
     // If there's no last accessed date or it's different from today, it's a new day
-    return !lastAccessedDate || lastAccessedDate !== today;
-  };
+    return !lastAccessedDate || lastAccessedDate !== today
+  }
 
   // Modify the fetchWaterData function in the useEffect
   useEffect(() => {
     const fetchWaterData = async () => {
-      setIsLoading(true);
+      setIsLoading(true)
       try {
         // Check if it's a new day
         if (isNewDay()) {
           // Reset glass count to 0 for the new day
-          setGlassCount(0);
+          setGlassCount(0)
 
           // Update the last accessed date in the store
-          useWaterStore
-            .getState()
-            .setLastAccessedDate(new Date().toISOString().split("T")[0]);
+          useWaterStore.getState().setLastAccessedDate(new Date().toISOString().split("T")[0])
 
-          console.log("New day detected - resetting glass count to 0");
+          console.log("New day detected - resetting glass count to 0")
         }
 
         const response = await fetch(
-          `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/waterstatus`
-        );
+          `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/waterstatus`,
+        )
 
         if (!response.ok) {
-          throw new Error("Failed to fetch water data");
+          throw new Error("Failed to fetch water data")
         }
 
-        const data = await response.json();
-        console.log("Refreshed water data:", data);
+        const data = await response.json()
+        console.log("Refreshed water data:", data)
 
         // Process the data
         const processedData = data.map((item: any) => ({
           ...item,
           waterMl: item.waterMl || 0,
           waterL: (item.waterMl || 0) / 1000,
-          day:
-            item.day ||
-            new Date(item.date)
-              .toLocaleDateString("en-US", { weekday: "short" })
-              .charAt(0),
-        }));
+          day: item.day || new Date(item.date).toLocaleDateString("en-US", { weekday: "short" }).charAt(0),
+        }))
 
-        setWaterData(processedData);
+        setWaterData(processedData)
 
         // Only set max glasses if it's not already set in the store
         const todayData = processedData.find((item: any) => {
-          const itemDate = new Date(item.date);
-          const today = new Date();
+          const itemDate = new Date(item.date)
+          const today = new Date()
           return (
             itemDate.getDate() === today.getDate() &&
             itemDate.getMonth() === today.getMonth() &&
             itemDate.getFullYear() === today.getFullYear()
-          );
-        });
+          )
+        })
 
         if (todayData) {
           // For a new day, we've already reset glassCount to 0
           // Only set maxGlasses if it's not already set
           if (maxGlasses === 0) {
-            setMaxGlasses(Math.round(todayData.goalMl / 250)); // Convert ml to glasses
-            setGoalSet(true);
+            setMaxGlasses(Math.round(todayData.goalMl / 250)) // Convert ml to glasses
+            setGoalSet(true)
           }
 
           // Update the water data with the current store values for today
           setWaterData((prevData) => {
-            const today = new Date().toISOString().split("T")[0];
+            const today = new Date().toISOString().split("T")[0]
             return prevData.map((item) => {
               if (item.date === today) {
                 return {
@@ -303,43 +262,43 @@ export default function water() {
                   waterMl: glassCount * 250,
                   waterL: (glassCount * 250) / 1000,
                   goalMl: maxGlasses * 250,
-                };
+                }
               }
-              return item;
-            });
-          });
+              return item
+            })
+          })
         }
       } catch (error) {
-        console.error("Error fetching water data:", error);
+        console.error("Error fetching water data:", error)
       } finally {
-        setIsLoading(false);
+        setIsLoading(false)
       }
-    };
+    }
 
-    fetchWaterData();
-  }, [user.user_id, maxGlasses, setGlassCount, setMaxGlasses]);
+    fetchWaterData()
+  }, [user.user_id, maxGlasses, setGlassCount, setMaxGlasses])
 
   // Update water intake when slider changes
   useEffect(() => {
     // Skip the initial render when glassCount is 0
-    if (glassCount === 0) return;
+    if (glassCount === 0) return
 
     const postWaterIntake = async () => {
       try {
         // Update local water data for today first for immediate UI feedback
         setWaterData((prevData) => {
-          const today = new Date().toISOString().split("T")[0];
+          const today = new Date().toISOString().split("T")[0]
           return prevData.map((item) => {
             if (item.date === today) {
               return {
                 ...item,
                 waterMl: glassCount * 250,
                 waterL: (glassCount * 250) / 1000,
-              };
+              }
             }
-            return item;
-          });
-        });
+            return item
+          })
+        })
 
         // Then update the API
         const response = await fetch(
@@ -352,36 +311,36 @@ export default function water() {
             body: JSON.stringify({
               water: glassCount,
             }),
-          }
-        );
-        const data = await response.json();
-        console.log(data);
+          },
+        )
+        const data = await response.json()
+        console.log(data)
       } catch (error) {
-        console.log(error);
+        console.log(error)
         // Even if API fails, keep the user's input in the store and local data
       }
-    };
+    }
 
-    postWaterIntake();
-  }, [glassCount, user.user_id]);
+    postWaterIntake()
+  }, [glassCount, user.user_id])
 
   // Process and filter data based on time range
   const processDataForTimeRange = (data: DataItem[], timeRange: string) => {
-    const allDays = generateAllDays(timeRange);
+    const allDays = generateAllDays(timeRange)
 
     if (data.length === 0) {
-      return allDays;
+      return allDays
     }
 
-    const dataMap = new Map();
+    const dataMap = new Map()
     data.forEach((item) => {
-      dataMap.set(item.date, item);
-    });
+      dataMap.set(item.date, item)
+    })
 
     // For "today" view, we need to specifically check if today's data exists
     if (timeRange === "today") {
-      const todayStr = new Date().toISOString().split("T")[0];
-      const todayData = dataMap.get(todayStr);
+      const todayStr = new Date().toISOString().split("T")[0]
+      const todayData = dataMap.get(todayStr)
 
       if (todayData) {
         return [
@@ -393,15 +352,15 @@ export default function water() {
             waterL: todayData.waterL || 0,
             goalMl: todayData.goalMl || 0,
           },
-        ];
+        ]
       } else {
-        return allDays; // Return empty today template
+        return allDays // Return empty today template
       }
     }
 
     // For other views, map the data as before
     return allDays.map((day) => {
-      const existingData = dataMap.get(day.date);
+      const existingData = dataMap.get(day.date)
       if (existingData) {
         return {
           ...day,
@@ -410,114 +369,106 @@ export default function water() {
           goalMl: existingData.goalMl || 0,
           isRangeLabel: day.isRangeLabel,
           rangeLabel: day.rangeLabel,
-        };
+        }
       }
-      return day;
-    });
-  };
+      return day
+    })
+  }
 
   // Get filtered data based on time range
   const getFilteredData = useMemo(() => {
-    return processDataForTimeRange(waterData, timeRange);
-  }, [waterData, timeRange, isLoading]);
+    return processDataForTimeRange(waterData, timeRange)
+  }, [waterData, timeRange, isLoading])
 
   // Modify the y-axis calculation to have a more appropriate range
   const { yAxisLabels, roundedMax, roundedMin } = useMemo(() => {
-    const dataToUse = getFilteredData;
+    const dataToUse = getFilteredData
 
     // Find the maximum water intake in liters
-    const maxWater = Math.max(...dataToUse.map((item) => item.waterL || 0));
+    const maxWater = Math.max(...dataToUse.map((item) => item.waterL || 0))
 
     // Set a minimum max value of 3L for better visualization
-    const effectiveMax = Math.max(maxWater, 3);
+    const effectiveMax = Math.max(maxWater, 3)
 
     // Round up to the nearest 0.5L
-    const roundedMax = Math.ceil(effectiveMax * 2) / 2;
-    const roundedMin = 0; // Start from 0L
+    const roundedMax = Math.ceil(effectiveMax * 2) / 2
+    const roundedMin = 0 // Start from 0L
 
     // Create y-axis labels with appropriate steps
-    const step = roundedMax > 3 ? 1 : 0.5; // Use 0.5L steps for smaller ranges, 1L for larger
+    const step = roundedMax > 3 ? 1 : 0.5 // Use 0.5L steps for smaller ranges, 1L for larger
 
-    const labels = [];
+    const labels = []
     for (let value = 0; value <= roundedMax; value += step) {
-      labels.push(Number(value.toFixed(1)));
+      labels.push(Number(value.toFixed(1)))
     }
 
     // Make sure max value is included
     if (labels[labels.length - 1] < roundedMax) {
-      labels.push(Number(roundedMax.toFixed(1)));
+      labels.push(Number(roundedMax.toFixed(1)))
     }
 
     return {
       yAxisLabels: labels.reverse(), // Reverse for top-to-bottom display
       roundedMax,
       roundedMin,
-    };
-  }, [getFilteredData]);
+    }
+  }, [getFilteredData])
 
   // Function to open the goal setting modal
   const openGoalModal = () => {
-    setNewGoal(maxGlasses.toString());
-    setModalVisible(true);
-  };
+    setNewGoal(maxGlasses.toString())
+    setModalVisible(true)
+  }
 
   // Function to save the new goal and close the modal
   const saveGoal = async () => {
-    const parsedGoal = Number.parseFloat(newGoal);
+    const parsedGoal = Number.parseFloat(newGoal)
 
     if (!isNaN(parsedGoal) && parsedGoal > 0) {
       try {
-        console.log(`🚀 Saving water goal: ${parsedGoal} glasses`);
+        console.log(`🚀 Saving water goal: ${parsedGoal} glasses`)
 
         // Update the store first for immediate UI feedback
-        setMaxGlasses(parsedGoal);
-        setGoalSet(true);
-        setModalVisible(false);
+        setMaxGlasses(parsedGoal)
+        setGoalSet(true)
+        setModalVisible(false)
 
         // Update local water data with new goal
         setWaterData((prevData) => {
           return prevData.map((item) => ({
             ...item,
             goalMl: parsedGoal * 250, // Convert glasses to ml
-          }));
-        });
+          }))
+        })
 
         // API Call to Save Water Goal
         const response = await axios.post(
           `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/waterGoal`,
           { waterGoal: parsedGoal },
-          { headers: { "Content-Type": "application/json" } }
-        );
+          { headers: { "Content-Type": "application/json" } },
+        )
 
-        console.log("✅ API Response:", response.data);
+        console.log("✅ API Response:", response.data)
 
         if (!response.data) {
-          console.error(
-            "❌ Failed to save water goal. Response:",
-            response.data
-          );
+          console.error("❌ Failed to save water goal. Response:", response.data)
           // If API fails, we could revert the changes, but since the store is persisted,
           // we'll keep the user's input to avoid confusion
         }
       } catch (error: any) {
-        console.error(
-          "❌ API Error:",
-          error.response ? error.response.data : error.message
-        );
+        console.error("❌ API Error:", error.response ? error.response.data : error.message)
         // Even if API fails, keep the user's input in the store
       }
     } else {
-      console.error(
-        "❌ Invalid input. Please enter a valid number greater than zero."
-      );
+      console.error("❌ Invalid input. Please enter a valid number greater than zero.")
     }
-  };
+  }
 
   // Function to hide tooltip after a delay
   const hideTooltipAfterDelay = () => {
     // Clear any existing timeout
     if (tooltipTimeoutRef.current) {
-      clearTimeout(tooltipTimeoutRef.current);
+      clearTimeout(tooltipTimeoutRef.current)
     }
 
     // Set a new timeout to hide the tooltip after 3 seconds
@@ -527,23 +478,23 @@ export default function water() {
         duration: 200,
         useNativeDriver: true,
       }).start(() => {
-        setSelectedIndex(null);
-      });
-    }, 3000);
-  };
+        setSelectedIndex(null)
+      })
+    }, 3000)
+  }
 
   const handleBarPress = (index: number): void => {
     // Get the actual item
-    const item = getFilteredData[index];
+    const item = getFilteredData[index]
 
     // Skip if it's a range label or has no data
-    if ('isRangeLabel' in item && item.isRangeLabel || item.waterL <= 0) {
-      return;
+    if (item.isRangeLabel || item.waterL <= 0) {
+      return
     }
 
     if (selectedIndex === index) {
-      setSelectedIndex(null); // Deselect if already selected
-      return;
+      setSelectedIndex(null) // Deselect if already selected
+      return
     }
 
     // Animate tooltip disappearing and reappearing
@@ -558,38 +509,33 @@ export default function water() {
         duration: 300,
         useNativeDriver: true,
       }),
-    ]).start();
+    ]).start()
 
-    setSelectedIndex(index);
+    setSelectedIndex(index)
 
     // Set timeout to hide tooltip after delay
-    hideTooltipAfterDelay();
-  };
+    hideTooltipAfterDelay()
+  }
 
   // Clean up timeout on unmount
   useEffect(() => {
     return () => {
       if (tooltipTimeoutRef.current) {
-        clearTimeout(tooltipTimeoutRef.current);
+        clearTimeout(tooltipTimeoutRef.current)
       }
-    };
-  }, []);
+    }
+  }, [])
 
   // Get the current selected time range label
   const getTimeRangeLabel = () => {
-    const option = timeRangeOptions.find((option) => option.id === timeRange);
-    return option ? option.label : "Last 7 Days";
-  };
+    const option = timeRangeOptions.find((option) => option.id === timeRange)
+    return option ? option.label : "Last 7 Days"
+  }
 
   // Update the CustomBar component to handle date ranges with multiple bars
-  const CustomBar = ({
-    item,
-    index,
-    isSelected,
-    timeRange,
-  }: CustomBarProps) => {
+  const CustomBar = ({ item, index, isSelected, timeRange }: CustomBarProps) => {
     // Check if this is a month view
-    const isMonthView = timeRange !== "week" && timeRange !== "today";
+    const isMonthView = timeRange !== "week" && timeRange !== "today"
 
     // Skip rendering for range labels in month view - they're just for organization
     if (isMonthView && item.isRangeLabel) {
@@ -597,22 +543,22 @@ export default function water() {
         <View style={styles.dateRangeContainer}>
           <Text style={styles.dateRangeLabel}>{item.day}</Text>
         </View>
-      );
+      )
     }
 
     // For regular bars (weekly view) or individual day bars (monthly view)
-    const dataRange = roundedMax - roundedMin;
-    const normalizedWeight = item.waterL - roundedMin;
+    const dataRange = roundedMax - roundedMin
+    const normalizedWeight = item.waterL - roundedMin
 
-    const calculatedHeight = (normalizedWeight / dataRange) * MAX_HEIGHT;
-    const barHeight = item.waterL > 0 ? Math.max(calculatedHeight, 2) : 2;
+    const calculatedHeight = (normalizedWeight / dataRange) * MAX_HEIGHT
+    const barHeight = item.waterL > 0 ? Math.max(calculatedHeight, 2) : 2
 
     // Use thinner bars for month views, wider for today view
-    let barWidth = BAR_WIDTH;
+    let barWidth = BAR_WIDTH
     if (isMonthView) {
-      barWidth = 4;
+      barWidth = 4
     } else if (timeRange === "today") {
-      barWidth = BAR_WIDTH * 2; // Wider bar for today view
+      barWidth = BAR_WIDTH * 2 // Wider bar for today view
     }
 
     return (
@@ -631,11 +577,7 @@ export default function water() {
             width: barWidth,
             marginRight: 2, // Tighter spacing for clustered bars
             marginLeft:
-              item.rangeLabel &&
-              index > 0 &&
-              getFilteredData[index - 1].rangeLabel !== item.rangeLabel
-                ? 10
-                : 0, // Add space between ranges
+              item.rangeLabel && index > 0 && getFilteredData[index - 1].rangeLabel !== item.rangeLabel ? 10 : 0, // Add space between ranges
           },
         ]}
       >
@@ -646,25 +588,10 @@ export default function water() {
           </View>
         )}
 
-        <View
-          style={[
-            styles.barWrapper,
-            { height: barHeight },
-            { width: barWidth },
-          ]}
-        >
+        <View style={[styles.barWrapper, { height: barHeight }, { width: barWidth }]}>
           <LinearGradient
-            colors={
-              isSelected ? ["#67B6FF", "#67B6FF"] : ["#B9DDFF", "#B9DDFF"]
-            }
-            style={[
-              styles.bar,
-              { height: "100%" },
-              isMonthView && {
-                borderTopLeftRadius: 2,
-                borderTopRightRadius: 2,
-              },
-            ]}
+            colors={isSelected ? ["#67B6FF", "#67B6FF"] : ["#B9DDFF", "#B9DDFF"]}
+            style={[styles.bar, { height: "100%" }, isMonthView && { borderTopLeftRadius: 2, borderTopRightRadius: 2 }]}
           />
         </View>
 
@@ -673,8 +600,7 @@ export default function water() {
             <View style={styles.tooltipContent}>
               <Text style={styles.tooltipTitle}>WATER</Text>
               <Text style={styles.tooltipWeight}>
-                {item.waterL.toFixed(2)}{" "}
-                <Text style={{ fontSize: 16, color: "#67B6FF" }}>L</Text>
+                {item.waterL.toFixed(2)} <Text style={{ fontSize: 16, color: "#67B6FF" }}>L</Text>
               </Text>
               <Text style={styles.tooltipDate}>{item.date}</Text>
             </View>
@@ -682,8 +608,8 @@ export default function water() {
           </Animated.View>
         )}
       </TouchableOpacity>
-    );
-  };
+    )
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -691,17 +617,11 @@ export default function water() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={20} color="black" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Water</Text>
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => router.push("/patient/unitscreen")}
-        >
+        <TouchableOpacity style={styles.menuButton} onPress={() => router.push("/patient/unitscreen")}>
           <Feather name="more-vertical" size={20} color="#E5E5E5" />
         </TouchableOpacity>
       </View>
@@ -723,9 +643,7 @@ export default function water() {
         {/* Glass Info */}
         <Text style={styles.glassInfo}>
           {glassCount} Glass is{" "}
-          {glassCount * 250 >= 1000
-            ? ((glassCount * 250) / 1000).toFixed(2) + "L"
-            : glassCount * 250 + "ml"}
+          {glassCount * 250 >= 1000 ? ((glassCount * 250) / 1000).toFixed(2) + "L" : glassCount * 250 + "ml"}
         </Text>
 
         {/* Slider */}
@@ -769,10 +687,7 @@ export default function water() {
               <MaterialIcons name="bar-chart" size={18} color="#99CEFF" />
               <Text style={styles.analysisTabText}>Analysis</Text>
             </View>
-            <TouchableOpacity
-              style={styles.periodSelector}
-              onPress={() => setDropdownVisible(true)}
-            >
+            <TouchableOpacity style={styles.periodSelector} onPress={() => setDropdownVisible(true)}>
               <Text style={styles.periodText}>{getTimeRangeLabel()}</Text>
               <Ionicons name="chevron-down" size={14} color="#4dabff" />
             </TouchableOpacity>
@@ -794,13 +709,7 @@ export default function water() {
           <View style={styles.chartContainer}>
             {/* Horizontal grid lines */}
             {yAxisLabels.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.gridLine,
-                  { top: (index / (yAxisLabels.length - 1)) * MAX_HEIGHT },
-                ]}
-              />
+              <View key={index} style={[styles.gridLine, { top: (index / (yAxisLabels.length - 1)) * MAX_HEIGHT }]} />
             ))}
 
             {/* For month views, render date labels at the bottom */}
@@ -821,8 +730,7 @@ export default function water() {
               style={[
                 styles.barsContainer,
                 timeRange === "today" && styles.todayBarsContainer,
-                timeRange !== "week" &&
-                  timeRange !== "today" && { paddingHorizontal: 10 },
+                timeRange !== "week" && timeRange !== "today" && { paddingHorizontal: 10 },
               ]}
             >
               {isLoading ? (
@@ -836,23 +744,13 @@ export default function water() {
               ) : (
                 // For month views, filter out the range labels as they're shown separately
                 getFilteredData
-                  .filter(
-                    (item) =>
-                      timeRange === "week" ||
-                      timeRange === "today" ||
-                      !item.isRangeLabel
-                  )
+                  .filter((item) => timeRange === "week" || timeRange === "today" || !item.isRangeLabel)
                   .map((item, index) => (
                     <CustomBar
                       key={index}
                       item={item}
-                      index={getFilteredData.findIndex(
-                        (d) => d.date === item.date
-                      )} // Use original index for reference
-                      isSelected={
-                        selectedIndex ===
-                        getFilteredData.findIndex((d) => d.date === item.date)
-                      }
+                      index={getFilteredData.findIndex((d) => d.date === item.date)} // Use original index for reference
+                      isSelected={selectedIndex === getFilteredData.findIndex((d) => d.date === item.date)}
                       timeRange={timeRange}
                     />
                   ))
@@ -865,9 +763,7 @@ export default function water() {
         <View style={styles.bottomContainer}>
           <View style={styles.messageContainer}>
             <Text style={styles.messageTitle}>Make Every Drop Count!</Text>
-            <Text style={styles.messageSubtitle}>
-              Set a reminder and stay on track.
-            </Text>
+            <Text style={styles.messageSubtitle}>Set a reminder and stay on track.</Text>
           </View>
           <TouchableOpacity style={styles.reminderButton}>
             <Ionicons name="alarm" size={16} color="white" />
@@ -883,35 +779,21 @@ export default function water() {
         animationType="fade"
         onRequestClose={() => setDropdownVisible(false)}
       >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setDropdownVisible(false)}
-        >
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setDropdownVisible(false)}>
           <View style={styles.dropdownContainer}>
             {timeRangeOptions.map((option) => (
               <TouchableOpacity
                 key={option.id}
-                style={[
-                  styles.dropdownItem,
-                  timeRange === option.id && styles.dropdownItemSelected,
-                ]}
+                style={[styles.dropdownItem, timeRange === option.id && styles.dropdownItemSelected]}
                 onPress={() => {
-                  setTimeRange(option.id);
-                  setDropdownVisible(false);
+                  setTimeRange(option.id)
+                  setDropdownVisible(false)
                 }}
               >
-                <Text
-                  style={[
-                    styles.dropdownItemText,
-                    timeRange === option.id && styles.dropdownItemTextSelected,
-                  ]}
-                >
+                <Text style={[styles.dropdownItemText, timeRange === option.id && styles.dropdownItemTextSelected]}>
                   {option.label}
                 </Text>
-                {timeRange === option.id && (
-                  <Ionicons name="checkmark" size={16} color="#67B6FF" />
-                )}
+                {timeRange === option.id && <Ionicons name="checkmark" size={16} color="#67B6FF" />}
               </TouchableOpacity>
             ))}
           </View>
@@ -943,10 +825,7 @@ export default function water() {
             </View>
 
             <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setModalVisible(false)}
-              >
+              <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
 
@@ -958,7 +837,7 @@ export default function water() {
         </View>
       </Modal>
     </SafeAreaView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -1065,8 +944,7 @@ const styles = StyleSheet.create({
     borderColor: "#85C5FF",
     borderWidth: 2,
     borderRadius: 32,
-    boxShadow:
-      "0px 0px 4px 0px rgba(0, 0, 0, 0.25) inset, 0px 0px 2.6px 0px rgba(0, 0, 0, 0.32);",
+    boxShadow: "0px 0px 4px 0px rgba(0, 0, 0, 0.25) inset, 0px 0px 2.6px 0px rgba(0, 0, 0, 0.32);",
   },
   saveButtonText: {
     color: "white",
@@ -1414,4 +1292,5 @@ const styles = StyleSheet.create({
     color: "#4dabff",
     fontFamily: "Inter600",
   },
-});
+})
+

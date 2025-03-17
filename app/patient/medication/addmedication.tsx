@@ -147,7 +147,7 @@ export default function addmedication() {
     }
   
     try {
-      const apiUrl = `http://192.168.1.102:8000/api/user/activity/${user.user_id}/addMedication`;
+      const apiUrl = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/addMedication`;
 
   
       const payload = {

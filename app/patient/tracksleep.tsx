@@ -413,7 +413,7 @@ export default function tracksleep() {
         // return;
       }
 
-      const response = await fetch(`http://192.168.1.102:8000/api/user/activity/${user.user_id}/sleepstatus`, {
+      const response = await fetch(`https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/sleepstatus`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -524,7 +524,7 @@ export default function tracksleep() {
   const handleDeleteLog = async (id: string) => {
     console.log(id)
     const response = await fetch(
-      `http://192.168.1.102:8000/api/user/activity/${user.user_id}/sleepstatus/delete/${id}`,
+      `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/sleepstatus/delete/${id}`,
       {
         method: "DELETE",
         headers: {

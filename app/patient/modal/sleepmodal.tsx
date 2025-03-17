@@ -68,7 +68,7 @@ const SleepLogModal: React.FC<SleepLogModalProps> = ({
     const End = formatTime(wakeTime);
     console.log(Date, Time, End);
     const response = await fetch(
-      `http://192.168.1.102:8000/api/user/activity/${user.user_id}/sleep`,
+      `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/sleep`,
       {
         method: "POST",
         headers: {
