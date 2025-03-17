@@ -45,9 +45,6 @@ const StepsModal = ({ visible, onClose, onSave, reload }: StepGoalModalProps) =>
 
       const responseData = await response.json();
 
-      if (!response.ok) {
-        throw new Error(responseData.message || "Failed to save weight.");
-      }
 
       console.log("API Response:", responseData);
       onSave(steps);
@@ -55,8 +52,8 @@ const StepsModal = ({ visible, onClose, onSave, reload }: StepGoalModalProps) =>
       onClose();
       reload();
     } catch (error: any) {
-      console.error("Error adding weight:", error);
-      Alert.alert("Error", error.message || "Failed to save weight.");
+      console.error("Error adding steps:", error);
+      Alert.alert("Error", error.message || "Failed to save steps.");
     } finally {
       setLoading(false);
     }

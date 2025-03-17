@@ -308,25 +308,28 @@ const WeightScreen = () => {
 
   // Process and filter data based on time range
   const processDataForTimeRange = (data: DataItem[], timeRange: string) => {
-    const allDays = generateAllDays(timeRange)
-
+    const allDays = generateAllDays(timeRange);
+  
     if (data.length === 0) {
-      return allDays
+      return allDays;
     }
-
-    const dataMap = new Map()
+  
+    const dataMap = new Map();
     data.forEach((item) => {
       if (item.date) {
-        const dateKey = new Date(item.date).toISOString().split("T")[0]
-        dataMap.set(dateKey, item)
+        // Ensure we're working with a string date
+        const dateKey = typeof item.date === 'string' 
+          ? item.date.split('T')[0] 
+          : new Date(item.date).toISOString().split('T')[0];
+        dataMap.set(dateKey, item);
       }
-    })
-
+    });
+  
     // For "today" view, we need to specifically check if today's data exists
     if (timeRange === "today") {
-      const todayStr = new Date().toISOString().split("T")[0]
-      const todayData = dataMap.get(todayStr)
-
+      const todayStr = new Date().toISOString().split("T")[0];
+      const todayData = dataMap.get(todayStr);
+  
       if (todayData) {
         return [
           {
@@ -335,127 +338,140 @@ const WeightScreen = () => {
             day: "Today",
             weight: todayData.weight || 0,
           },
-        ]
+        ];
       } else {
-        return allDays // Return empty today template
+        return allDays; // Return empty today template
       }
     }
-
-    // For other views, map the data as before
+  
+    // For week view, ensure we map data to the correct days
+    if (timeRange === "week") {
+      return allDays.map((day) => {
+        const existingData = dataMap.get(day.date);
+        if (existingData) {
+          return {
+            ...day,
+            weight: existingData.weight || 0,
+          };
+        }
+        return day;
+      });
+    }
+  
+    // For month views, handle the date ranges
     return allDays.map((day) => {
-      const existingData = dataMap.get(day.date)
+      // For range labels, just return as is
+      if (day.isRangeLabel) {
+        return day;
+      }
+  
+      const existingData = dataMap.get(day.date);
       if (existingData) {
         return {
           ...day,
           weight: existingData.weight || 0,
           isRangeLabel: day.isRangeLabel,
           rangeLabel: day.rangeLabel,
-        }
+        };
       }
-      return day
-    })
-  }
+      return day;
+    });
+  };
 
   const getWeightStatus = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       // First check if we need to reset weekly data
-      const wasReset = await checkAndResetWeeklyData()
-
-      // If we just reset the data, we might want to show the reset data
-      if (wasReset) {
-        console.log("Weight data was reset for new week")
-        // The reset function already updated the state, so we could return early
-        // But we'll continue to fetch the latest data from the API
-        // }
-
-        // For demo purposes, using dummy data instead of actual API call
-        // In a real app, you would uncomment this and use your actual API endpoint
-        /*
-        const response = await fetch(`https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/weightStatus`, {
+      const wasReset = await checkAndResetWeeklyData();
+  
+      // Make the actual API call instead of using dummy data
+      const response = await fetch(
+        `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/weightStatus`,
+        {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
           },
-        })
-
-        const data = await response.json()
-        console.log("API weight data:", data)
-        */
-
-        // Simulate API response
-        const data = {
-          data: {
-            lastWeight: 75,
-            weightData: DUMMY.map((item) => ({ ...item, weight: Math.floor(Math.random() * 10) + 70 })),
-          },
         }
-
-        if (data.data) {
-          setCurrentWeight(data.data.lastWeight)
-
-          if (data.data.weightData && data.data.weightData.length > 0) {
-            // Process the weight data from the API
-            const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"]
-            const fullWeekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-
-            // Create a map to store unique weight data for each day
-            const weightMap = new Map()
-
-            // Process all data regardless of time range
-            data.data.weightData.forEach((entry: { date: string | number | Date; weight: any }) => {
-              const entryDate = new Date(entry.date)
-              const fullDay = entryDate.toLocaleString("en-US", { weekday: "long" }) // Get full weekday name
-              const dayIndex = fullWeekdays.indexOf(fullDay) // Get unique index
-
-              if (dayIndex === -1) return // Skip invalid dates
-
-              const dayLetter = fixedWeekdays[dayIndex] // Get S, M, T, W...
-              const dateString = entryDate.toISOString().split("T")[0]
-
-              // Store data with ISO date string as key
-              weightMap.set(dateString, {
-                day: dayLetter,
-                weight: entry.weight,
-                date: dateString,
+      );
+  
+      const data = await response.json();
+      console.log("API weight data:", data);
+  
+      if (data.data) {
+        setCurrentWeight(data.data.lastWeight);
+  
+        if (data.data.weightData && data.data.weightData.length > 0) {
+          // Process the weight data from the API
+          const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"];
+          const fullWeekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  
+          // Create a map to store unique weight data for each day
+          const weightMap = new Map();
+  
+          // Process all data regardless of time range
+          data.data.weightData.forEach((entry) => {
+            if (!entry.date || !entry.weight) return; // Skip invalid entries
+            
+            const entryDate = new Date(entry.date);
+            const fullDay = entryDate.toLocaleString("en-US", { weekday: "long" }); // Get full weekday name
+            const dayIndex = fullWeekdays.indexOf(fullDay); // Get unique index
+  
+            if (dayIndex === -1) return; // Skip invalid dates
+  
+            const dayLetter = fixedWeekdays[dayIndex]; // Get S, M, T, W...
+            const dateString = entryDate.toISOString().split("T")[0];
+            const formattedDate = entryDate
+              .toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
               })
-            })
-
-            // Convert map to array
-            const processedData = Array.from(weightMap.values())
-            setWeightData(processedData)
-
-            // Process data for current time range
-            const filteredData = processDataForTimeRange(processedData, timeRange)
-            setFilteredData(filteredData)
-          } else {
-            // Use default days with zero weight
-            setWeightData(DUMMY)
-
-            // Process data for current time range
-            const filteredData = processDataForTimeRange(DUMMY, timeRange)
-            setFilteredData(filteredData)
-          }
-        } else {
-          // Handle case where data.data is undefined
-          setWeightData(DUMMY)
-
+              .toUpperCase();
+  
+            // Store data with ISO date string as key
+            weightMap.set(dateString, {
+              day: dayLetter,
+              weight: parseFloat(entry.weight),
+              date: dateString,
+              formattedDate: formattedDate,
+            });
+          });
+  
+          // Convert map to array
+          const processedData = Array.from(weightMap.values());
+          setWeightData(processedData);
+  
           // Process data for current time range
-          const filteredData = processDataForTimeRange(DUMMY, timeRange)
-          setFilteredData(filteredData)
+          const filteredData = processDataForTimeRange(processedData, timeRange);
+          setFilteredData(filteredData);
+        } else {
+          // Use default days with zero weight
+          setWeightData(DUMMY);
+  
+          // Process data for current time range
+          const filteredData = processDataForTimeRange(DUMMY, timeRange);
+          setFilteredData(filteredData);
         }
+      } else {
+        // Handle case where data.data is undefined
+        setWeightData(DUMMY);
+  
+        // Process data for current time range
+        const filteredData = processDataForTimeRange(DUMMY, timeRange);
+        setFilteredData(filteredData);
       }
     } catch (error) {
-      console.error("Error fetching weight status:", error)
-      setWeightData(DUMMY)
-
+      console.error("Error fetching weight status:", error);
+      setWeightData(DUMMY);
+  
       // If there's an error, still set filtered data based on time range
-      const filteredData = processDataForTimeRange(DUMMY, timeRange)
-      setFilteredData(filteredData)
+      const filteredData = processDataForTimeRange(DUMMY, timeRange);
+      setFilteredData(filteredData);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   // Update filtered data when time range changes
   useEffect(() => {
