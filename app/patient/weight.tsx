@@ -79,6 +79,7 @@ const WeightScreen = () => {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [tooltipAnim] = useState(new Animated.Value(0)) // Start with 0 opacity
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const periodSelectorRef = useRef<TouchableOpacity>(null)
   const [modalVisible, setModalVisible] = useState(false)
   const [currentWeight, setCurrentWeight] = useState<number | null>(null)
   const [dropdownVisible, setDropdownVisible] = useState(false)
@@ -87,6 +88,7 @@ const WeightScreen = () => {
   const [lastResetDate, setLastResetDate] = useState<Date | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [filteredData, setFilteredData] = useState<DataItem[]>([])
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 })
 
   // Function to get the current week number
   const getWeekNumber = (date: Date) => {
@@ -365,70 +367,83 @@ const WeightScreen = () => {
         console.log("Weight data was reset for new week")
         // The reset function already updated the state, so we could return early
         // But we'll continue to fetch the latest data from the API
-      }
+        // }
 
-      const response = await fetch(`https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/weightStatus`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      })
+        // For demo purposes, using dummy data instead of actual API call
+        // In a real app, you would uncomment this and use your actual API endpoint
+        /*
+        const response = await fetch(`https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/weightStatus`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        })
 
-      const data = await response.json()
-      console.log("API weight data:", data)
+        const data = await response.json()
+        console.log("API weight data:", data)
+        */
 
-      if (data.data) {
-        setCurrentWeight(data.data.lastWeight)
+        // Simulate API response
+        const data = {
+          data: {
+            lastWeight: 75,
+            weightData: DUMMY.map((item) => ({ ...item, weight: Math.floor(Math.random() * 10) + 70 })),
+          },
+        }
 
-        if (data.data.weightData && data.data.weightData.length > 0) {
-          // Process the weight data from the API
-          const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"]
-          const fullWeekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+        if (data.data) {
+          setCurrentWeight(data.data.lastWeight)
 
-          // Create a map to store unique weight data for each day
-          const weightMap = new Map()
+          if (data.data.weightData && data.data.weightData.length > 0) {
+            // Process the weight data from the API
+            const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"]
+            const fullWeekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
-          // Process all data regardless of time range
-          data.data.weightData.forEach((entry: { date: string | number | Date; weight: any }) => {
-            const entryDate = new Date(entry.date)
-            const fullDay = entryDate.toLocaleString("en-US", { weekday: "long" }) // Get full weekday name
-            const dayIndex = fullWeekdays.indexOf(fullDay) // Get unique index
+            // Create a map to store unique weight data for each day
+            const weightMap = new Map()
 
-            if (dayIndex === -1) return // Skip invalid dates
+            // Process all data regardless of time range
+            data.data.weightData.forEach((entry: { date: string | number | Date; weight: any }) => {
+              const entryDate = new Date(entry.date)
+              const fullDay = entryDate.toLocaleString("en-US", { weekday: "long" }) // Get full weekday name
+              const dayIndex = fullWeekdays.indexOf(fullDay) // Get unique index
 
-            const dayLetter = fixedWeekdays[dayIndex] // Get S, M, T, W...
-            const dateString = entryDate.toISOString().split("T")[0]
+              if (dayIndex === -1) return // Skip invalid dates
 
-            // Store data with ISO date string as key
-            weightMap.set(dateString, {
-              day: dayLetter,
-              weight: entry.weight,
-              date: dateString,
+              const dayLetter = fixedWeekdays[dayIndex] // Get S, M, T, W...
+              const dateString = entryDate.toISOString().split("T")[0]
+
+              // Store data with ISO date string as key
+              weightMap.set(dateString, {
+                day: dayLetter,
+                weight: entry.weight,
+                date: dateString,
+              })
             })
-          })
 
-          // Convert map to array
-          const processedData = Array.from(weightMap.values())
-          setWeightData(processedData)
+            // Convert map to array
+            const processedData = Array.from(weightMap.values())
+            setWeightData(processedData)
 
-          // Process data for current time range
-          const filteredData = processDataForTimeRange(processedData, timeRange)
-          setFilteredData(filteredData)
+            // Process data for current time range
+            const filteredData = processDataForTimeRange(processedData, timeRange)
+            setFilteredData(filteredData)
+          } else {
+            // Use default days with zero weight
+            setWeightData(DUMMY)
+
+            // Process data for current time range
+            const filteredData = processDataForTimeRange(DUMMY, timeRange)
+            setFilteredData(filteredData)
+          }
         } else {
-          // Use default days with zero weight
+          // Handle case where data.data is undefined
           setWeightData(DUMMY)
 
           // Process data for current time range
           const filteredData = processDataForTimeRange(DUMMY, timeRange)
           setFilteredData(filteredData)
         }
-      } else {
-        // Handle case where data.data is undefined
-        setWeightData(DUMMY)
-
-        // Process data for current time range
-        const filteredData = processDataForTimeRange(DUMMY, timeRange)
-        setFilteredData(filteredData)
       }
     } catch (error) {
       console.error("Error fetching weight status:", error)
@@ -845,9 +860,26 @@ const WeightScreen = () => {
               <Text style={styles.timelineTitle}>Timeline</Text>
             </View>
 
-            <TouchableOpacity style={styles.periodSelector} onPress={() => setDropdownVisible(true)}>
+            <TouchableOpacity
+              ref={periodSelectorRef}
+              style={styles.periodSelector}
+              onPress={() => {
+                // Measure the position of the period selector button
+                if (periodSelectorRef.current) {
+                  periodSelectorRef.current.measure((x: any, y: any, width: number, height: any, pageX: any, pageY: any) => {
+                    setDropdownPosition({
+                      top: pageY + 10, // Position below the button with a small gap
+                      right: width > 0 ? Dimensions.get("window").width - (pageX + width) : 20,
+                    })
+                    setDropdownVisible(true)
+                  })
+                } else {
+                  setDropdownVisible(false)
+                }
+              }}
+            >
               <Text style={styles.periodText}>{getTimeRangeLabel()}</Text>
-              <Ionicons name="chevron-down" size={14} color="#F9A826" />
+              <Ionicons name="chevron-down" size={14} color="#FFA44C" />
             </TouchableOpacity>
           </View>
 
@@ -940,7 +972,7 @@ const WeightScreen = () => {
         onRequestClose={() => setDropdownVisible(false)}
       >
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setDropdownVisible(false)}>
-          <View style={styles.dropdownContainer}>
+          <View style={[styles.dropdownContainer, { top: dropdownPosition.top, right: dropdownPosition.right }]}>
             {timeRangeOptions.map((option) => (
               <TouchableOpacity
                 key={option.id}
@@ -953,7 +985,7 @@ const WeightScreen = () => {
                 <Text style={[styles.dropdownItemText, timeRange === option.id && styles.dropdownItemTextSelected]}>
                   {option.label}
                 </Text>
-                {timeRange === option.id && <Ionicons name="checkmark" size={16} color="#E5E5E5" />}
+                {timeRange === option.id && <Ionicons name="checkmark" size={16} color="#FFA44C" />}
               </TouchableOpacity>
             ))}
           </View>
@@ -1322,14 +1354,12 @@ const styles = StyleSheet.create({
   // Dropdown styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    // backgroundColor: "rgba(0, 0, 0, 0.5)", // Uncommented this line to make overlay visible
     justifyContent: "center",
     alignItems: "center",
   },
   dropdownContainer: {
     position: "absolute",
-    top: 220, // Position below the period selector
-    right: 20,
     backgroundColor: "#FFFFFF",
     borderRadius: 8,
     borderWidth: 1,

@@ -121,6 +121,8 @@ export default function tracksleep() {
 
   // Dropdown state
   const [dropdownVisible, setDropdownVisible] = useState(false)
+  const periodSelectorRef = useRef(null)
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0, width: 0 })
 
   const user = useSelector((state: any) => state.user)
 
@@ -413,7 +415,7 @@ export default function tracksleep() {
         // return;
       }
 
-      const response = await fetch(`https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/sleepstatus`, {
+      const response = await fetch(`http://192.168.1.102:8000/api/user/activity/${user.user_id}/sleepstatus`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -524,7 +526,7 @@ export default function tracksleep() {
   const handleDeleteLog = async (id: string) => {
     console.log(id)
     const response = await fetch(
-      `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/sleepstatus/delete/${id}`,
+      `http://192.168.1.102:8000/api/user/activity/${user.user_id}/sleepstatus/delete/${id}`,
       {
         method: "DELETE",
         headers: {
@@ -1147,7 +1149,21 @@ export default function tracksleep() {
                 <MaterialIcons name="bar-chart" size={18} color="#547698" />
                 <Text style={styles.analysisTabText}>Analysis</Text>
               </View>
-              <TouchableOpacity style={styles.periodSelector} onPress={() => setDropdownVisible(true)}>
+              <TouchableOpacity
+                ref={periodSelectorRef}
+                style={styles.periodSelector}
+                onPress={() => {
+                  // Measure the position of the period selector button
+                  periodSelectorRef.current?.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+                    setDropdownPosition({
+                      top: pageY + 10,
+                      right: Dimensions.get("window").width - (pageX + width),
+                      width: width,
+                    })
+                    setDropdownVisible(true)
+                  })
+                }}
+              >
                 <Text style={styles.periodText}>{getTimeRangeLabel()}</Text>
                 <Ionicons name="chevron-down" size={14} color="#E5E5E5" />
               </TouchableOpacity>
@@ -1240,7 +1256,17 @@ export default function tracksleep() {
           onRequestClose={() => setDropdownVisible(false)}
         >
           <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setDropdownVisible(false)}>
-            <View style={styles.dropdownContainer}>
+            <View
+              style={[
+                styles.dropdownContainer,
+                {
+                  position: "absolute",
+                  top: dropdownPosition.top,
+                  right: dropdownPosition.right,
+                  width: dropdownPosition.width,
+                },
+              ]}
+            >
               {timeRangeOptions.map((option) => (
                 <TouchableOpacity
                   key={option.id}
@@ -1712,14 +1738,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   dropdownContainer: {
-    position: "absolute",
-    top: 220, // Position below the period selector
-    right: 20,
     backgroundColor: "#1A3352",
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#547698",
-    width: 160,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },

@@ -1,4 +1,4 @@
-//
+"use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
@@ -114,6 +114,11 @@ const step = () => {
   const [timeRange, setTimeRange] = useState("week") // "today", "week", "month", "lastMonth"
   const [dropdownVisible, setDropdownVisible] = useState(false)
 
+  // Ref for the period selector button to measure its position
+  const periodSelectorRef = useRef<TouchableOpacity>(null)
+  // State to store the dropdown position
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 })
+
   // Function to get the current week number
   const getWeekNumber = (date: Date) => {
     const firstDayOfYear = new Date(date.getFullYear(), 0, 1)
@@ -148,7 +153,7 @@ const step = () => {
       if (!lastResetInfo || lastResetWeek !== currentWeek || lastResetYear !== currentYear) {
         console.log("Resetting step data for new week")
         // Reset chart data
-        setStepData(emptyChartData.map(item => ({ ...item, stepsGoal: 0 })))
+        setStepData(emptyChartData.map((item) => ({ ...item, stepsGoal: 0 })))
 
         // Store the current week info
         const resetInfo = {
@@ -370,7 +375,7 @@ const step = () => {
         // But we'll continue to fetch the latest data from the API
       }
 
-      const userId = user?.user_id;
+      const userId = user?.user_id
       const response = await fetch(`https://crosscare-backends.onrender.com/api/user/activity/${userId}/stepsStatus`, {
         method: "GET",
         headers: {
@@ -643,6 +648,23 @@ const step = () => {
     }
   }
 
+  // Function to handle opening the dropdown and measuring the button position
+  const handleOpenDropdown = () => {
+    if (periodSelectorRef.current) {
+      periodSelectorRef.current.measure((x: any, y: any, width: any, height: any, pageX: any, pageY: any) => {
+        // Calculate the position for the dropdown to appear below the button
+        setDropdownPosition({
+          top: pageY + 10,
+          right: Dimensions.get("window").width - (pageX + width),
+        })
+        setDropdownVisible(true)
+      })
+    } else {
+      // Fallback if ref is not available
+      setDropdownVisible(true)
+    }
+  }
+
   const CustomBar = ({ item, index, isSelected, timeRange }: CustomBarProps) => {
     // Check if this is a month view
     const isMonthView = timeRange !== "week" && timeRange !== "today"
@@ -737,7 +759,7 @@ const step = () => {
                     color: "#5E4FA2",
                   }}
                 >
-                 {item.steps >=1000 ? "k" : ""}
+                  {item.steps >= 1000 ? "k" : ""}
                 </Text>
               </Text>
               <Text style={styles.tooltipDate}>{formatDate(item.date)}</Text>
@@ -827,7 +849,7 @@ const step = () => {
               <MaterialIcons name="bar-chart" size={18} color="#CDC8E2" />
               <Text style={styles.analysisTabText}>Analysis</Text>
             </View>
-            <TouchableOpacity style={styles.periodSelector} onPress={() => setDropdownVisible(true)}>
+            <TouchableOpacity ref={periodSelectorRef} style={styles.periodSelector} onPress={handleOpenDropdown}>
               <Text style={styles.periodText}>{getTimeRangeLabel()}</Text>
               <Ionicons name="chevron-down" size={14} color="#7E72B5" />
             </TouchableOpacity>
@@ -907,7 +929,16 @@ const step = () => {
         onRequestClose={() => setDropdownVisible(false)}
       >
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setDropdownVisible(false)}>
-          <View style={styles.dropdownContainer}>
+          <View
+            style={[
+              styles.dropdownContainer,
+              {
+                position: "absolute",
+                top: dropdownPosition.top,
+                right: dropdownPosition.right,
+              },
+            ]}
+          >
             {timeRangeOptions.map((option) => (
               <TouchableOpacity
                 key={option.id}
@@ -927,7 +958,12 @@ const step = () => {
         </TouchableOpacity>
       </Modal>
 
-      <StepsModal visible={modalVisible} onClose={() => setModalVisible(false)} onSave={handleSaveGoal} reload={getStepStatus} />
+      <StepsModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSave={handleSaveGoal}
+        reload={getStepStatus}
+      />
     </SafeAreaView>
   )
 }
@@ -1194,14 +1230,11 @@ const styles = StyleSheet.create({
   // Dropdown styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    // backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
   },
   dropdownContainer: {
-    position: "absolute",
-    top: 220, // Position below the period selector
-    right: 20,
     backgroundColor: "#FFFFFF",
     borderRadius: 8,
     borderWidth: 1,

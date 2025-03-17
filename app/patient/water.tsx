@@ -1,4 +1,4 @@
-"use client"
+//
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
@@ -71,6 +71,8 @@ export default function water() {
   const [modalVisible, setModalVisible] = useState(false)
   const [newGoal, setNewGoal] = useState("")
   const [dropdownVisible, setDropdownVisible] = useState(false)
+  const periodSelectorRef = useRef<TouchableOpacity>(null)
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 })
 
   // State variables for water data
   const [waterData, setWaterData] = useState<DataItem[]>([])
@@ -687,7 +689,24 @@ export default function water() {
               <MaterialIcons name="bar-chart" size={18} color="#99CEFF" />
               <Text style={styles.analysisTabText}>Analysis</Text>
             </View>
-            <TouchableOpacity style={styles.periodSelector} onPress={() => setDropdownVisible(true)}>
+            <TouchableOpacity
+              ref={periodSelectorRef}
+              style={styles.periodSelector}
+              onPress={() => {
+                // Measure the position of the period selector button
+                if (periodSelectorRef.current) {
+                  periodSelectorRef.current.measure((x: any, y: any, width: number, height: any, pageX: any, pageY: any) => {
+                    setDropdownPosition({
+                      top: pageY + 10, // Position below the button with a small gap
+                      right: width > 0 ? Dimensions.get("window").width - (pageX + width) : 20,
+                    })
+                    setDropdownVisible(true)
+                  })
+                } else {
+                  setDropdownVisible(false)
+                }
+              }}
+            >
               <Text style={styles.periodText}>{getTimeRangeLabel()}</Text>
               <Ionicons name="chevron-down" size={14} color="#4dabff" />
             </TouchableOpacity>
@@ -779,8 +798,8 @@ export default function water() {
         animationType="fade"
         onRequestClose={() => setDropdownVisible(false)}
       >
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setDropdownVisible(false)}>
-          <View style={styles.dropdownContainer}>
+        <TouchableOpacity style={styles.modalOverlay1} activeOpacity={1} onPress={() => setDropdownVisible(false)}>
+          <View style={[styles.dropdownContainer, { top: dropdownPosition.top, right: dropdownPosition.right }]}>
             {timeRangeOptions.map((option) => (
               <TouchableOpacity
                 key={option.id}
@@ -881,6 +900,12 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalOverlay1: {
+    flex: 1,
+    // backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -1257,8 +1282,6 @@ const styles = StyleSheet.create({
   // Dropdown styles
   dropdownContainer: {
     position: "absolute",
-    top: 220, // Position below the period selector
-    right: 20,
     backgroundColor: "#FFFFFF",
     borderRadius: 8,
     borderWidth: 1,
@@ -1293,4 +1316,5 @@ const styles = StyleSheet.create({
     fontFamily: "Inter600",
   },
 })
+
 
