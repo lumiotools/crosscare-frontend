@@ -1,17 +1,40 @@
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "react-native";
 import { router } from "expo-router";
 import { Feather, Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const weightunit = () => {
 
-    const [selectedUnit, setSelectedUnit] = useState('ml');
+    const [selectedUnit, setSelectedUnit] = useState('kg');
 
-  const handleSave = () => {
-    // Save the selected unit and go back
-    router.back();
+    useEffect(() => {
+      const loadWeightUnit = async () => {
+          try {
+              const storedUnit = await AsyncStorage.getItem('weightUnit');
+              if (storedUnit) {
+                  setSelectedUnit(storedUnit);
+              }
+          } catch (error) {
+              console.error("Error loading weight unit:", error);
+          }
+      };
+      
+      loadWeightUnit();
+  }, []);
+
+  const handleSave = async () => {
+      try {
+          // Save the selected unit to AsyncStorage
+          await AsyncStorage.setItem('weightUnit', selectedUnit);
+          // Go back to the previous screen
+          router.back();
+          
+      } catch (error) {
+          console.error("Error saving weight unit:", error);
+      }
   };
   return (
     <SafeAreaView style={styles.container}>
@@ -36,10 +59,10 @@ const weightunit = () => {
         <View style={styles.optionsContainer}>
           <TouchableOpacity 
             style={styles.optionRow}
-            onPress={() => setSelectedUnit('ml')}
+            onPress={() => setSelectedUnit('kg')}
           >
             <Text style={styles.optionText}>Kilogrmas (kg)</Text>
-            {selectedUnit === 'ml' && (
+            {selectedUnit === 'kg' && (
               <Ionicons name="checkmark" size={16} color="#E89545" />
             )}
           </TouchableOpacity>
@@ -48,10 +71,10 @@ const weightunit = () => {
           
           <TouchableOpacity 
             style={styles.optionRow}
-            onPress={() => setSelectedUnit('fl.oz')}
+            onPress={() => setSelectedUnit('lbs')}
           >
             <Text style={styles.optionText}>Pounds (lbs)</Text>
-            {selectedUnit === 'fl.oz' && (
+            {selectedUnit === 'lbs' && (
               <Ionicons name="checkmark" size={16} color="#E89545" />
             )}
           </TouchableOpacity>

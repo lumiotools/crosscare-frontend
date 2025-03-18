@@ -1,6 +1,6 @@
-//
+"use client"
 
-import { useState, useEffect, useMemo, useRef } from "react"
+import { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import {
 import { Ionicons, Feather, MaterialIcons } from "@expo/vector-icons"
 import WeightIcon from "@/assets/images/Svg/WeightIcon"
 import { SafeAreaView } from "react-native-safe-area-context"
-import { router } from "expo-router"
+import { router, useFocusEffect } from "expo-router"
 import { LinearGradient } from "expo-linear-gradient"
 import WeightModal from "./modal/weightmodal"
 import { useSelector } from "react-redux"
@@ -74,6 +74,18 @@ const emptyChartData = [
 // Default empty today data
 const emptyTodayData = [{ day: "Today", weight: 0, date: new Date().toISOString().split("T")[0] }]
 
+const convertWeight = (weight: number, fromUnit: string, toUnit: string): number => {
+  if (fromUnit === toUnit) return weight
+
+  if (fromUnit === "kg" && toUnit === "lbs") {
+    return weight * 2.20462 // kg to lbs
+  } else if (fromUnit === "lbs" && toUnit === "kg") {
+    return weight / 2.20462 // lbs to kg
+  }
+
+  return weight // Default case
+}
+
 const WeightScreen = () => {
   const [timeRange, setTimeRange] = useState("week") // "today", "week", "month", "lastMonth"
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
@@ -89,6 +101,50 @@ const WeightScreen = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [filteredData, setFilteredData] = useState<DataItem[]>([])
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 })
+  const [weightUnit, setWeightUnit] = useState("kg")
+  const [lastKnownUnit, setLastKnownUnit] = useState("kg")
+
+  // Load weight unit on initial mount
+  useEffect(() => {
+    loadWeightUnit()
+  }, [])
+
+  // Use useFocusEffect to reload data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      const checkAndReloadWeightUnit = async () => {
+        try {
+          const storedUnit = await AsyncStorage.getItem("weightUnit")
+          if (storedUnit && storedUnit !== lastKnownUnit) {
+            console.log("Weight unit changed from", lastKnownUnit, "to", storedUnit)
+            setWeightUnit(storedUnit)
+            setLastKnownUnit(storedUnit)
+            // Reload weight data with new unit
+            getWeightStatus()
+          }
+        } catch (error) {
+          console.error("Error checking weight unit:", error)
+        }
+      }
+
+      checkAndReloadWeightUnit()
+
+      // Return cleanup function
+      return () => {}
+    }, [lastKnownUnit]),
+  )
+
+  const loadWeightUnit = async () => {
+    try {
+      const storedUnit = await AsyncStorage.getItem("weightUnit")
+      if (storedUnit) {
+        setWeightUnit(storedUnit)
+        setLastKnownUnit(storedUnit)
+      }
+    } catch (error) {
+      console.error("Error loading weight unit:", error)
+    }
+  }
 
   // Function to get the current week number
   const getWeekNumber = (date: Date) => {
@@ -308,28 +364,27 @@ const WeightScreen = () => {
 
   // Process and filter data based on time range
   const processDataForTimeRange = (data: DataItem[], timeRange: string) => {
-    const allDays = generateAllDays(timeRange);
-  
+    const allDays = generateAllDays(timeRange)
+
     if (data.length === 0) {
-      return allDays;
+      return allDays
     }
-  
-    const dataMap = new Map();
+
+    const dataMap = new Map()
     data.forEach((item) => {
       if (item.date) {
         // Ensure we're working with a string date
-        const dateKey = typeof item.date === 'string' 
-          ? item.date.split('T')[0] 
-          : new Date(item.date).toISOString().split('T')[0];
-        dataMap.set(dateKey, item);
+        const dateKey =
+          typeof item.date === "string" ? item.date.split("T")[0] : new Date(item.date).toISOString().split("T")[0]
+        dataMap.set(dateKey, item)
       }
-    });
-  
+    })
+
     // For "today" view, we need to specifically check if today's data exists
     if (timeRange === "today") {
-      const todayStr = new Date().toISOString().split("T")[0];
-      const todayData = dataMap.get(todayStr);
-  
+      const todayStr = new Date().toISOString().split("T")[0]
+      const todayData = dataMap.get(todayStr)
+
       if (todayData) {
         return [
           {
@@ -338,52 +393,52 @@ const WeightScreen = () => {
             day: "Today",
             weight: todayData.weight || 0,
           },
-        ];
+        ]
       } else {
-        return allDays; // Return empty today template
+        return allDays // Return empty today template
       }
     }
-  
+
     // For week view, ensure we map data to the correct days
     if (timeRange === "week") {
       return allDays.map((day) => {
-        const existingData = dataMap.get(day.date);
+        const existingData = dataMap.get(day.date)
         if (existingData) {
           return {
             ...day,
             weight: existingData.weight || 0,
-          };
+          }
         }
-        return day;
-      });
+        return day
+      })
     }
-  
+
     // For month views, handle the date ranges
     return allDays.map((day) => {
       // For range labels, just return as is
       if (day.isRangeLabel) {
-        return day;
+        return day
       }
-  
-      const existingData = dataMap.get(day.date);
+
+      const existingData = dataMap.get(day.date)
       if (existingData) {
         return {
           ...day,
           weight: existingData.weight || 0,
           isRangeLabel: day.isRangeLabel,
           rangeLabel: day.rangeLabel,
-        };
+        }
       }
-      return day;
-    });
-  };
+      return day
+    })
+  }
 
   const getWeightStatus = async () => {
-    setIsLoading(true);
+    setIsLoading(true)
     try {
       // First check if we need to reset weekly data
-      const wasReset = await checkAndResetWeeklyData();
-  
+      const wasReset = await checkAndResetWeeklyData()
+
       // Make the actual API call instead of using dummy data
       const response = await fetch(
         `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/weightStatus`,
@@ -392,86 +447,95 @@ const WeightScreen = () => {
           headers: {
             "Content-Type": "application/json",
           },
-        }
-      );
-  
-      const data = await response.json();
-      console.log("API weight data:", data);
-  
+        },
+      )
+
+      const data = await response.json()
+      console.log("API weight data:", data)
+
       if (data.data) {
-        setCurrentWeight(data.data.lastWeight);
-  
+        const weightInKg = data.data.lastWeight
+
+        // Convert if needed for display
+        const displayWeight = weightUnit === "lbs" ? convertWeight(weightInKg, "kg", "lbs") : weightInKg
+
+        setCurrentWeight(displayWeight)
+
         if (data.data.weightData && data.data.weightData.length > 0) {
           // Process the weight data from the API
-          const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"];
-          const fullWeekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  
+          const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"]
+          const fullWeekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
           // Create a map to store unique weight data for each day
-          const weightMap = new Map();
-  
+          const weightMap = new Map()
+
           // Process all data regardless of time range
           data.data.weightData.forEach((entry) => {
-            if (!entry.date || !entry.weight) return; // Skip invalid entries
-            
-            const entryDate = new Date(entry.date);
-            const fullDay = entryDate.toLocaleString("en-US", { weekday: "long" }); // Get full weekday name
-            const dayIndex = fullWeekdays.indexOf(fullDay); // Get unique index
-  
-            if (dayIndex === -1) return; // Skip invalid dates
-  
-            const dayLetter = fixedWeekdays[dayIndex]; // Get S, M, T, W...
-            const dateString = entryDate.toISOString().split("T")[0];
+            if (!entry.date || !entry.weight) return // Skip invalid entries
+
+            const entryDate = new Date(entry.date)
+            const fullDay = entryDate.toLocaleString("en-US", { weekday: "long" }) // Get full weekday name
+            const dayIndex = fullWeekdays.indexOf(fullDay) // Get unique index
+
+            if (dayIndex === -1) return // Skip invalid dates
+
+            const dayLetter = fixedWeekdays[dayIndex] // Get S, M, T, W...
+            const dateString = entryDate.toISOString().split("T")[0]
             const formattedDate = entryDate
               .toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
                 year: "numeric",
               })
-              .toUpperCase();
-  
+              .toUpperCase()
+
+            // Convert weight if needed for display
+            const weightInKg = Number.parseFloat(entry.weight)
+            const displayWeight = weightUnit === "lbs" ? convertWeight(weightInKg, "kg", "lbs") : weightInKg
+
             // Store data with ISO date string as key
             weightMap.set(dateString, {
               day: dayLetter,
-              weight: parseFloat(entry.weight),
+              weight: displayWeight, // Use the converted weight for display
               date: dateString,
               formattedDate: formattedDate,
-            });
-          });
-  
+            })
+          })
+
           // Convert map to array
-          const processedData = Array.from(weightMap.values());
-          setWeightData(processedData);
-  
+          const processedData = Array.from(weightMap.values())
+          setWeightData(processedData)
+
           // Process data for current time range
-          const filteredData = processDataForTimeRange(processedData, timeRange);
-          setFilteredData(filteredData);
+          const filteredData = processDataForTimeRange(processedData, timeRange)
+          setFilteredData(filteredData)
         } else {
           // Use default days with zero weight
-          setWeightData(DUMMY);
-  
+          setWeightData(DUMMY)
+
           // Process data for current time range
-          const filteredData = processDataForTimeRange(DUMMY, timeRange);
-          setFilteredData(filteredData);
+          const filteredData = processDataForTimeRange(DUMMY, timeRange)
+          setFilteredData(filteredData)
         }
       } else {
         // Handle case where data.data is undefined
-        setWeightData(DUMMY);
-  
+        setWeightData(DUMMY)
+
         // Process data for current time range
-        const filteredData = processDataForTimeRange(DUMMY, timeRange);
-        setFilteredData(filteredData);
+        const filteredData = processDataForTimeRange(DUMMY, timeRange)
+        setFilteredData(filteredData)
       }
     } catch (error) {
-      console.error("Error fetching weight status:", error);
-      setWeightData(DUMMY);
-  
+      console.error("Error fetching weight status:", error)
+      setWeightData(DUMMY)
+
       // If there's an error, still set filtered data based on time range
-      const filteredData = processDataForTimeRange(DUMMY, timeRange);
-      setFilteredData(filteredData);
+      const filteredData = processDataForTimeRange(DUMMY, timeRange)
+      setFilteredData(filteredData)
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   // Update filtered data when time range changes
   useEffect(() => {
@@ -514,6 +578,9 @@ const WeightScreen = () => {
   const handleSaveWeight = async (weightValue: string) => {
     const parsedWeight = Number.parseFloat(weightValue)
     if (!isNaN(parsedWeight) && parsedWeight > 0) {
+      // Convert to kg for storage if user is using lbs
+      const weightInKg = weightUnit === "lbs" ? convertWeight(parsedWeight, "lbs", "kg") : parsedWeight
+
       setCurrentWeight(parsedWeight)
       setModalVisible(false)
 
@@ -791,14 +858,14 @@ const WeightScreen = () => {
             <View style={styles.tooltipContent}>
               <Text style={styles.tooltipTitle}>WEIGHT</Text>
               <Text style={styles.tooltipWeight}>
-                {item.weight}{" "}
+                {item.weight.toFixed(1)}{" "}
                 <Text
                   style={{
                     fontSize: 16,
                     color: "#FFA44C",
                   }}
                 >
-                  KG
+                  {weightUnit.toUpperCase()}
                 </Text>
               </Text>
               <Text style={styles.tooltipDate}>{formatDate(item.date)}</Text>
@@ -837,14 +904,14 @@ const WeightScreen = () => {
             <Text style={styles.weightValue}>
               {currentWeight ? (
                 <>
-                  {currentWeight}
+                  {currentWeight.toFixed(0)}
                   <Text
                     style={{
                       fontSize: 20,
                       fontFamily: "Inter500",
                     }}
                   >
-                    kg
+                    {weightUnit}
                   </Text>
                 </>
               ) : (
@@ -882,13 +949,15 @@ const WeightScreen = () => {
               onPress={() => {
                 // Measure the position of the period selector button
                 if (periodSelectorRef.current) {
-                  periodSelectorRef.current.measure((x: any, y: any, width: number, height: any, pageX: any, pageY: any) => {
-                    setDropdownPosition({
-                      top: pageY + 10, // Position below the button with a small gap
-                      right: width > 0 ? Dimensions.get("window").width - (pageX + width) : 20,
-                    })
-                    setDropdownVisible(true)
-                  })
+                  periodSelectorRef.current.measure(
+                    (x: any, y: any, width: number, height: any, pageX: any, pageY: any) => {
+                      setDropdownPosition({
+                        top: pageY + 10, // Position below the button with a small gap
+                        right: width > 0 ? Dimensions.get("window").width - (pageX + width) : 20,
+                      })
+                      setDropdownVisible(true)
+                    },
+                  )
                 } else {
                   setDropdownVisible(false)
                 }
