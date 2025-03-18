@@ -172,7 +172,7 @@ export default function addmedication() {
   
       if (response.ok) { // Changed from response.success to response.ok
         console.log("Success:", data);
-        alert("Medication added successfully!");
+        // alert("Medication added successfully!");
         router.back();
       } else {
         console.log("Error:", data);

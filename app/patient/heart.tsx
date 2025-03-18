@@ -91,7 +91,7 @@ const generateRealtimeHeartData = () => {
     const dayAbbr = "SMTWTFS"[dayIndex]
 
     // Generate a random BPM between 70-85
-    const bpm = Math.floor(Math.random() * 15) + 70
+    const bpm = Math.floor(Math.random() * 15) + 80
 
     result.push({
       day: dayAbbr,

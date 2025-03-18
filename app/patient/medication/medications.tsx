@@ -1,4 +1,4 @@
-//
+"use client"
 
 import React, { useEffect, useState } from "react"
 import { StyleSheet, Text, View, StatusBar, TouchableOpacity, ScrollView, ActivityIndicator } from "react-native"
@@ -23,15 +23,16 @@ interface Medication {
   originalDate: string
   times: MedicationTime[]
 }
+function AlertDialog({ visible, onClose, onConfirm, medicationName }: { visible: boolean, onClose: () => void, onConfirm: () => void, medicationName: string }) {
+  const user = useSelector((state: any) => state.user)
+  const [userName, setUserName] = useState(user?.user_name || "")
 
-interface AlertDialogProps {
-  visible: boolean
-  onClose: () => void
-  onConfirm: () => void
-  medicationName: string
-}
+  useEffect(() => {
+    if (user && user.user_name) {
+      setUserName(user.user_name)
+    }
+  }, [user])
 
-const AlertDialog: React.FC<AlertDialogProps> = ({ visible, onClose, onConfirm, medicationName }) => {
   if (!visible) return null
 
   return (
@@ -55,7 +56,7 @@ const AlertDialog: React.FC<AlertDialogProps> = ({ visible, onClose, onConfirm, 
                 color: "#7B7B7B",
               }}
             >
-              Hi Name!
+              {`Hi ${userName}`}
             </Text>
             <Text
               style={{
@@ -191,11 +192,11 @@ export default function medications() {
       const newCompletionStatus = !time?.isCompleted
 
       // Prepare the API request
-      const userId = user?.user_id;
-      const endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${userId}/updateStatus/${baseMedicationId}/completed`
+      const userId = user?.user_id
+      const endpoint = `http://192.168.1.102:8000/api/user/activity/${userId}/updateStatus/${baseMedicationId}/completed`
 
       console.log(`Sending request to: ${endpoint}`)
-      console.log(`Request body:`, { completed: newCompletionStatus, date: medicationDate })
+      console.log(`Request body:`, { completed: newCompletionStatus, date: medicationDate, time: timeToToggle })
 
       // Make the API call - using PUT method as specified
       const response = await fetch(endpoint, {
@@ -206,6 +207,7 @@ export default function medications() {
         body: JSON.stringify({
           completed: newCompletionStatus,
           date: medicationDate, // Using the YYYY-MM-DD format
+          time: timeToToggle,
         }),
       })
 
@@ -346,6 +348,12 @@ export default function medications() {
     console.log(`Date range: ${start?.toDateString()} to ${end?.toDateString()}`)
   }
 
+  // Add this helper function at the top of your component (before the return statement)
+  const getDayOfWeekAbbr = (dayIndex: number): string => {
+    const dayAbbreviations = ["SU", "M", "T", "W", "TH", "F", "SA"]
+    return dayAbbreviations[dayIndex]
+  }
+
   const getMedicationList = async () => {
     setIsLoading(true)
     try {
@@ -356,7 +364,7 @@ export default function medications() {
       }
 
       // Construct API URL (without date filters - we'll filter client-side)
-      const apiUrl = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/getMedication`
+      const apiUrl = `http://192.168.1.102:8000/api/user/activity/${user.user_id}/getMedication`
 
       console.log("Fetching medications from:", apiUrl)
       const response = await fetch(apiUrl)
@@ -387,6 +395,9 @@ export default function medications() {
           const endDate = new Date(item.endDate)
           const allowedDays = item.days.map((d: string) => dayMapping[d]) // Convert days to numbers
 
+          // Get the completed days of week for checking
+          const completedDaysOfWeek = item.completedDaysOfWeek || []
+
           const currentDate = new Date(startDate)
           while (currentDate <= endDate) {
             if (allowedDays.includes(currentDate.getDay())) {
@@ -399,6 +410,20 @@ export default function medications() {
               const year = currentDate.getFullYear()
               const formattedDate = `${day} ${month}, ${year}`
 
+              // Get the day of week abbreviation for the current date
+              const dayOfWeekAbbr = getDayOfWeekAbbr(currentDate.getDay())
+
+              // Check if this specific date is in completedDates
+              const dateStr = currentDate.toISOString().split("T")[0]
+              const isDateCompleted =
+                item.completedDates && item.completedDates.some((d:string) => d === dateStr || d.startsWith(dateStr))
+
+              // Check if the day of week is in completedDaysOfWeek
+              const isDayOfWeekCompleted = completedDaysOfWeek.includes(dayOfWeekAbbr)
+
+              // A medication is completed if either the specific date or the day of week is marked as completed
+              const isCompleted = isDateCompleted || isDayOfWeekCompleted || item.completed
+
               // Create a medication object for the allowed day
               formattedMedications.push({
                 id: `${item.id}-${originalDateStr}`, // Unique ID
@@ -408,7 +433,7 @@ export default function medications() {
                 times: Array.isArray(item.times)
                   ? item.times.map((timeString: string) => ({
                       time: timeString,
-                      isCompleted: item.completed,
+                      isCompleted: isCompleted,
                     }))
                   : [],
               })
@@ -535,27 +560,6 @@ export default function medications() {
           endDate={endDate}
           // onLayout={handleButtonLayout}
         />
-
-        {/* Add this to show when a filter is active */}
-        {/* {(startDate || endDate) && (
-          <View style={styles.filterIndicator}>
-            <Text style={styles.filterText}>
-              Showing medications {startDate ? `from ${startDate.toLocaleDateString()}` : ''} 
-              {startDate && endDate ? ' to ' : ''}
-              {endDate ? `to ${endDate.toLocaleDateString()}` : ''}
-            </Text>
-            <TouchableOpacity 
-              style={styles.clearFilterButton}
-              onPress={() => {
-                setStartDate(null);
-                setEndDate(null);
-                setMedications(allMedications); // Reset to show all medications
-              }}
-            >
-              <Text style={styles.clearFilterText}>Clear</Text>
-            </TouchableOpacity>
-          </View>
-        )} */}
 
         <DateRangePicker
           visible={isVisible}
