@@ -186,148 +186,209 @@ export default function water() {
     return !lastAccessedDate || lastAccessedDate !== today;
   };
 
-  // Fetch water data from API
-  useEffect(() => {
-    const fetchWaterData = async () => {
-      setIsLoading(true);
-      try {
-        // Check if it's a new day
-        if (isNewDay()) {
-          // Reset glass count to 0 for the new day
-          setGlassCount(0);
-          
-          // Update the last accessed date in the store
-          useWaterStore.getState().setLastAccessedDate(new Date().toISOString().split('T')[0]);
-          
-          console.log("New day detected - resetting glass count to 0");
+  // Modify the fetchWaterData function to better handle updates from AI
+  const fetchWaterData = async () => {
+    setIsLoading(true);
+    try {
+      // Check if it's a new day
+      if (isNewDay()) {
+        // Reset glass count to 0 for the new day
+        setGlassCount(0);
+        
+        // Update the last accessed date in the store
+        useWaterStore.getState().setLastAccessedDate(new Date().toISOString().split('T')[0]);
+        
+        console.log("New day detected - resetting glass count to 0");
+      }
+      
+      const response = await fetch(
+        `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/waterstatus`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch water data');
+      }
+      
+      const data = await response.json();
+      console.log("Refreshed water data:", data);
+      
+      // Process the data - ensure all fields are properly formatted
+      const processedData = data.map((item: any) => {
+        const formattedDate = formatDate(item.date);
+        
+        // Check if the value is small (likely glasses) or large (likely milliliters)
+        const isGlassCount = item.waterMl !== null && item.waterMl < 100;
+        
+        // Convert to milliliters if it's a glass count
+        const waterMl = isGlassCount ? item.waterMl * 250 : item.waterMl;
+        
+        return {
+          ...item,
+          date: formattedDate,
+          waterMl: waterMl || 0,
+          waterL: waterMl / 1000 || 0,
+          goalMl: item.goalMl !== null ? Number(item.goalMl) * 250 : 0, // Assuming goalMl is also in glasses
+          day: item.day || new Date(formattedDate).toLocaleDateString('en-US', { weekday: 'short' }).charAt(0)
+        };
+      });
+      
+      console.log("Processed data:", processedData);
+      setWaterData(processedData);
+      
+      // Find today's data
+      const today = new Date().toISOString().split('T')[0];
+      const todayData = processedData.find((item: any) => item.date === today);
+      
+      if (todayData) {
+        // IMPORTANT CHANGE: Always update glassCount from API
+        // This ensures synchronization between API and UI
+        if (todayData.waterMl > 0) {
+          const newGlassCount = Math.round(todayData.waterMl / 250);
+          console.log(`Updating glass count from API: ${newGlassCount} glasses`);
+          setGlassCount(newGlassCount);
         }
         
-        const response = await fetch(
-          `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/waterstatus`
+        // Only set maxGlasses if it's not already set
+        if (maxGlasses === 0 && todayData.goalMl > 0) {
+          setMaxGlasses(Math.round(todayData.goalMl / 250)); // Convert ml to glasses
+          setGoalSet(true);
+        }
+      } else {
+        // If there's no data for today but we have data for other days,
+        // use the goal from the most recent day
+        const sortedData = [...processedData].sort((a, b) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
         );
         
-        if (!response.ok) {
-          throw new Error('Failed to fetch water data');
-        }
-        
-        const data = await response.json();
-        console.log("Refreshed water data:", data);
-        
-        // Process the data - ensure all fields are properly formatted
-        const processedData = data.map((item: any) => {
-          const formattedDate = formatDate(item.date);
-          
-          // Check if the value is small (likely glasses) or large (likely milliliters)
-          const isGlassCount = item.waterMl !== null && item.waterMl < 100;
-          
-          // Convert to milliliters if it's a glass count
-          const waterMl = isGlassCount ? item.waterMl * 250 : item.waterMl;
-          
-          return {
-            ...item,
-            date: formattedDate,
-            waterMl: waterMl || 0,
-            waterL: waterMl / 1000 || 0,
-            goalMl: item.goalMl !== null ? Number(item.goalMl) * 250 : 0, // Assuming goalMl is also in glasses
-            day: item.day || new Date(formattedDate).toLocaleDateString('en-US', { weekday: 'short' }).charAt(0)
-          };
-        });
-        
-        console.log("Processed data:", processedData);
-        setWaterData(processedData);
-        
-        // Find today's data
-        const today = new Date().toISOString().split('T')[0];
-        const todayData = processedData.find((item: any) => item.date === today);
-        
-        if (todayData) {
-          // For a new day, we've already reset glassCount to 0
-          // Only update glassCount from API if we haven't set it yet
-          if (glassCount === 0 && todayData.waterMl > 0) {
-            setGlassCount(Math.round(todayData.waterMl / 250)); // Convert ml to glasses
-          }
-          
-          // Only set maxGlasses if it's not already set
-          if (maxGlasses === 0 && todayData.goalMl > 0) {
-            setMaxGlasses(Math.round(todayData.goalMl / 250)); // Convert ml to glasses
-            setGoalSet(true);
-          }
-        } else {
-          // If there's no data for today but we have data for other days,
-          // use the goal from the most recent day
-          const sortedData = [...processedData].sort((a, b) => 
-            new Date(b.date).getTime() - new Date(a.date).getTime()
-          );
-          
-          if (sortedData.length > 0 && maxGlasses === 0 && sortedData[0].goalMl > 0) {
+        if (sortedData.length > 0) {
+          // If no current goal is set but we have historical data with goals
+          if (maxGlasses === 0 && sortedData[0].goalMl > 0) {
             setMaxGlasses(Math.round(sortedData[0].goalMl / 250));
             setGoalSet(true);
           }
         }
-        
-        // Update the water data with the current store values for today
-        setWaterData(prevData => {
-          const today = new Date().toISOString().split('T')[0];
-          return prevData.map(item => {
-            if (item.date === today) {
-              return {
-                ...item,
-                waterMl: glassCount * 250,
-                waterL: (glassCount * 250) / 1000,
-                goalMl: maxGlasses * 250
-              };
-            }
-            return item;
-          });
-        });
-      } catch (error) {
-        console.error("Error fetching water data:", error);
-      } finally {
-        setIsLoading(false);
       }
-    };
-    
-    fetchWaterData();
-  }, [user.user_id, maxGlasses, setGlassCount, setMaxGlasses]);
+    } catch (error) {
+      console.error("Error fetching water data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  // Update water intake when slider changes
+  // Add a dedicated function to sync water intake from external sources (like AI)
+  const syncWaterIntakeFromApi = async () => {
+    try {
+      console.log("Syncing water intake from API...");
+      
+      // First make the API call to get the latest data
+      const response = await fetch(
+        `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/waterstatus`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch water data for sync');
+      }
+      
+      const data = await response.json();
+      
+      // Find today's data
+      const today = new Date().toISOString().split('T')[0];
+      const todayData = data.find((item: any) => formatDate(item.date) === today);
+      
+      if (todayData) {
+        // Check if today's API data is different from local state
+        const apiGlassCount = Math.round((todayData.waterMl < 100 ? todayData.waterMl * 250 : todayData.waterMl) / 250);
+        
+        if (apiGlassCount !== glassCount) {
+          console.log(`Syncing water intake: API shows ${apiGlassCount} glasses, local shows ${glassCount} glasses`);
+          
+          // Update local state with API value
+          setGlassCount(apiGlassCount);
+          
+          // Update water data state with new value
+          setWaterData(prevData => {
+            return prevData.map(item => {
+              if (formatDate(item.date) === today) {
+                const waterMl = apiGlassCount * 250;
+                return {
+                  ...item,
+                  waterMl: waterMl,
+                  waterL: waterMl / 1000
+                };
+              }
+              return item;
+            });
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error syncing water intake from API:", error);
+    }
+  };
+
+  // Modify initial useEffect to also poll for updates and sync with external changes
+  useEffect(() => {
+    fetchWaterData();
+    
+    // Set up a polling interval to check for updates from external sources (like AI)
+    const syncInterval = setInterval(() => {
+      syncWaterIntakeFromApi();
+    }, 20000); // Check every 20 seconds
+    
+    return () => clearInterval(syncInterval);
+  }, [user.user_id, setGlassCount, setMaxGlasses]);
+
+  // Modify the postWaterIntake function to handle both local updates and external updates
+  const postWaterIntake = async (newGlassCount = glassCount) => {
+    try {
+      // Update local water data for today first for immediate UI feedback
+      setWaterData(prevData => {
+        const today = new Date().toISOString().split('T')[0];
+        return prevData.map(item => {
+          if (item.date === today) {
+            return {
+              ...item,
+              waterMl: newGlassCount * 250,
+              waterL: (newGlassCount * 250) / 1000
+            };
+          }
+          return item;
+        });
+      });
+      
+      // Then update the API - send the glass count directly as that's what the backend expects
+      const response = await fetch(`https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/water`,{
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          water: newGlassCount // Send the number of glasses, not milliliters
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API returned status ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log("Water intake update response:", data);
+      
+      // After successful API update, refresh water data to ensure everything is in sync
+      // Add a small delay to allow the database to update
+      setTimeout(() => {
+        fetchWaterData();
+      }, 500);
+      
+    } catch (error) {
+      console.error("Error updating water intake:", error);
+    }
+  };
+
+  // Update the glassCount useEffect to use the modified postWaterIntake function
   useEffect(() => {
     // Skip the initial render when glassCount is 0
     if (glassCount === 0) return;
-    
-    const postWaterIntake = async () => {
-      try {
-        // Update local water data for today first for immediate UI feedback
-        setWaterData(prevData => {
-          const today = new Date().toISOString().split('T')[0];
-          return prevData.map(item => {
-            if (item.date === today) {
-              return {
-                ...item,
-                waterMl: glassCount * 250,
-                waterL: (glassCount * 250) / 1000
-              };
-            }
-            return item;
-          });
-        });
-        
-        // Then update the API - send the glass count directly as that's what the backend expects
-        const response = await fetch(`https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/water`,{
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            water: glassCount // Send the number of glasses, not milliliters
-          }),
-        });
-        const data = await response.json();
-        console.log(data);
-      } catch (error) {
-        console.log(error);
-      }
-    };
     
     postWaterIntake();
   }, [glassCount, user.user_id]);

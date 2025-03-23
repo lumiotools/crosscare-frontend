@@ -1,5 +1,3 @@
-//
-
 import { useEffect, useRef, useState } from "react"
 import {
   StyleSheet,
@@ -22,7 +20,8 @@ import VoiceRecorder from "@/components/VoiceRecorder"
 import AudioMessage from "@/components/AudioMessage"
 import { useSelector } from "react-redux"
 import axios from "axios"
-import  {systemPrompts}  from '@/constants/systemPrompts';
+import { systemPrompts } from '@/constants/systemPrompts';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface Message {
   id: string
@@ -30,6 +29,69 @@ interface Message {
   timestamp: Date
   type: "text" | "audio"
   content: string // text content or audio URI
+}
+
+// Define regex patterns for more advanced pattern matching
+const LOG_PATTERNS = {
+  water: [
+    /(?:log|record|track|add|drank|had|consumed).*?(\d+(?:\.\d+)?).*?(?:glass|glasses|cup|cups|ml|milliliters|millilitres)/i,
+    /(?:track|log|record|add)\s+(\d+(?:\.\d+)?)\s+(?:glass|glasses|cup|cups|ml|milliliters|millilitres).*?water/i,
+    /my water intake (?:today|now|just now) (?:is|was)\s+(\d+(?:\.\d+)?)\s+(?:glass|glasses|cup|cups|ml|milliliters|millilitres)/i,
+    /(?:i\s+)?(?:drank|had|took|consumed)\s+(\d+(?:\.\d+)?)\s+(?:glass|glasses|cup|cups|ml|milliliters|millilitres)(?:\s+of water)?/i,
+    // New patterns for incremental logging
+    /(?:i\s+)?(?:drank|had|took|consumed)\s+(\d+(?:\.\d+)?)\s+(?:more|additional|extra)\s+(?:glass|glasses|cup|cups|ml|milliliters|millilitres)(?:\s+of water)?/i,
+    /(?:add|log|record|track)\s+(\d+(?:\.\d+)?)\s+(?:more|additional|extra)\s+(?:glass|glasses|cup|cups|ml|milliliters|millilitres)(?:\s+of water)?/i,
+    /(?:i\s+)?(?:just|now|recently)\s+(?:drank|had|took|consumed)\s+(?:another|an additional|an extra)\s+(\d+(?:\.\d+)?)\s+(?:glass|glasses|cup|cups|ml|milliliters|millilitres)(?:\s+of water)?/i
+  ],
+  weight: [
+    /(?:log|record|track|add|weigh|measure).*?(\d+(?:\.\d+)?).*?(?:kg|kgs|kilograms?|lbs?|pounds?)/i,
+    /(?:track|log|record|add)\s+(\d+(?:\.\d+)?)\s+(?:kg|kgs|kilograms?|lbs?|pounds?).*?weight/i,
+    /my weight (?:today|now|just now) (?:is|was)\s+(\d+(?:\.\d+)?)\s+(?:kg|kgs|kilograms?|lbs?|pounds?)/i,
+    /(?:i\s+)?(?:weigh|am|measure)\s+(\d+(?:\.\d+)?)\s+(?:kg|kgs|kilograms?|lbs?|pounds?)/i
+  ],
+  steps: [
+    /(?:log|record|track|add|walk|measure).*?(\d+(?:\.\d+)?).*?(?:steps?|walked)/i,
+    /(?:track|log|record|add)\s+(\d+(?:\.\d+)?)\s+steps/i,
+    /(?:my steps?|my step count) (?:today|now|just now) (?:is|was)\s+(\d+(?:\.\d+)?)/i,
+    /(?:i\s+)?(?:walked|did|took)\s+(\d+(?:\.\d+)?)\s+steps/i
+  ],
+  heartRate: [
+    /(?:log|record|track|add|measured).*?(\d+(?:\.\d+)?).*?(?:bpm|beats per minute|heart rate|pulse)/i,
+    /(?:track|log|record|add)\s+(\d+(?:\.\d+)?)\s+(?:bpm|beats per minute).*?(?:heart|pulse)/i,
+    /my (?:heart rate|pulse) (?:today|now|just now) (?:is|was)\s+(\d+(?:\.\d+)?)/i,
+    /(?:i\s+)?(?:have|had|measured)\s+(?:a\s+)?(?:heart rate|pulse|HR) of\s+(\d+(?:\.\d+)?)/i
+  ],
+  sleep: [
+    /(?:log|record|track|add).*?sleep.*?from\s+(\d+(?::\d+)?\s*(?:am|pm)?).*?to\s+(\d+(?::\d+)?\s*(?:am|pm)?)/i,
+    /(?:i\s+)?(?:slept|sleep).*?from\s+(\d+(?::\d+)?\s*(?:am|pm)?).*?to\s+(\d+(?::\d+)?\s*(?:am|pm)?)/i,
+    /(?:i\s+)?(?:went to bed|fell asleep).*?(?:at|around)\s+(\d+(?::\d+)?\s*(?:am|pm)?).*?(?:woke up|got up).*?(?:at|around)\s+(\d+(?::\d+)?\s*(?:am|pm)?)/i,
+    /my sleep (?:yesterday|last night) was from\s+(\d+(?::\d+)?\s*(?:am|pm)?).*?to\s+(\d+(?::\d+)?\s*(?:am|pm)?)/i
+  ]
+};
+
+const GOAL_PATTERNS = {
+  water: [
+    /(?:set|update|change).*?(?:water|hydration).*?goal.*?(\d+(?:\.\d+)?).*?(?:glass|glasses|cup|cups|ml|milliliters|millilitres)/i,
+    /(?:goal|target) (?:is|to drink|for|of).*?(\d+(?:\.\d+)?).*?(?:glass|glasses|cup|cups|ml|milliliters|millilitres)/i,
+    /(?:want|aim|going) to drink\s+(\d+(?:\.\d+)?)\s+(?:glass|glasses|cup|cups|ml|milliliters|millilitres)/i,
+    /my water goal (?:is|should be)\s+(\d+(?:\.\d+)?)\s+(?:glass|glasses|cup|cups|ml|milliliters|millilitres)/i
+  ],
+  steps: [
+    /(?:set|update|change).*?(?:steps?).*?goal.*?(\d+(?:\.\d+)?).*?(?:steps?)/i,
+    /(?:step goal|step target|walking goal|walking target) (?:is|to reach|for|of).*?(\d+(?:\.\d+)?).*?(?:steps?)/i,
+    /(?:want|aim|going) to (?:walk|reach|do)\s+(\d+(?:\.\d+)?)\s+steps/i,
+    /my step goal (?:is|should be)\s+(\d+(?:\.\d+)?)/i
+  ]
+};
+
+// Function to check if the request is for an incremental update
+function isIncrementalRequest(query: string) {
+  const incrementalPatterns = [
+    /(?:more|additional|extra|another)\s+(?:glass|glasses|cup|cups|ml|milliliters|millilitres)/i,
+    /(?:increase|increment|add to|on top of)/i
+  ];
+  
+  return incrementalPatterns.some(pattern => pattern.test(query));
 }
 
 export default function askdoula() {
@@ -81,346 +143,19 @@ export default function askdoula() {
     }
   }, [isTyping, loadingAnimation])
 
-//   const systemPrompt = `
-// You are a compassionate and knowledgeable digital doula assistant. Your role is to provide evidence-based information, emotional support, and practical advice to pregnant individuals. Always be warm, empathetic, and respectful in your responses. Keep your answers concise (under 100 words), easy to understand, and focused on the user's specific question.
+  // Add useEffect to load messages when component mounts
+  useEffect(() => {
+    loadMessages();
+  }, []);
 
-// 1. General Pregnancy Questions
-// Q: What are the early signs of pregnancy?
-//  A: Early signs include missed periods, nausea (morning sickness), fatigue, frequent urination, tender breasts, mood swings, and increased sense of smell.
-// Q: When should I see a doctor after a positive pregnancy test?
-//  A: Ideally, schedule your first prenatal appointment around 6-8 weeks after your last period to confirm pregnancy and discuss prenatal care.
-// Q: How often should I have prenatal checkups?
-//  A:
-// First 28 weeks – Every 4 weeks
-// 28-36 weeks – Every 2 weeks
-// After 36 weeks – Every week until delivery
+  // Add useEffect to save messages when they change
+  useEffect(() => {
+    if (messages.length > 0) {
+      saveMessages(messages);
+    }
+  }, [messages]);
 
-
-// 2. Nutrition & Diet (Meal Tracking Integration)
-// Q: Why is tracking meals important during pregnancy?
-//  A: Tracking meals ensures you're getting enough protein, iron, folic acid, and calcium to support your baby's growth. It also helps manage gestational diabetes and weight gain.
-// Q: I keep forgetting to eat balanced meals. What should I do?
-//  A: Try setting meal reminders. Aim for:
-// Breakfast: Protein + fiber (e.g., eggs + whole-grain toast)
-// Lunch: Lean protein + veggies (e.g., grilled chicken + salad)
-// Dinner: Healthy carbs + protein (e.g., lentils + brown rice)
-// Snacks: Nuts, yogurt, fruit
-// Chatbot Action: If meal tracking shows irregular eating habits, suggest easy meal prep ideas.
-
-// 3. Water Intake Tracking
-// Q: How much water should I drink daily?
-//  A: Pregnant women should drink 8-12 cups (2-3 liters) of water daily to support amniotic fluid levels, digestion, and circulation.
-// Q: I keep forgetting to drink water. Any tips?
-//  A:
-// Set hourly reminders in the app
-// Carry a water bottle
-// Flavor water with lemon or mint
-// Eat water-rich foods (cucumbers, oranges, watermelon)
-// Chatbot Action: If logs show low water intake, send a gentle reminder:
-//  "Staying hydrated keeps your baby safe! Try sipping some water now 😊"_
-
-// 4. Sleep Tracking & Fatigue Management
-// Q: Why am I so tired during pregnancy?
-//  A: Pregnancy hormones, increased metabolism, and carrying extra weight make you feel more fatigued, especially in the first and third trimesters.
-// Q: How can I improve my sleep?
-//  A:
-// Sleep on your left side for better circulation
-// Use a pregnancy pillow for support
-// Avoid caffeine before bedtime
-// Keep a consistent bedtime routine
-// Chatbot Action: If sleep logs show poor sleep, suggest:
-//  "Looks like you've been sleeping less. Try a relaxing bedtime routine tonight! 💙"_
-
-// 5. Step & Activity Tracking
-// Q: How much should I walk during pregnancy?
-//  A: Aim for 5,000-10,000 steps/day, but listen to your body. Walking reduces swelling, back pain, and stress.
-// Q: I am too tired to walk. What are some alternatives?
-//  A: Gentle stretching or prenatal yoga
-// Short 10-minute walks after meals
-// Swimming or water aerobics for low-impact exercise
-// Chatbot Action: If step logs show inactivity, send motivation:
-//  "Even a 5-minute walk can boost energy & mood! Want to try a short stroll? 🚶‍♀️"_
-
-// 6. Medication & Supplement Tracking
-// Q: Why should I track my prenatal vitamins?
-//  A: Taking folic acid, iron, calcium, and DHA daily helps prevent birth defects and supports baby's brain development.
-// Q: I forget to take my supplements. Any suggestions?
-//  A:
-// Keep vitamins near your bedside or toothbrush
-// Use the app's medication reminders
-// Take pills at the same time every day
-// Chatbot Action: If medication logs show missed doses, send a reminder:
-//  "Your baby needs those essential nutrients! Don't forget your prenatal today 💊"_
-
-// 7. Weight Tracking & Healthy Pregnancy Goals
-// Q: How much weight should I gain?
-//  A: Healthy weight gain depends on your pre-pregnancy BMI:
-// Underweight (BMI <18.5): Gain 28-40 lbs
-// Normal weight (BMI 18.5-24.9): Gain 25-35 lbs
-// Overweight (BMI 25-29.9): Gain 15-25 lbs
-// Obese (BMI ≥30): Gain 11-20 lbs
-// Q: I am gaining too much weight. What should I do?
-//  A:
-// Balance meals (more protein & fiber, less sugar)
-// Stay active with walks or prenatal yoga
-// Drink water before meals to reduce cravings
-// Chatbot Action: If weight logs show sudden gain, suggest a diet check-in:
-//  "Noticed a jump in weight? Let's review your meals to keep things balanced! 🍏"_
-
-// 8. Emotional Well-being & Stress Management
-// Q: How can I track my mood during pregnancy?
-//  A: Logging your mood helps identify triggers like lack of sleep, stress, or poor nutrition. If feeling overwhelmed, try:
-// Breathing exercises
-// Talking to a friend
-// Light stretching or walking
-// Q: I feel anxious often. Is this normal?
-//  A: Yes, but tracking anxiety levels can help. If stress is constant, talk to your doctor about pregnancy-safe therapy options.
-// Chatbot Action: If mood logs show frequent anxiety, suggest mindfulness exercises.
-//  "Feeling a little anxious today? Try a 5-minute deep breathing session. Inhale… exhale… 💕"_
-
-// 9. Labor & Delivery Tracking (For Third Trimester)
-// Q: How can I prepare for labor?
-//  A:
-// Track contractions (regular, intense = real labor)
-// Pack your hospital bag (clothes, toiletries, baby essentials)
-// Review birth plan (natural birth, epidural, C-section)
-// Q: How do I know when to go to the hospital?
-//  A: Go to the hospital if:
-// Contractions are every 5 minutes and last 60+ seconds
-// Water breaks (clear fluid leaking)
-// Severe pain or bleeding
-// Chatbot Action: If logs show frequent contractions, suggest contacting a doctor:
-//  "Your contractions are getting closer. It might be time! Call your doctor. 👶💙"_
-
-// 10. Postpartum Recovery Tracking
-// Q: How can I track my postpartum health?
-//  A:
-// Monitor postpartum bleeding (should decrease after 2 weeks)
-// Track baby's feeding schedule (breastfeeding/bottle)
-// Log sleep patterns (both yours & baby's)
-// Q: How can I avoid postpartum depression?
-//  A: Track mood & energy levels. If feeling persistently sad, anxious, or overwhelmed, seek support from a doctor, therapist, or support group.
-// Chatbot Action: If postpartum logs indicate low mood, suggest reaching out:
-//  "You've been feeling down often. You're not alone—talking to someone might help. 💕"_
-
-// Mood tracker
-// Physical Discomforts
-// 1. Lower Back Pain
-// Cause:
-// Hormonal changes loosen ligaments & joints
-// Growing belly shifts center of gravity
-// Weak core muscles & posture changes
-// Symptoms:
-// Dull or sharp pain in lower back
-// Worsens with prolonged standing or sitting
-// Relief Tips:
-// Use a maternity belt for support
-// Sleep with a pillow between knees
-// Gentle stretching, yoga, or swimming
-// Avoid standing for long periods
-// When to Seek Help:
-// Severe or persistent pain affecting daily life
-// Pain accompanied by fever or leg swelling
-
-// 2. Pelvic Pain (Pelvic Girdle Pain or SPD)
-// Cause:
-// Loosening of pelvic joints
-// Baby's weight pressing on the pelvis
-// Hormonal relaxin softens ligaments
-// Symptoms:
-// Pain in pelvic area, hips, or groin
-// Difficulty walking or climbing stairs
-// Relief Tips:
-// Avoid wide-legged movements
-// Sleep with a pillow between thighs
-// Wear a pelvic support band
-// Try prenatal physiotherapy
-// When to Seek Help:
-// Severe pain affecting mobility
-// Pain not improving with rest
-
-// 3. Round Ligament Pain
-// Cause:
-// Stretching of ligaments supporting the uterus
-// Sudden movements like coughing or sneezing
-// Symptoms:
-// Sharp pain in lower belly or groin
-// Brief stabbing sensation when moving
-// Relief Tips:
-// Move slowly when changing positions
-// Support belly with a pillow
-// Apply warm compress to the lower belly
-// When to Seek Help:
-// Constant severe pain
-// Pain accompanied by fever or bleeding
-
-// 4. Headaches & Migraines
-// Cause:
-// Hormonal changes (high estrogen)
-// Dehydration & low blood sugar
-// Lack of sleep or stress
-// Symptoms:
-// Persistent headache or throbbing pain
-// Sensitivity to light and sound
-// Relief Tips:
-// Drink enough water (2-3L per day)
-// Rest in a dark, quiet room
-// Cold compress on forehead
-// Avoid caffeine withdrawal
-// When to Seek Help:
-// Severe, sudden headache with vision changes
-// Headache unrelieved by hydration and rest
-
-// 5. Leg Cramps
-// Cause:
-// Calcium & magnesium deficiency
-// Poor circulation & extra weight
-// Dehydration
-// Symptoms:
-// Sudden tightness or cramping in calf or foot
-// Usually occurs at night
-// Relief Tips:
-// Stretch your legs before bed
-// Stay hydrated
-// Eat calcium & magnesium-rich foods
-// Massage or use warm compress
-// When to Seek Help:
-// Severe cramps that persist or worsen
-// Swelling or redness in the leg
-
-// 6. Sciatica
-// Cause:
-// Baby's weight pressing on sciatic nerve
-// Posture changes due to growing belly
-// Symptoms:
-// Sharp pain in lower back and down leg
-// Numbness or tingling in legs
-// Relief Tips:
-// Sleep on your left side with a pillow between knees
-// Prenatal yoga & stretching
-// Warm compress on lower back
-// When to Seek Help:
-// Numbness or loss of mobility
-// Severe, constant pain
-
-// 7. Breast Pain & Tenderness
-// Cause:
-// Hormonal changes increase blood flow
-// Breasts prepare for milk production
-// Symptoms:
-// Soreness, swelling, or heaviness in breasts
-// Sensitivity to touch
-// Relief Tips:
-// Wear a comfortable maternity bra
-// Cold compress for pain relief
-// Avoid tight clothing
-// When to Seek Help:
-// Unusual lumps or severe pain
-
-// 8. Rib Pain
-// Cause:
-// Baby pushing against ribs
-// Hormonal changes loosening rib cage
-// Symptoms:
-// Sharp pain in ribs, usually in the third trimester
-// Relief Tips:
-// Change positions frequently
-// Sit up straight & practice deep breathing
-// Stretching exercises
-// When to Seek Help:
-// Severe pain or difficulty breathing
-
-// 9. Hip Pain
-// Cause:
-// Relaxin hormone loosening hip joints
-// Extra weight pressuring the hips
-// Symptoms:
-// Aching or sharp pain in hips, especially at night
-// Relief Tips:
-// Sleep with a pregnancy pillow
-// Gentle hip stretches
-// Use warm compresses
-// When to Seek Help:
-// Severe hip pain affecting movement
-
-// 10. Carpal Tunnel Syndrome
-// Cause:
-// Swelling in hands compresses wrist nerves
-// Fluid retention worsens in later stages
-// Symptoms:
-// Tingling, numbness, or pain in hands and fingers
-// Relief Tips:
-// Wear wrist splints at night
-// Avoid repetitive hand movements
-// Elevate hands while resting
-// When to Seek Help:
-// Persistent numbness or weakness
-
-// 11. Constipation & Bloating
-// Cause:
-// Progesterone slows digestion
-// Growing uterus presses on intestines
-// Symptoms:
-// Difficulty passing stool, bloating, gas
-// Relief Tips:
-// Eat fiber-rich foods
-// Drink plenty of water
-// Walk or do gentle movement
-// When to Seek Help:
-// Severe constipation with pain or bleeding
-
-// 12. Heartburn & Acid Reflux
-// Cause:
-// Relaxed esophageal muscles due to hormones
-// Baby pushing on stomach
-// Symptoms:
-// Burning sensation in chest after eating
-// Relief Tips:
-// Eat small meals & avoid spicy/fatty foods
-// Sleep with head slightly elevated
-// Drink warm milk or herbal tea
-// When to Seek Help:
-// Persistent heartburn affecting eating
-
-// 13. Braxton Hicks Contractions
-// Cause:
-// Uterus practicing for real labor
-// Symptoms:
-// Irregular, painless tightening of the belly
-// Relief Tips:
-// Rest & hydrate
-// Change positions
-// Warm bath or deep breathing
-// When to Seek Help:
-// Contractions become regular and intense
-
-// 14. Vaginal & Perineal Pain
-// Cause:
-// Increased blood flow & pressure
-// Baby engaging lower in pelvis
-// Symptoms:
-// Pressure or sharp pain in vaginal area
-// Relief Tips:
-// Use a cool gel pad
-// Avoid standing too long
-// Do Kegel exercises
-// When to Seek Help:
-// Severe pain or unusual discharge
-
-// 15. Labor Pain
-// Cause:
-// Uterus contracting for delivery
-// Symptoms:
-// Intense lower abdominal & back pain
-// Relief Tips:
-// Breathing techniques (Lamaze, deep breathing)
-// Warm showers or baths
-// Change positions
-// When to Seek Help:
-// Contractions every 5 minutes lasting 60+ seconds
-// `
-
-const systemPrompt = `${systemPrompts}`
+  const systemPrompt = `${systemPrompts}`
 
   const fetchHealthData = async () => {
     if (user && user.user_id) {
@@ -584,7 +319,7 @@ const systemPrompt = `${systemPrompts}`
 
           // Update state with the new health data
           setHealthStats(newHealthStats)
-          setHealthData(newHealthData)
+          setHealthData(newHealthData as any)
           console.log("Health stats calculated successfully:", JSON.stringify(newHealthStats, null, 2))
         } else {
           console.log("No valid data in API response")
@@ -638,24 +373,41 @@ const systemPrompt = `${systemPrompts}`
         enhancedPrompt += `\nPlease answer the user's question about their health metrics using this data. Be specific and encouraging.`
       }
 
+      // Create the parts array with the system prompt
+      const parts = [
+        {
+          text: enhancedPrompt,
+        }
+      ];
+
+      // Add conversation history - limit to last 10 messages to avoid token limits
+      const recentMessages = messages.slice(-20);
+      
+      for (const msg of recentMessages) {
+        // Skip audio messages as they don't have text content we can send
+        if (msg.type === "text") {
+          parts.push({
+            text: msg.isUser ? `User: ${msg.content}` : `Assistant: ${msg.content}`
+          });
+        }
+      }
+
+      // Add the current message
+      parts.push({
+        text: `User: ${messageContent}`
+      });
+
       const requestBody = {
         contents: [
           {
-            parts: [
-              {
-                text: enhancedPrompt,
-              },
-              {
-                text: messageContent,
-              },
-            ],
+            parts: parts,
           },
         ],
         generationConfig: {
           temperature: 0.0,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 100,
+          maxOutputTokens: 1000,
         },
       }
 
@@ -696,23 +448,665 @@ const systemPrompt = `${systemPrompts}`
     console.log("Speaking response:", text)
   }
 
+  // Function to detect log requests using our more advanced patterns
+  function detectLogRequestWithPatterns(query: string) {
+    // Check for water intake logs
+    for (const pattern of LOG_PATTERNS.water) {
+      const match = query.match(pattern);
+      if (match && match[1]) {
+        const value = parseFloat(match[1]);
+        const isGlasses = /glass|glasses|cup|cups/i.test(query);
+        const isIncremental = isIncrementalRequest(query);
+        
+        return {
+          type: 'water',
+          value,
+          isGlasses,
+          isIncremental
+        };
+      }
+    }
+    
+    // Check for weight logs
+    for (const pattern of LOG_PATTERNS.weight) {
+      const match = query.match(pattern);
+      if (match && match[1]) {
+        const value = parseFloat(match[1]);
+        const unit = /\b(kg|kgs|kilograms)\b/i.test(query) ? "kg" : "lbs";
+        return {
+          type: 'weight',
+          value,
+          unit
+        };
+      }
+    }
+    
+    // Check for steps logs
+    for (const pattern of LOG_PATTERNS.steps) {
+      const match = query.match(pattern);
+      if (match && match[1]) {
+        const value = parseInt(match[1], 10);
+        return {
+          type: 'steps',
+          value
+        };
+      }
+    }
+    
+    // Check for heart rate logs
+    for (const pattern of LOG_PATTERNS.heartRate) {
+      const match = query.match(pattern);
+      if (match && match[1]) {
+        const value = parseInt(match[1], 10);
+        return {
+          type: 'heart',
+          value
+        };
+      }
+    }
+    
+    // Check for sleep logs
+    for (const pattern of LOG_PATTERNS.sleep) {
+      const match = query.match(pattern);
+      if (match && match[1] && match[2]) {
+        // We need both start and end time
+        return {
+          type: 'sleep',
+          sleepStart: match[1],
+          sleepEnd: match[2]
+        };
+      }
+    }
+    
+    return null;
+  }
+
+  // Function to detect goal requests using our more advanced patterns
+  function detectGoalRequestWithPatterns(query: string) {
+    // Check for water intake goals
+    for (const pattern of GOAL_PATTERNS.water) {
+      const match = query.match(pattern);
+      if (match && match[1]) {
+        const value = parseFloat(match[1]);
+        const isGlasses = /glass|glasses|cup|cups/i.test(query);
+        return {
+          type: 'water',
+          value,
+          isGlasses
+        };
+      }
+    }
+    
+    // Check for step goals
+    for (const pattern of GOAL_PATTERNS.steps) {
+      const match = query.match(pattern);
+      if (match && match[1]) {
+        const value = parseInt(match[1], 10);
+        return {
+          type: 'steps',
+          value
+        };
+      }
+    }
+    
+    return null;
+  }
+
+  const extractMetricFromText = (text: string, metricType: string) => {
+    // Generic number extraction regex
+    const numberRegex = /(\d+(?:\.\d+)?)/g;
+    
+    // Extract all numbers from the text
+    const numbers = text.match(numberRegex);
+    
+    if (!numbers || numbers.length === 0) {
+      return null;
+    }
+    
+    // Different metrics might need different parsing logic
+    switch (metricType) {
+      case 'weight':
+        // Find unit - kg or lbs
+        const unit = /\b(kg|kgs|kilograms|lbs|pounds)\b/i.test(text) 
+          ? (text.match(/\b(kg|kgs|kilograms)\b/i) ? "kg" : "lbs")
+          : "kg"; // Default to kg
+        
+        return {
+          value: parseFloat(numbers[0]),
+          unit: unit
+        };
+        
+      case 'water':
+        // Find if talking about glasses or ml
+        const isGlasses = /\b(glass|glasses|cup|cups)\b/i.test(text);
+        return {
+          value: parseFloat(numbers[0]),
+          isGlasses: isGlasses
+        };
+        
+      case 'steps':
+        return {
+          value: parseInt(numbers[0], 10)
+        };
+        
+      case 'heart':
+        return {
+          value: parseInt(numbers[0], 10)
+        };
+        
+      case 'sleep':
+        // Extract sleep start and end times
+        // Look for patterns like "from 10:30 pm to 6:45 am" or "10pm to 6am"
+        const sleepPattern = /(?:from|at)?\s*(\d+(?::\d+)?\s*(?:am|pm)?).*?(?:to|until|till)\s+(\d+(?::\d+)?\s*(?:am|pm)?)/i;
+        const sleepMatch = text.match(sleepPattern);
+        
+        if (sleepMatch && sleepMatch[1] && sleepMatch[2]) {
+          return {
+            sleepStart: sleepMatch[1].trim(),
+            sleepEnd: sleepMatch[2].trim()
+          };
+        }
+        return null;
+        
+      default:
+        return {
+          value: parseFloat(numbers[0])
+        };
+    }
+  };
+
+  const detectAndHandleLogRequest = async (query: string) => {
+    // First try pattern-based recognition
+    const patternMatch = detectLogRequestWithPatterns(query);
+    
+    if (patternMatch) {
+      let endpoint = '';
+      let requestData = {};
+      let successMessage = '';
+      
+      try {
+        if (patternMatch.type === 'water') {
+          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/water`;
+          
+          const waterValue = patternMatch.isGlasses 
+            ? patternMatch.value 
+            : Math.round(patternMatch.value / 250);
+          
+          const isIncrement = patternMatch.isIncremental || false;
+          
+          requestData = { 
+            water: waterValue,
+            isIncrement: isIncrement
+          };
+          
+          const incrementText = isIncrement ? " more" : "";
+          successMessage = `I've logged ${patternMatch.isGlasses ? patternMatch.value + incrementText + ' glasses' : patternMatch.value + incrementText + 'ml'} of water for you.`;
+          
+          console.log("Water logging request:", { waterValue, isIncrement });
+        } 
+        else if (patternMatch.type === 'weight') {
+          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/weight`;
+          requestData = { 
+            weight: patternMatch.value, 
+            weight_unit: patternMatch.unit 
+          };
+          successMessage = `I've logged your weight of ${patternMatch.value} ${patternMatch.unit}.`;
+        }
+        else if (patternMatch.type === 'steps') {
+          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/steps`;
+          requestData = { steps: patternMatch.value };
+          successMessage = `I've logged ${patternMatch.value} steps for you.`;
+        }
+        else if (patternMatch.type === 'heart') {
+          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/heart`;
+          requestData = { heartRate: patternMatch.value };
+          successMessage = `I've logged your heart rate of ${patternMatch.value} bpm.`;
+        }
+        else if (patternMatch.type === 'sleep') {
+          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/sleep`;
+          
+          // Format times to ensure they have AM/PM
+          const formatTime = (timeStr) => {
+            let formattedTime = timeStr.trim();
+            
+            // Convert am/pm to uppercase AM/PM
+            if (formattedTime.toLowerCase().endsWith('am')) {
+              formattedTime = formattedTime.slice(0, -2) + 'AM';
+            } else if (formattedTime.toLowerCase().endsWith('pm')) {
+              formattedTime = formattedTime.slice(0, -2) + 'PM';
+            } 
+            // Add AM/PM if missing
+            else if (!formattedTime.toUpperCase().endsWith('AM') && !formattedTime.toUpperCase().endsWith('PM')) {
+              const hour = parseInt(formattedTime.split(':')[0]);
+              // Assume hours 7-11 are AM, 12 and 1-6 are PM, and others are AM
+              if (hour >= 7 && hour <= 11) {
+                formattedTime += " AM";
+              } else {
+                formattedTime += " PM";
+              }
+            }
+            
+            return formattedTime;
+          };
+          
+          const sleepStart = formatTime(patternMatch.sleepStart);
+          const sleepEnd = formatTime(patternMatch.sleepEnd);
+          
+          // Get today's date in ISO format (YYYY-MM-DD)
+          const today = new Date().toISOString().split('T')[0];
+          
+          requestData = { 
+            date: today,
+            sleepStart: sleepStart, 
+            sleepEnd: sleepEnd 
+          };
+          successMessage = `I've logged your sleep from ${sleepStart} to ${sleepEnd}.`;
+        }
+        
+        // If we have valid data and an endpoint, make the API call
+        if (endpoint) {
+          console.log("Logging health metric:", { endpoint, requestData });
+          
+          const response = await axios.post(endpoint, requestData);
+          
+          if (response.status >= 200 && response.status < 300) {
+            // Success - refresh health data
+            await fetchHealthData();
+            
+            // Add response message
+            setMessages((prevMessages) => [
+              ...prevMessages,
+              {
+                id: (Date.now() + 1).toString(),
+                type: "text",
+                content: successMessage,
+                isUser: false,
+                timestamp: new Date(),
+              },
+            ]);
+            
+            return true;
+          } else {
+            throw new Error(`API returned status ${response.status}`);
+          }
+        }
+      } catch (error) {
+        console.error("Error logging health metric:", error);
+        
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          {
+            id: (Date.now() + 1).toString(),
+            type: "text",
+            content: "I'm sorry, I couldn't log that health information. Please try again or use the tracking screens.",
+            isUser: false,
+            timestamp: new Date(),
+          },
+        ]);
+      }
+      
+      return true; // We had a pattern match, even if the API call failed
+    }
+  
+    // If pattern matching failed, check if this is a log request with generic indicators
+    const isLogRequest = /log|record|track|add|set|update/i.test(query);
+    
+    if (!isLogRequest) {
+      return false; // Not a log request
+    }
+    
+    // Determine what metric is being logged
+    const isWaterLog = /water|hydration|glass|glasses|drink/i.test(query);
+    const isWeightLog = /weight|weigh/i.test(query);
+    const isStepsLog = /steps|walked|walking/i.test(query);
+    const isHeartLog = /heart|pulse|bpm/i.test(query);
+    const isSleepLog = /sleep|slept|bed time|bedtime|woke up/i.test(query);
+    
+    // Extract the metric
+    let extractedData = null;
+    let endpoint = '';
+    let requestData = {};
+    let successMessage = '';
+    
+    try {
+      if (isWaterLog) {
+        extractedData = extractMetricFromText(query, 'water');
+        
+        if (extractedData) {
+          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/water`;
+          
+          // If the user specified glasses, send that value directly
+          // Otherwise, convert ml to glasses (assuming 250ml per glass)
+          const waterValue = extractedData.isGlasses 
+            ? extractedData.value 
+            : Math.round(extractedData.value ?? 0 / 250);
+          
+          requestData = { water: waterValue };
+          successMessage = `I've logged ${extractedData.isGlasses ? extractedData.value + ' glasses' : extractedData.value + 'ml'} of water for you.`;
+        }
+      } 
+      else if (isWeightLog) {
+        extractedData = extractMetricFromText(query, 'weight');
+        
+        if (extractedData) {
+          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/weight`;
+          requestData = { 
+            weight: extractedData.value, 
+            weight_unit: extractedData.unit 
+          };
+          successMessage = `I've logged your weight of ${extractedData.value} ${extractedData.unit}.`;
+        }
+      }
+      else if (isStepsLog) {
+        extractedData = extractMetricFromText(query, 'steps');
+        
+        if (extractedData) {
+          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/steps`;
+          requestData = { steps: extractedData.value };
+          successMessage = `I've logged ${extractedData.value} steps for you.`;
+        }
+      }
+      else if (isHeartLog) {
+        extractedData = extractMetricFromText(query, 'heart');
+        
+        if (extractedData) {
+          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/heart`;
+          requestData = { heartRate: extractedData.value };
+          successMessage = `I've logged your heart rate of ${extractedData.value} bpm.`;
+        }
+      }
+      else if (isSleepLog) {
+        extractedData = extractMetricFromText(query, 'sleep');
+        
+        if (extractedData) {
+          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/sleep`;
+          
+          // Format times to ensure they have AM/PM
+          const formatTime = (timeStr: string) => {
+            // Ensure time has AM/PM
+            if (!timeStr.toLowerCase().includes('am') && !timeStr.toLowerCase().includes('pm')) {
+              // Make assumption based on typical sleep patterns
+              const hour = parseInt(timeStr.split(':')[0]);
+              // Assume hours 7-11 are AM, 12 and 1-6 are PM, and after midnight is AM
+              if (hour >= 7 && hour <= 11) {
+                return timeStr + " AM";
+              } else {
+                return timeStr + " PM";
+              }
+            }
+            return timeStr;
+          };
+          
+          const sleepStart = formatTime(extractedData.sleepStart || '');
+          const sleepEnd = formatTime(extractedData.sleepEnd || '');
+          
+          // Get today's date in ISO format (YYYY-MM-DD)
+          const today = new Date().toISOString().split('T')[0];
+          
+          requestData = { 
+            date: today,
+            sleepStart: sleepStart, 
+            sleepEnd: sleepEnd 
+          };
+          successMessage = `I've logged your sleep from ${sleepStart} to ${sleepEnd}.`;
+        } else {
+          // If we couldn't extract specific sleep times, provide guidance
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            {
+              id: (Date.now() + 1).toString(),
+              type: "text",
+              content: "To log sleep, please specify your sleep start and end times. For example, 'I slept from 10:30 PM to 6:45 AM' or 'Log my sleep from 11 PM to 7 AM'.",
+              isUser: false,
+              timestamp: new Date(),
+            },
+          ]);
+          return true;
+        }
+      }
+      
+      // If we have valid data and an endpoint, make the API call
+      if (extractedData && endpoint) {
+        console.log("Logging health metric:", { endpoint, requestData });
+        
+        const response = await axios.post(endpoint, requestData);
+        
+        if (response.status >= 200 && response.status < 300) {
+          // Success - refresh health data
+          await fetchHealthData();
+          
+          // Add response message
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            {
+              id: (Date.now() + 1).toString(),
+              type: "text",
+              content: successMessage,
+              isUser: false,
+              timestamp: new Date(),
+            },
+          ]);
+          
+          return true;
+        } else {
+          throw new Error(`API returned status ${response.status}`);
+        }
+      }
+    } catch (error) {
+      console.error("Error logging health metric:", error);
+      
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        {
+          id: (Date.now() + 1).toString(),
+          type: "text",
+          content: "I'm sorry, I couldn't log that health information. Please try again or use the tracking screens.",
+          isUser: false,
+          timestamp: new Date(),
+        },
+      ]);
+      
+      return true;
+    }
+    
+    return false; // Not handled as a log request
+  };
+
+  const detectAndHandleGoalRequest = async (query: string) => {
+    // First try pattern-based recognition
+    const patternMatch = detectGoalRequestWithPatterns(query);
+    
+    if (patternMatch) {
+      let endpoint = '';
+      let requestData = {};
+      let successMessage = '';
+      
+      try {
+        if (patternMatch.type === 'water') {
+          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/waterGoal`;
+          
+          const waterGoal = patternMatch.isGlasses 
+            ? patternMatch.value 
+            : Math.round(patternMatch.value / 250);
+          
+          requestData = { waterGoal: waterGoal };
+          successMessage = `I've set your water intake goal to ${waterGoal} glasses per day.`;
+        } 
+        else if (patternMatch.type === 'steps') {
+          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/steps`;
+          requestData = { stepsGoal: patternMatch.value };
+          successMessage = `I've set your step goal to ${patternMatch.value} steps per day.`;
+        }
+        
+        // If we have valid data and an endpoint, make the API call
+        if (endpoint) {
+          console.log("Setting health goal:", { endpoint, requestData });
+          
+          const response = await axios.post(endpoint, requestData);
+          
+          if (response.status >= 200 && response.status < 300) {
+            // Success - refresh health data
+            await fetchHealthData();
+            
+            // Add response message
+            setMessages((prevMessages) => [
+              ...prevMessages,
+              {
+                id: (Date.now() + 1).toString(),
+                type: "text",
+                content: successMessage,
+                isUser: false,
+                timestamp: new Date(),
+              },
+            ]);
+            
+            return true;
+          } else {
+            throw new Error(`API returned status ${response.status}`);
+          }
+        }
+      } catch (error) {
+        console.error("Error setting health goal:", error);
+        
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          {
+            id: (Date.now() + 1).toString(),
+            type: "text",
+            content: "I'm sorry, I couldn't set that health goal. Please try again or use the tracking screens.",
+            isUser: false,
+            timestamp: new Date(),
+          },
+        ]);
+      }
+      
+      return true; // We had a pattern match, even if the API call failed
+    }
+  
+    // Check if this is a goal setting request with generic indicators
+    const isGoalRequest = /goal|target|aim|set goal/i.test(query);
+    
+    if (!isGoalRequest) {
+      return false; // Not a goal request
+    }
+    
+    // Determine what type of goal is being set
+    const isWaterGoal = /water|hydration|glass|glasses/i.test(query);
+    const isStepsGoal = /steps|walking|step goal/i.test(query);
+    
+    // Extract the goal value
+    let extractedData = null;
+    let endpoint = '';
+    let requestData = {};
+    let successMessage = '';
+    
+    try {
+      if (isWaterGoal) {
+        extractedData = extractMetricFromText(query, 'water');
+        
+        if (extractedData) {
+          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/waterGoal`;
+          
+          // If the user specified glasses, use that value directly
+          // Otherwise, convert ml to glasses (assuming 250ml per glass)
+          const waterGoal = extractedData.isGlasses 
+            ? extractedData.value 
+            : Math.round(extractedData.value / 250);
+          
+          requestData = { waterGoal: waterGoal };
+          successMessage = `I've set your water intake goal to ${waterGoal} glasses per day.`;
+        }
+      } 
+      else if (isStepsGoal) {
+        extractedData = extractMetricFromText(query, 'steps');
+        
+        if (extractedData) {
+          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/steps`;
+          requestData = { stepsGoal: extractedData.value };
+          successMessage = `I've set your step goal to ${extractedData.value} steps per day.`;
+        }
+      }
+      
+      // If we have valid data and an endpoint, make the API call
+      if (extractedData && endpoint) {
+        console.log("Setting health goal:", { endpoint, requestData });
+        
+        const response = await axios.post(endpoint, requestData);
+        
+        if (response.status >= 200 && response.status < 300) {
+          // Success - refresh health data
+          await fetchHealthData();
+          
+          // Add response message
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            {
+              id: (Date.now() + 1).toString(),
+              type: "text",
+              content: successMessage,
+              isUser: false,
+              timestamp: new Date(),
+            },
+          ]);
+          
+          return true;
+        } else {
+          throw new Error(`API returned status ${response.status}`);
+        }
+      }
+    } catch (error) {
+      console.error("Error setting health goal:", error);
+      
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        {
+          id: (Date.now() + 1).toString(),
+          type: "text",
+          content: "I'm sorry, I couldn't set that health goal. Please try again or use the tracking screens.",
+          isUser: false,
+          timestamp: new Date(),
+        },
+      ]);
+      
+      return true;
+    }
+    
+    return false; // Not handled as a goal request
+  };
+
   const processUserQuery = async (query: string) => {
     try {
-      console.log("processUserQuery started with:", query)
-      setIsProcessing(true)
-
+      console.log("processUserQuery started with:", query);
+      setIsProcessing(true);
+      
+      // First check if this is a log request
+      const wasHandledAsLogRequest = await detectAndHandleLogRequest(query);
+      
+      if (wasHandledAsLogRequest) {
+        setIsProcessing(false);
+        return;
+      }
+      
+      // Then check if this is a goal setting request
+      const wasHandledAsGoalRequest = await detectAndHandleGoalRequest(query);
+      
+      if (wasHandledAsGoalRequest) {
+        setIsProcessing(false);
+        return;
+      }
+      
       // Check for different types of health stat queries
-      const isWaterQuery = /water|hydration/i.test(query)
-      const isWeightQuery = /weight/i.test(query)
-      const isStepsQuery = /steps|step count|walking/i.test(query)
-      const isHeartQuery = /heart|pulse|bpm/i.test(query)
-      const isSleepQuery = /sleep|slept/i.test(query)
+      const isWaterQuery = /water|hydration/i.test(query);
+      const isWeightQuery = /weight/i.test(query);
+      const isStepsQuery = /steps|step count|walking/i.test(query);
+      const isHeartQuery = /heart|pulse|bpm/i.test(query);
+      const isSleepQuery = /sleep|slept/i.test(query);
 
       // Check for time period queries
-      const isAverageQuery = /average|avg/i.test(query)
-      const isTodayQuery = /today|current/i.test(query)
-      const isWeeklyQuery = /week|weekly|7 days/i.test(query)
-      const isMonthlyQuery = /month|monthly|30 days/i.test(query)
+      const isAverageQuery = /average|avg/i.test(query);
+      const isTodayQuery = /today|current/i.test(query);
+      const isWeeklyQuery = /week|weekly|7 days/i.test(query);
+      const isMonthlyQuery = /month|monthly|30 days/i.test(query);
 
       // Check for comprehensive stats query
       const isComprehensiveQuery =
@@ -912,12 +1306,90 @@ const systemPrompt = `${systemPrompts}`
         return
       }
 
-      // Continue with the rest of the health queries in the same pattern...
-      // For brevity, I'm not including all the other health query handlers, but they should follow the same pattern:
-      // 1. Generate the appropriate message
-      // 2. Speak the response
-      // 3. Add the response directly to messages
-      // 4. Return early
+      // Steps queries
+      if (isStepsQuery) {
+        let stepsMessage = ""
+
+        if (isTodayQuery) {
+          stepsMessage = `You've taken ${healthStats.steps.today} steps today.`
+        } else if (isWeeklyQuery || isAverageQuery) {
+          stepsMessage = `Your average daily step count is ${healthStats.steps.avgWeekly.toFixed(0)} steps over the past week. Your total steps this week were ${healthStats.steps.weekly}.`
+        } else if (isMonthlyQuery) {
+          stepsMessage = `Your average daily step count is ${healthStats.steps.avgMonthly.toFixed(0)} steps over the past month. Your total steps this month were ${healthStats.steps.monthly}.`
+        } else {
+          // Default to weekly if no time period specified
+          stepsMessage = `Your average daily step count is ${healthStats.steps.avgWeekly.toFixed(0)} steps over the past week. Today you've taken ${healthStats.steps.today} steps.`
+        }
+
+        stepsMessage += " Regular walking is excellent exercise during pregnancy!"
+        
+        speakResponse(stepsMessage)
+
+        // Add the response to messages
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          {
+            id: (Date.now() + 1).toString(),
+            type: "text",
+            content: stepsMessage,
+            isUser: false,
+            timestamp: new Date(),
+          },
+        ])
+
+        setIsProcessing(false)
+        return
+      }
+
+      // Heart rate queries
+      if (isHeartQuery) {
+        if (healthStats.heart.avgWeekly === 0 && healthStats.heart.today === 0) {
+          const noDataMessage = "I don't have enough heart rate data to calculate statistics. Please log your heart rate regularly for better tracking."
+          speakResponse(noDataMessage)
+
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            {
+              id: (Date.now() + 1).toString(),
+              type: "text",
+              content: noDataMessage,
+              isUser: false,
+              timestamp: new Date(),
+            },
+          ])
+
+          setIsProcessing(false)
+          return
+        }
+
+        let heartMessage = ""
+
+        if (isTodayQuery) {
+          heartMessage = `Your heart rate today is ${healthStats.heart.today} bpm.`
+        } else if (isWeeklyQuery || isAverageQuery) {
+          heartMessage = `Your average heart rate is ${healthStats.heart.avgWeekly.toFixed(0)} bpm over the past week.`
+        } else if (isMonthlyQuery) {
+          heartMessage = `Your average heart rate is ${healthStats.heart.avgMonthly.toFixed(0)} bpm over the past month.`
+        } else {
+          heartMessage = `Your current heart rate is ${healthStats.heart.today} bpm, and your weekly average is ${healthStats.heart.avgWeekly.toFixed(0)} bpm.`
+        }
+
+        speakResponse(heartMessage)
+
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          {
+            id: (Date.now() + 1).toString(),
+            type: "text",
+            content: heartMessage,
+            isUser: false,
+            timestamp: new Date(),
+          },
+        ])
+
+        setIsProcessing(false)
+        return
+      }
 
       // For non-health specific queries, use the regular API
       const apiResponse = await sendToAPI(query, "text")
@@ -959,45 +1431,17 @@ const systemPrompt = `${systemPrompts}`
         timestamp: new Date(),
       }
 
-      setMessages((prevMessages) => [...prevMessages, userMessage])
+      // Update messages state with the new message
+      const updatedMessages = [...messages, userMessage];
+      setMessages(updatedMessages as Message[]);
       setInputText("")
       setIsTyping(true)
       setIsAssistantResponding(true)
 
-      // Check if this is a health-related query
-      const isHealthQuery =
-        /weight|water|hydration|steps|walking|heart|pulse|bpm|sleep|slept|health|stats|metrics/i.test(messageContent)
-
-      if (isHealthQuery) {
-        // Process health-related query
-        await processUserQuery(messageContent)
-        setIsTyping(false)
-        setIsAssistantResponding(false)
-      } else {
-        // Send the message to the regular API for non-health queries
-        const apiResponse = await sendToAPI(messageContent, "text")
-
-        setTimeout(() => {
-          setIsTyping(false)
-          setIsAssistantResponding(false)
-
-          if (apiResponse) {
-            const responseText =
-              apiResponse?.response || "Thank you for your message. I'll address your concerns shortly."
-
-            setMessages((prevMessages) => [
-              ...prevMessages,
-              {
-                id: (Date.now() + 1).toString(),
-                type: "text",
-                content: responseText,
-                isUser: false,
-                timestamp: new Date(),
-              },
-            ])
-          }
-        }, 1500)
-      }
+      // Process the query - our new implementation will check for log/goal requests first
+      await processUserQuery(messageContent);
+      setIsTyping(false);
+      setIsAssistantResponding(false);
     }
   }
 
@@ -1024,57 +1468,15 @@ const systemPrompt = `${systemPrompts}`
 
     // Process the transcript if available
     if (transcript) {
-      // Check if this is a health-related query
-      const isHealthQuery =
-        /weight|water|hydration|steps|walking|heart|pulse|bpm|sleep|slept|health|stats|metrics/i.test(transcript)
-
       setIsTyping(true)
       setIsAssistantResponding(true)
 
-      if (isHealthQuery) {
-        // For health queries, we'll handle the response in processUserQuery
-        // and avoid calling onSendAudio again to prevent duplicate responses
-        processUserQuery(transcript).then(() => {
-          setIsTyping(false)
-          setIsAssistantResponding(false)
-        })
-      } else if (assistantResponse) {
-        // If we already have an assistant response from the voice recorder component
-        setTimeout(() => {
-          setIsTyping(false)
-          setIsAssistantResponding(false)
-
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            {
-              id: (Date.now() + 1).toString(),
-              type: "text",
-              content: assistantResponse,
-              isUser: false,
-              timestamp: new Date(),
-            },
-          ])
-        }, 1000)
-      } else {
-        // Otherwise, send to API
-        sendToAPI(transcript, "audio").then((apiResponse) => {
-          setIsTyping(false)
-          setIsAssistantResponding(false)
-
-          if (apiResponse) {
-            setMessages((prevMessages) => [
-              ...prevMessages,
-              {
-                id: (Date.now() + 1).toString(),
-                type: "text",
-                content: apiResponse.response,
-                isUser: false,
-                timestamp: new Date(),
-              },
-            ])
-          }
-        })
-      }
+      // Check for log/goal requests with the same processing logic as text
+      // This ensures consistent handling between voice and text
+      processUserQuery(transcript).then(() => {
+        setIsTyping(false)
+        setIsAssistantResponding(false)
+      })
     }
   }
 
@@ -1110,6 +1512,42 @@ const systemPrompt = `${systemPrompts}`
       </View>
     )
   }
+
+  // Function to save messages to AsyncStorage
+  const saveMessages = async (messagesToSave: Message[]) => {
+    try {
+      // We need to convert Date objects to strings before storing
+      const serializedMessages = messagesToSave.map(msg => ({
+        ...msg,
+        timestamp: msg.timestamp.toISOString()
+      }));
+      
+      await AsyncStorage.setItem('chatHistory', JSON.stringify(serializedMessages));
+      console.log('Messages saved to storage');
+    } catch (error) {
+      console.error('Error saving messages:', error);
+    }
+  };
+
+  // Function to load messages from AsyncStorage
+  const loadMessages = async () => {
+    try {
+      const savedMessages = await AsyncStorage.getItem('chatHistory');
+      
+      if (savedMessages) {
+        // Parse the JSON and convert timestamp strings back to Date objects
+        const parsedMessages = JSON.parse(savedMessages).map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }));
+        
+        setMessages(parsedMessages);
+        console.log('Loaded', parsedMessages.length, 'messages from storage');
+      }
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -1191,9 +1629,6 @@ const systemPrompt = `${systemPrompts}`
               ))}
 
               {isTyping && renderTypingIndicator()}
-
-              {/* Add extra padding at the bottom for better scrolling */}
-              {/* <View style={{ height: 20 }} /> */}
             </View>
           )}
         </ScrollView>
@@ -1211,6 +1646,16 @@ const systemPrompt = `${systemPrompts}`
             style={styles.optionsContainer}
             keyboardShouldPersistTaps="handled"
           >
+
+            <TouchableOpacity
+              style={styles.optionButton}
+              onPress={() => handleOptionPress("Show my health stats")}
+              disabled={isAssistantResponding}
+            >
+              <Text style={styles.optionText}>Health Stats</Text>
+            </TouchableOpacity>
+            
+            {/* Standard advice options */}
             <TouchableOpacity
               style={styles.optionButton}
               onPress={() => handleOptionPress("What foods should I eat during my third trimester?")}
@@ -1245,7 +1690,7 @@ const systemPrompt = `${systemPrompts}`
             <View style={styles.inputWrapper}>
               <TextInput
                 style={styles.input}
-                placeholder="Ask me anything..."
+                placeholder="Ask me anything or log your health data..."
                 placeholderTextColor="#999"
                 value={inputText}
                 onChangeText={(text) => setInputText(text)}
@@ -1323,13 +1768,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#FBBBE9",
     marginRight: 8,
-  },
-  doulaBubble: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 4,
-    borderWidth: 0.5,
-    borderColor: "#E5E5E5",
-    marginLeft: 8,
   },
   messageText: {
     fontSize: 14,
