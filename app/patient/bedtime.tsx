@@ -12,7 +12,7 @@ import { Ionicons, Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { calculateWakeupTimes, parseTimeString } from "@/constants/constant";
+import { calculateBedtimes, calculateWakeupTimes, parseTimeString } from "@/constants/constant";
 import SunIcon from "@/assets/images/Svg/SunIcon";
 import { width } from "../../constants/helper";
 import MoonIcon from "@/assets/images/Svg/MoonIcon";
@@ -177,7 +177,7 @@ const bedtime = () => {
 
                   // Calculate wake-up times based on this sleep time
                   const sleepDate = parseTimeString(sleepTime);
-                  const calculatedTimes = calculateWakeupTimes(sleepDate);
+                  const calculatedTimes = calculateBedtimes(sleepDate);
 
                   // Navigate to the wakeup screen with the calculated times
                   router.push({

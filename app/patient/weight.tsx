@@ -75,16 +75,17 @@ const emptyChartData = [
 const emptyTodayData = [{ day: "Today", weight: 0, date: new Date().toISOString().split("T")[0] }]
 
 const convertWeight = (weight: number, fromUnit: string, toUnit: string): number => {
-  if (fromUnit === toUnit) return weight
+  if (fromUnit === toUnit) return weight;
 
   if (fromUnit === "kg" && toUnit === "lbs") {
-    return weight * 2.20462 // kg to lbs
+    return weight * 2.20462; // kg to lbs
   } else if (fromUnit === "lbs" && toUnit === "kg") {
-    return weight / 2.20462 // lbs to kg
+    return weight / 2.20462; // lbs to kg
   }
 
-  return weight // Default case
-}
+  return weight; // Default case
+};
+
 
 const WeightScreen = () => {
   const [timeRange, setTimeRange] = useState("week") // "today", "week", "month", "lastMonth"
