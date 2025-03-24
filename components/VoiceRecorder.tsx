@@ -22,6 +22,7 @@ interface VoiceRecorderProps {
   ) => void;
   systemPrompt?: string;
   apiKey?: string;
+  language?:string;
 }
 interface FormatTimeProps {
   seconds: number;
@@ -30,6 +31,7 @@ interface FormatTimeProps {
 export default function VoiceRecorder({
   onSendAudio,
   systemPrompt = systemPrompts,
+  language,
   apiKey = "AIzaSyD0ISmMWP4_yDqEvlrjpNJB8TnuJBkhZPs",
 }: VoiceRecorderProps) {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
@@ -49,7 +51,8 @@ export default function VoiceRecorder({
   const progressWidth = useRef(new Animated.Value(0)).current;
 
   const user = useSelector((state: any) => state.user);
-
+  console.log(language);
+  const [sound, setSound] = useState<Audio.Sound | null>(null)
   // Get available voices when component mounts
   useEffect(() => {
     const loadVoices = async () => {
@@ -241,7 +244,7 @@ export default function VoiceRecorder({
 
       // Send audio blob to Deepgram API
       const deepgramResponse = await fetch(
-        "https://api.deepgram.com/v1/listen?smart_format=true&language=en&model=nova-3",
+        `https://api.deepgram.com/v1/listen?smart_format=true&language=en&model=nova-3`,
         {
           method: "POST",
           headers: {
@@ -296,42 +299,71 @@ export default function VoiceRecorder({
   };
 
   const wordToNumberMap = {
-    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
-    "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17,
-    "eighteen": 18, "nineteen": 19, "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70,
-    "eighty": 80, "ninety": 90, "hundred": 100, "half": 0.5, "quarter": 0.25
-};
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    nine: 9,
+    ten: 10,
+    eleven: 11,
+    twelve: 12,
+    thirteen: 13,
+    fourteen: 14,
+    fifteen: 15,
+    sixteen: 16,
+    seventeen: 17,
+    eighteen: 18,
+    nineteen: 19,
+    twenty: 20,
+    thirty: 30,
+    forty: 40,
+    fifty: 50,
+    sixty: 60,
+    seventy: 70,
+    eighty: 80,
+    ninety: 90,
+    hundred: 100,
+    half: 0.5,
+    quarter: 0.25,
+  };
 
-const wordsToNumber = (words: string): number | null => {
+  const wordsToNumber = (words: string): number | null => {
     const parts = words.split(/[-\s]+/); // Split by space or hyphen
     let total = 0;
     let current = 0;
 
     for (const word of parts) {
-        if (wordToNumberMap[word as keyof typeof wordToNumberMap] !== undefined) {
-            let num = wordToNumberMap[word as keyof typeof wordToNumberMap];
-            if (num === 100) {
-                current *= 100; // Handle "one hundred", "two hundred", etc.
-            } else {
-                current += num;
-            }
-        } else if (current > 0) {
-            total += current;
-            current = 0;
+      if (wordToNumberMap[word as keyof typeof wordToNumberMap] !== undefined) {
+        let num = wordToNumberMap[word as keyof typeof wordToNumberMap];
+        if (num === 100) {
+          current *= 100; // Handle "one hundred", "two hundred", etc.
+        } else {
+          current += num;
         }
+      } else if (current > 0) {
+        total += current;
+        current = 0;
+      }
     }
     total += current;
     return total > 0 ? total : null;
-};
+  };
 
-const convertWordsToNumbers = (text: string): string => {
-    return text.replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|half|quarter)([-\s]?(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety))?\b/gi, (match) => {
+  const convertWordsToNumbers = (text: string): string => {
+    return text.replace(
+      /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|half|quarter)([-\s]?(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety))?\b/gi,
+      (match) => {
         const num = wordsToNumber(match.toLowerCase());
         return num !== null ? num.toString() : match;
-    });
-};
+      }
+    );
+  };
 
-const processUserInput = async (userText: string) => {
+  const processUserInput = async (userText: string) => {
     console.log("Processing input:", userText);
 
     // Convert words like "fifty-six kg" → "56 kg"
@@ -339,257 +371,338 @@ const processUserInput = async (userText: string) => {
     console.log("Converted input:", userText);
 
     // Updated regex to capture water/weight inputs
-    const waterMatch = userText.match(/([\d]+(?:\.\d+)?)\s*(ml|milliliters|liters|litres|l)/i);
+    const waterMatch = userText.match(
+      /([\d]+(?:\.\d+)?)\s*(ml|milliliters|liters|litres|l)/i
+    );
     const weightMatch = userText.match(/([\d]+(?:\.\d+)?)\s*(kg|pounds)/i);
+    const stepsMatch = userText.match(
+      /(?:log|set|record)\s*(?:step\s*goal|steps\s*goal)\s*(?:to\s*)?([\d]+(?:\.\d+)?)/i
+    );
 
     let logDetails = null;
 
     if (waterMatch) {
-        let value = parseFloat(waterMatch[1]);
-        let unit = waterMatch[2].toLowerCase();
+      let value = parseFloat(waterMatch[1]);
+      let unit = waterMatch[2].toLowerCase();
 
-        if (unit.startsWith("l")) {
-            value *= 1000;
-        }
+      if (unit.startsWith("l")) {
+        value *= 1000;
+      }
 
-        logDetails = { category: "water_intake", value, unit: "ml" };
+      logDetails = { category: "water_intake", value, unit: "ml" };
     } else if (weightMatch) {
-        let value = parseFloat(weightMatch[1]);
-        let unit = weightMatch[2].toLowerCase();
+      let value = parseFloat(weightMatch[1]);
+      let unit = weightMatch[2].toLowerCase();
 
-        logDetails = { category: "weight", value, unit };
+      logDetails = { category: "weight", value, unit };
+    } else if (stepsMatch) {
+      const value = Number.parseFloat(stepsMatch[1]);
+
+      logDetails = {
+        category: "steps_goal", // Changed to "steps_goal" category
+        value,
+        unit: "steps", // No need for units other than "steps"
+      };
     }
 
     if (logDetails && logDetails.value > 0) {
-        console.log("✅ Extracted log:", logDetails);
-        await logData(logDetails);
+      console.log("✅ Extracted log:", logDetails);
+      await logData(logDetails);
     } else {
-        console.log("❌ No valid data extracted.");
+      console.log("❌ No valid data extracted.");
     }
-};
+  };
 
-const logData = async ({ category, value, unit }) => {
+  const logData = async ({ category, value, unit }) => {
     const userId = user.user_id;
     const waterCount = value / 250;
     console.log(waterCount);
 
     try {
-        let responseMessage = "";
+      let responseMessage = "";
 
-        if (category === "water_intake") {
-            await axios.post(`https://crosscare-backends.onrender.com/api/user/activity/${userId}/water`, { water: waterCount });
-            console.log("✅ Water intake logged.");
-            responseMessage = `I have logged your water intake of ${value} milliliters. Keep staying hydrated!`;
-        } else if (category === "weight") {
-            await axios.post(`https://crosscare-backends.onrender.com/api/user/activity/${userId}/weight`, { weight: value, weight_unit: unit });
-            console.log("✅ Weight logged.");
-            responseMessage = `Your weight of ${value} ${unit} has been recorded.`;
-        }
+      if (category === "water_intake") {
+        await axios.post(
+          `https://crosscare-backends.onrender.com/api/user/activity/${userId}/water`,
+          { water: waterCount }
+        );
+        console.log("✅ Water intake logged.");
+        responseMessage = `I have logged your water intake of ${value} milliliters. Keep staying hydrated!`;
+      } else if (category === "weight") {
+        await axios.post(
+          `https://crosscare-backends.onrender.com/api/user/activity/${userId}/weight`,
+          { weight: value, weight_unit: unit }
+        );
+        console.log("✅ Weight logged.");
+        responseMessage = `Your weight of ${value} ${unit} has been recorded.`;
+      } else if (category === "steps_goal") {
+        const response = await axios.post(
+          `https://crosscare-backends.onrender.com/api/user/activity/${userId}/steps`,
+          { stepsGoal: value }
+        );
 
-        // Speak the response aloud
-        // if (responseMessage) {
-        //     speakResponse(responseMessage);
-        // }
+        console.log("✅ Steps goal logged:", value);
+
+        responseMessage = `Your steps goal of ${value} steps has been recorded.`;
+      }
+
+      // Speak the response aloud
+      // if (responseMessage) {
+      //     speakResponse(responseMessage);
+      // }
     } catch (error: any) {
-        console.error("❌ Error logging:", error.response ? error.response.data : error.message);
+      console.error(
+        "❌ Error logging:",
+        error.response ? error.response.data : error.message
+      );
     }
-};
+  };
 
+  const processUserQuery = async (query: string) => {
+    try {
+      console.log("processUserQuery started with:", query);
 
-const processUserQuery = async (query: string) => {
-  try {
-    console.log("processUserQuery started with:", query)
+      // Always fetch health data regardless of query
+      let healthData = null;
 
-    // Always fetch health data regardless of query
-    let healthData = null
+      if (user && user.user_id) {
+        console.log(`User ID available: ${user.user_id}`);
+        try {
+          const apiUrl = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}`;
+          console.log(`Making API call to: ${apiUrl}`);
 
-    if (user && user.user_id) {
-      console.log(`User ID available: ${user.user_id}`)
-      try {
-        const apiUrl = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}`
-        console.log(`Making API call to: ${apiUrl}`)
+          // Make the API call
+          const response = await axios.get(apiUrl);
 
-        // Make the API call
-        const response = await axios.get(apiUrl)
+          console.log("API response status:", response.status);
+          console.log("API response data type:", typeof response.data);
+          console.log(
+            "API response is array:",
+            Array.isArray(response.data) ? response.data.length : "N/A"
+          );
+          console.log(
+            "API response length:",
+            Array.isArray(response.data) ? response.data.length : "N/A"
+          );
 
-        console.log("API response status:", response.status)
-        console.log("API response data type:", typeof response.data)
-        console.log("API response is array:", Array.isArray(response.data) ? response.data.length : "N/A")
-        console.log("API response length:", Array.isArray(response.data) ? response.data.length : "N/A")
-
-        // Process the data if we got a response
-        if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-          console.log("API data found. First record:", JSON.stringify(response.data[0], null, 2))
-
-          // Sort by date (newest first)
-          const sortedRecords = [...response.data].sort(
-            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-          )
-
-          console.log("Sorted records - count:", sortedRecords.length)
-
-          // Get the most recent record
-          const latestRecord = sortedRecords[0]
-          console.log("Latest record details structure:", JSON.stringify(latestRecord.details || {}, null, 2))
-
-          // Get the last 7 days of records
-          const last7Days = sortedRecords.slice(0, 7)
-
-          // Extract weight data - add detailed logging
-          let currentWeight = 0
-          let weightUnit = "kg"
-
-          if (latestRecord.details && latestRecord.details.weight) {
-            currentWeight = latestRecord.details.weight.value || 0
-            weightUnit = latestRecord.details.weight.unit || "kg"
-            console.log("Found weight data:", currentWeight, weightUnit)
-          } else {
+          // Process the data if we got a response
+          if (
+            response.data &&
+            Array.isArray(response.data) &&
+            response.data.length > 0
+          ) {
             console.log(
-              "No weight data in latest record:",
-              latestRecord.details ? "Has details but no weight" : "No details property",
-            )
+              "API data found. First record:",
+              JSON.stringify(response.data[0], null, 2)
+            );
+
+            // Sort by date (newest first)
+            const sortedRecords = [...response.data].sort(
+              (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+            );
+
+            console.log("Sorted records - count:", sortedRecords.length);
+
+            // Get the most recent record
+            const latestRecord = sortedRecords[0];
+            console.log(
+              "Latest record details structure:",
+              JSON.stringify(latestRecord.details || {}, null, 2)
+            );
+
+            // Get the last 7 days of records
+            const last7Days = sortedRecords.slice(0, 7);
+
+            // Extract weight data - add detailed logging
+            let currentWeight = 0;
+            let weightUnit = "kg";
+
+            if (latestRecord.details && latestRecord.details.weight) {
+              currentWeight = latestRecord.details.weight.value || 0;
+              weightUnit = latestRecord.details.weight.unit || "kg";
+              console.log("Found weight data:", currentWeight, weightUnit);
+            } else {
+              console.log(
+                "No weight data in latest record:",
+                latestRecord.details
+                  ? "Has details but no weight"
+                  : "No details property"
+              );
+            }
+
+            // Add direct access to properties for nested values
+            const stepsToday =
+              latestRecord.details &&
+              typeof latestRecord.details.steps === "number"
+                ? latestRecord.details.steps
+                : 0;
+
+            const waterToday =
+              latestRecord.details &&
+              typeof latestRecord.details.water === "number"
+                ? latestRecord.details.water
+                : 0;
+
+            // Find previous weight record
+            const prevWeightRecord = sortedRecords.find(
+              (r) =>
+                r !== latestRecord &&
+                r.details &&
+                r.details.weight &&
+                typeof r.details.weight.value === "number" &&
+                r.details.weight.value > 0
+            );
+
+            // Create health data object with safer property access
+            healthData = {
+              steps: {
+                today: stepsToday,
+                weekly: last7Days.reduce(
+                  (sum, record) =>
+                    sum +
+                    (record.details && typeof record.details.steps === "number"
+                      ? record.details.steps
+                      : 0),
+                  0
+                ),
+              },
+              water: {
+                today: waterToday,
+                weekly: last7Days.reduce(
+                  (sum, r) =>
+                    sum +
+                    (r.details && typeof r.details.water === "number"
+                      ? r.details.water
+                      : 0),
+                  0
+                ),
+              },
+              weight: {
+                current: currentWeight,
+                unit: weightUnit,
+                previous:
+                  prevWeightRecord &&
+                  prevWeightRecord.details &&
+                  prevWeightRecord.details.weight
+                    ? prevWeightRecord.details.weight.value
+                    : 0,
+              },
+            };
+
+            console.log(
+              "Health data extracted successfully:",
+              JSON.stringify(healthData, null, 2)
+            );
+          } else {
+            console.log("No valid data in API response");
           }
-
-          // Add direct access to properties for nested values
-          const stepsToday =
-            latestRecord.details && typeof latestRecord.details.steps === "number" ? latestRecord.details.steps : 0
-
-          const waterToday =
-            latestRecord.details && typeof latestRecord.details.water === "number" ? latestRecord.details.water : 0
-
-          // Find previous weight record
-          const prevWeightRecord = sortedRecords.find(
-            (r) =>
-              r !== latestRecord &&
-              r.details &&
-              r.details.weight &&
-              typeof r.details.weight.value === "number" &&
-              r.details.weight.value > 0,
-          )
-
-          // Create health data object with safer property access
-          healthData = {
-            steps: {
-              today: stepsToday,
-              weekly: last7Days.reduce(
-                (sum, record) =>
-                  sum + (record.details && typeof record.details.steps === "number" ? record.details.steps : 0),
-                0,
-              ),
-            },
-            water: {
-              today: waterToday,
-              weekly: last7Days.reduce(
-                (sum, r) => sum + (r.details && typeof r.details.water === "number" ? r.details.water : 0),
-                0,
-              ),
-            },
-            weight: {
-              current: currentWeight,
-              unit: weightUnit,
-              previous:
-                prevWeightRecord && prevWeightRecord.details && prevWeightRecord.details.weight
-                  ? prevWeightRecord.details.weight.value
-                  : 0,
-            },
+        } catch (error: any) {
+          console.error("API call error:", error.message);
+          console.error("Error stack:", error.stack);
+          if (error.response) {
+            console.error("API error response status:", error.response.status);
+            console.error(
+              "API error response data:",
+              JSON.stringify(error.response.data, null, 2)
+            );
           }
-
-          console.log("Health data extracted successfully:", JSON.stringify(healthData, null, 2))
-        } else {
-          console.log("No valid data in API response")
         }
-      } catch (error: any) {
-        console.error("API call error:", error.message)
-        console.error("Error stack:", error.stack)
-        if (error.response) {
-          console.error("API error response status:", error.response.status)
-          console.error("API error response data:", JSON.stringify(error.response.data, null, 2))
+      } else {
+        console.log("No user ID available");
+      }
+
+      // Create enhanced prompt with health data if available
+      let enhancedPrompt = systemPrompt;
+
+      if (healthData) {
+        enhancedPrompt += `\n\nUser's health data:\n`;
+
+        if (healthData.steps) {
+          enhancedPrompt += `- Steps: Today: ${healthData.steps.today}, Weekly total: ${healthData.steps.weekly}\n`;
         }
-      }
-    } else {
-      console.log("No user ID available")
-    }
 
-    // Create enhanced prompt with health data if available
-    let enhancedPrompt = systemPrompt
-
-    if (healthData) {
-      enhancedPrompt += `\n\nUser's health data:\n`
-
-      if (healthData.steps) {
-        enhancedPrompt += `- Steps: Today: ${healthData.steps.today}, Weekly total: ${healthData.steps.weekly}\n`
-      }
-
-      if (healthData.water) {
-        enhancedPrompt += `- Water: Today: ${healthData.water.today} glasses, Weekly total: ${healthData.water.weekly} glasses\n`
-      }
-
-      if (healthData.weight && healthData.weight.current > 0) {
-        enhancedPrompt += `- Weight: Current: ${healthData.weight.current} ${healthData.weight.unit}`
-        if (healthData.weight.previous > 0) {
-          const change = healthData.weight.current - healthData.weight.previous
-          enhancedPrompt += `, Previous: ${healthData.weight.previous} ${healthData.weight.unit}, Change: ${change > 0 ? "+" : ""}${change} ${healthData.weight.unit}`
+        if (healthData.water) {
+          enhancedPrompt += `- Water: Today: ${healthData.water.today} glasses, Weekly total: ${healthData.water.weekly} glasses\n`;
         }
-        enhancedPrompt += `\n`
+
+        if (healthData.weight && healthData.weight.current > 0) {
+          enhancedPrompt += `- Weight: Current: ${healthData.weight.current} ${healthData.weight.unit}`;
+          if (healthData.weight.previous > 0) {
+            const change =
+              healthData.weight.current - healthData.weight.previous;
+            enhancedPrompt += `, Previous: ${healthData.weight.previous} ${
+              healthData.weight.unit
+            }, Change: ${change > 0 ? "+" : ""}${change} ${
+              healthData.weight.unit
+            }`;
+          }
+          enhancedPrompt += `\n`;
+        }
+
+        enhancedPrompt += `\nPlease answer the user's question about their health metrics using this data. Be specific and encouraging.`;
+
+        console.log("HEALTH DATA SUMMARY:");
+        console.log(`- Steps today: ${healthData.steps.today}`);
+        console.log(`- Water today: ${healthData.water.today} glasses`);
+        console.log(
+          `- Current weight: ${healthData.weight.current} ${healthData.weight.unit}`
+        );
+        console.log("Health data successfully added to prompt");
+      } else {
+        console.log("WARNING: No health data available to add to prompt");
       }
 
-      enhancedPrompt += `\nPlease answer the user's question about their health metrics using this data. Be specific and encouraging.`
+      console.log("Calling Gemini API");
 
-      console.log("HEALTH DATA SUMMARY:")
-      console.log(`- Steps today: ${healthData.steps.today}`)
-      console.log(`- Water today: ${healthData.water.today} glasses`)
-      console.log(`- Current weight: ${healthData.weight.current} ${healthData.weight.unit}`)
-      console.log("Health data successfully added to prompt")
-    } else {
-      console.log("WARNING: No health data available to add to prompt")
-    }
-
-    console.log("Calling Gemini API")
-
-    // Call Gemini API
-    const response = await axios({
-      method: "post",
-      url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
-      params: {
-        key: apiKey,
-      },
-      headers: {
-        "Content-Type": "application/json",
-      },
-      data: {
-        contents: [
-          {
-            parts: [{ text: enhancedPrompt }, { text: query }],
-          },
-        ],
-        generationConfig: {
-          maxOutputTokens: 100,
-          temperature: 1.0,
+      // Call Gemini API
+      const response = await axios({
+        method: "post",
+        url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+        params: {
+          key: apiKey,
         },
-      },
-    })
+        headers: {
+          "Content-Type": "application/json",
+        },
+        data: {
+          contents: [
+            {
+              parts: [{ text: enhancedPrompt }, { text: query }],
+            },
+          ],
+          generationConfig: {
+            maxOutputTokens: 100,
+            temperature: 1.0,
+          },
+        },
+      });
 
-    console.log("Gemini API response received")
+      console.log("Gemini API response received");
 
-    if (response.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-      const assistantMessage = response.data.candidates[0].content.parts[0].text.trim()
-      console.log("Assistant response:", assistantMessage)
+      if (response.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+        const assistantMessage =
+          response.data.candidates[0].content.parts[0].text.trim();
+        console.log("Assistant response:", assistantMessage);
 
-      // Speak the response
-      speakResponse(assistantMessage)
+        // Speak the response
+        // speakResponse(assistantMessage);
+        await generateAndPlayElevenLabsAudio(assistantMessage)
 
-      // Send to parent component
-      onSendAudio("", "", assistantMessage)
-    } else {
-      throw new Error("No valid response from Gemini API")
+        // Send to parent component
+        onSendAudio("", "", assistantMessage);
+      } else {
+        throw new Error("No valid response from Gemini API");
+      }
+    } catch (error: any) {
+      console.error("Error in processUserQuery:", error.message);
+      console.error("Error stack:", error.stack);
+      setIsProcessing(false);
+      Alert.alert(
+        "Error",
+        "I couldn't process your request. Please try again."
+      );
     }
-  } catch (error: any) {
-    console.error("Error in processUserQuery:", error.message)
-    console.error("Error stack:", error.stack)
-    setIsProcessing(false)
-    Alert.alert("Error", "I couldn't process your request. Please try again.")
-  }
-}
+  };
 
   // const processUserQuery = async (query: string) => {
   //   try {
@@ -612,7 +725,7 @@ const processUserQuery = async (query: string) => {
   //         ],
   //         generationConfig: {
   //           maxOutputTokens: 100,
-  //           temperature: 1.0, 
+  //           temperature: 1.0,
   //         },
   //       },
   //     });
@@ -650,12 +763,219 @@ const processUserQuery = async (query: string) => {
   //   }
   // };
 
+
+  const generateAndPlayElevenLabsAudio = async (text: string) => {
+    try {
+      setIsSpeaking(true)
+
+      // Replace with your Eleven Labs API key
+      const apiKey = "sk_db1991883b2abe5401ed25c8fe0d9e82d69f251467b0909e"
+
+      // Validate text is not empty
+      if (!text || text.trim() === "") {
+        throw new Error("Cannot generate audio for empty text")
+      }
+
+      // Replace the current voiceMap with this updated version that includes proper language-specific voices
+      // Define verified voice IDs from Eleven Labs for different languages
+      const voiceMap = {
+        en: "21m00Tcm4TlvDq8ikWAM", // Rachel (female English)
+        es: "EXAVITQu4vr4xnSDxMaL", // Nicole (Spanish female)
+        fr: "jsCqWAovK2LkecY7zXl4", // Piaf (French female)
+        pt: "TxGEqnHWrfWFTfGW9XjX", // Luana (Portuguese female)
+      }
+
+      // Get the voice ID based on language, default to English if not found
+      const voiceId = '21m00Tcm4TlvDq8ikWAM'
+
+      // Log detailed information for debugging
+      console.log(`Language setting: "${language}"`)
+      console.log(`Voice map:`, JSON.stringify(voiceMap))
+      console.log(`Selected voice ID: "${voiceId}"`)
+      console.log(
+        `Text to be spoken (length: ${text.length}): "${text.substring(0, 50)}${text.length > 50 ? "..." : ""}"`,
+      )
+
+      // Prepare request data
+      const requestData = {
+        text,
+        model_id: "eleven_multilingual_v2", // Use multilingual model for better language support
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.75,
+        },
+      }
+
+      console.log("Sending request to Eleven Labs API...")
+      console.log("Request data:", JSON.stringify(requestData, null, 2))
+
+      const response = await axios({
+        method: "POST",
+        url: `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+        headers: {
+          "Content-Type": "application/json",
+          "xi-api-key": apiKey,
+        },
+        data: requestData,
+        responseType: "arraybuffer",
+        validateStatus: (status) => status < 500, // Don't throw on 4xx errors so we can log them
+      })
+
+      // Check for error responses
+      if (response.status !== 200) {
+        // Convert arraybuffer to text for error messages
+        const errorText = new TextDecoder().decode(response.data)
+        console.error(`Eleven Labs API error (${response.status}):`, errorText)
+
+        let errorMessage = "Error generating audio"
+
+        // Try to parse the error message if it's JSON
+        try {
+          const errorJson = JSON.parse(errorText)
+          errorMessage = errorJson.detail?.message || errorJson.message || errorJson.error || errorText
+        } catch (e) {
+          // If not JSON, use the raw text
+          errorMessage = errorText
+        }
+
+        throw new Error(`Eleven Labs API error (${response.status}): ${errorMessage}`)
+      }
+
+      console.log("Received successful response from Eleven Labs API")
+
+      // Create a Uint8Array from the response data
+      const uint8Array = new Uint8Array(response.data)
+
+      // Convert the Uint8Array to base64
+      let binary = ""
+      uint8Array.forEach((byte) => {
+        binary += String.fromCharCode(byte)
+      })
+      const base64Audio = btoa(binary)
+
+      // Create a URI for the audio
+      const audioUri = `data:audio/mpeg;base64,${base64Audio}`
+
+      // Create and play the sound
+      if (sound) {
+        await sound.unloadAsync()
+      }
+
+      const { sound: newSound } = await Audio.Sound.createAsync({ uri: audioUri }, { shouldPlay: true })
+
+      setSound(newSound)
+
+      // Add event listener for when playback finishes
+      newSound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setIsSpeaking(false)
+          setIsProcessing(false)
+        }
+      })
+    } catch (error) {
+      console.error("Error generating or playing Eleven Labs audio:", error)
+
+      // More detailed error logging
+      if (axios.isAxiosError(error)) {
+        if (error.response) {
+          // The request was made and the server responded with a status code
+          // that falls out of the range of 2xx
+          console.error("Eleven Labs API error response status:", error.response.status)
+
+          // Try to get more details from the response
+          if (error.response.data) {
+            if (typeof error.response.data === "string") {
+              console.error("Error response data:", error.response.data)
+            } else if (error.response.data instanceof ArrayBuffer) {
+              // Convert ArrayBuffer to string
+              const decoder = new TextDecoder()
+              const errorText = decoder.decode(error.response.data)
+              console.error("Error response data (ArrayBuffer):", errorText)
+
+              // Try to parse as JSON
+              try {
+                const errorJson = JSON.parse(errorText)
+                console.error("Parsed error data:", errorJson)
+              } catch (e) {
+                // Not JSON, already logged as text
+              }
+            } else {
+              console.error("Error response data:", JSON.stringify(error.response.data, null, 2))
+            }
+          }
+
+          // Check for specific error conditions
+          if (error.response.status === 400) {
+            console.error("Bad request to Eleven Labs API. Common causes include:")
+            console.error("- Invalid API key")
+            console.error("- Invalid voice ID (current: " + voiceId + ")")
+            console.error("- Text content issues (empty, too long, or contains unsupported characters)")
+            console.error("- Invalid model ID (current: eleven_multilingual_v2)")
+          } else if (error.response.status === 401) {
+            console.error("Unauthorized. Check your Eleven Labs API key.")
+          } else if (error.response.status === 404) {
+            console.error("Voice ID not found. Check your voice ID.")
+          }
+        } else if (error.request) {
+          // The request was made but no response was received
+          console.error("No response received from Eleven Labs API:", error.request)
+        } else {
+          // Something happened in setting up the request that triggered an Error
+          console.error("Error setting up Eleven Labs API request:", error.message)
+        }
+      }
+
+      setIsSpeaking(false)
+      setIsProcessing(false)
+
+      // Fallback to device TTS if Eleven Labs fails
+      console.log("Falling back to device TTS...")
+      fallbackToDeviceTTS(text)
+    }
+  }
+
+  // Fallback to device TTS if Eleven Labs fails
+  const fallbackToDeviceTTS = (text: string) => {
+    try {
+      const speechOptions: Speech.SpeechOptions = {
+        language: language, // Use the language prop
+        pitch: 1.0,
+        rate: 0.9,
+        onDone: () => {
+          setIsSpeaking(false)
+          setIsProcessing(false)
+        },
+        onStopped: () => {
+          setIsSpeaking(false)
+          setIsProcessing(false)
+        },
+        onError: (error) => {
+          console.error("Speech error:", error)
+          setIsSpeaking(false)
+          setIsProcessing(false)
+        },
+      }
+
+      // Add the voice if we found a female one
+      if (femaleVoice) {
+        speechOptions.voice = femaleVoice.identifier
+      }
+
+      // Use the device's text-to-speech as fallback
+      Speech.speak(text, speechOptions)
+    } catch (error) {
+      console.error("Error with fallback TTS:", error)
+      setIsSpeaking(false)
+      setIsProcessing(false)
+    }
+  }
+
   const speakResponse = (text: string) => {
     setIsSpeaking(true);
 
     // Create speech options with the female voice if available
     const speechOptions: Speech.SpeechOptions = {
-      language: "en",
+      language:'fr',
       pitch: 1.0,
       rate: 0.9,
       onDone: () => {

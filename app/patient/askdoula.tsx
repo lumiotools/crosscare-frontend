@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
+  Alert,
 } from "react-native";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -18,6 +19,8 @@ import { router } from "expo-router";
 import VoiceRecorder from "@/components/VoiceRecorder";
 import AudioMessage from "@/components/AudioMessage";
 import { useSelector } from "react-redux";
+import { systemPrompts } from "@/constants/systemPrompts";
+import axios from "axios";
 
 interface Message {
   id: string;
@@ -27,357 +30,688 @@ interface Message {
   content: string; // text content or audio URI
 }
 
+interface HealthRecord {
+  date: string;
+  details: {
+    water: number;
+    waterGoal: number;
+    heart: number;
+    sleep: {
+      start: string | null;
+      end: string | null;
+    };
+    steps: number;
+    stepsGoal: number;
+    weight: {
+      value: number;
+      unit: string;
+    };
+  };
+}
+
 export default function askdoula() {
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const user = useSelector((state: any) => state.user);
+  const [healthData, setHealthData] = useState<{
+    steps: { today: number; weekly: number };
+    water: { today: number; weekly: number };
+    weight: { current: number; unit: string; previous: number };
+  } | null>(null);
+  const [healthRecords, setHealthRecords] = useState<HealthRecord[]>([]);
+
+  const [healthStats, setHealthStats] = useState({
+    water: {
+      today: 0,
+      weekly: 0,
+      monthly: 0,
+      avgWeekly: 0,
+      avgMonthly: 0,
+    },
+    steps: {
+      today: 0,
+      weekly: 0,
+      monthly: 0,
+      avgWeekly: 0,
+      avgMonthly: 0,
+    },
+    weight: {
+      today: 0,
+      weekly: 0,
+      monthly: 0,
+      avgWeekly: 0,
+      avgMonthly: 0,
+      unit: "kg",
+    },
+    heart: {
+      today: 0,
+      weekly: 0,
+      monthly: 0,
+      avgWeekly: 0,
+      avgMonthly: 0,
+    },
+    sleep: {
+      today: 0,
+      weekly: 0,
+      monthly: 0,
+      avgWeekly: 0,
+      avgMonthly: 0,
+    },
+  });
 
   const [isAssistantResponding, setIsAssistantResponding] = useState(false);
 
+  const [isProcessing, setIsProcessing] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const loadingAnimation = useRef(new Animated.Value(0)).current;
 
-  const systemPrompt = `
-You are a compassionate and knowledgeable digital doula assistant. Your role is to provide evidence-based information, emotional support, and practical advice to pregnant individuals. Always be warm, empathetic, and respectful in your responses. Keep your answers concise (under 100 words), easy to understand, and focused on the user's specific question.
+  const wordToNumberMap = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    nine: 9,
+    ten: 10,
+    eleven: 11,
+    twelve: 12,
+    thirteen: 13,
+    fourteen: 14,
+    fifteen: 15,
+    sixteen: 16,
+    seventeen: 17,
+    eighteen: 18,
+    nineteen: 19,
+    twenty: 20,
+    thirty: 30,
+    forty: 40,
+    fifty: 50,
+    sixty: 60,
+    seventy: 70,
+    eighty: 80,
+    ninety: 90,
+    hundred: 100,
+    half: 0.5,
+    quarter: 0.25,
+  };
 
-1. General Pregnancy Questions
-Q: What are the early signs of pregnancy?
- A: Early signs include missed periods, nausea (morning sickness), fatigue, frequent urination, tender breasts, mood swings, and increased sense of smell.
-Q: When should I see a doctor after a positive pregnancy test?
- A: Ideally, schedule your first prenatal appointment around 6-8 weeks after your last period to confirm pregnancy and discuss prenatal care.
-Q: How often should I have prenatal checkups?
- A:
-First 28 weeks – Every 4 weeks
-28-36 weeks – Every 2 weeks
-After 36 weeks – Every week until delivery
+  const wordsToNumber = (words: string): number | null => {
+    const parts = words.split(/[-\s]+/); // Split by space or hyphen
 
+    let total = 0;
+    let current = 0;
 
-2. Nutrition & Diet (Meal Tracking Integration)
-Q: Why is tracking meals important during pregnancy?
- A: Tracking meals ensures you’re getting enough protein, iron, folic acid, and calcium to support your baby’s growth. It also helps manage gestational diabetes and weight gain.
-Q: I keep forgetting to eat balanced meals. What should I do?
- A: Try setting meal reminders. Aim for:
-Breakfast: Protein + fiber (e.g., eggs + whole-grain toast)
-Lunch: Lean protein + veggies (e.g., grilled chicken + salad)
-Dinner: Healthy carbs + protein (e.g., lentils + brown rice)
-Snacks: Nuts, yogurt, fruit
-Chatbot Action: If meal tracking shows irregular eating habits, suggest easy meal prep ideas.
+    for (const word of parts) {
+      if (wordToNumberMap[word as keyof typeof wordToNumberMap] !== undefined) {
+        const num = wordToNumberMap[word as keyof typeof wordToNumberMap];
 
-3. Water Intake Tracking
-Q: How much water should I drink daily?
- A: Pregnant women should drink 8-12 cups (2-3 liters) of water daily to support amniotic fluid levels, digestion, and circulation.
-Q: I keep forgetting to drink water. Any tips?
- A:
-Set hourly reminders in the app
-Carry a water bottle
-Flavor water with lemon or mint
-Eat water-rich foods (cucumbers, oranges, watermelon)
-Chatbot Action: If logs show low water intake, send a gentle reminder:
- "Staying hydrated keeps your baby safe! Try sipping some water now 😊"_
+        if (num === 100) {
+          current *= 100; // Handle "one hundred", "two hundred", etc.
+        } else {
+          current += num;
+        }
+      } else if (current > 0) {
+        total += current;
+        current = 0;
+      }
+    }
 
-4. Sleep Tracking & Fatigue Management
-Q: Why am I so tired during pregnancy?
- A: Pregnancy hormones, increased metabolism, and carrying extra weight make you feel more fatigued, especially in the first and third trimesters.
-Q: How can I improve my sleep?
- A:
-Sleep on your left side for better circulation
-Use a pregnancy pillow for support
-Avoid caffeine before bedtime
-Keep a consistent bedtime routine
-Chatbot Action: If sleep logs show poor sleep, suggest:
- "Looks like you’ve been sleeping less. Try a relaxing bedtime routine tonight! 💙"_
+    total += current;
+    return total > 0 ? total : null;
+  };
 
-5. Step & Activity Tracking
-Q: How much should I walk during pregnancy?
- A: Aim for 5,000-10,000 steps/day, but listen to your body. Walking reduces swelling, back pain, and stress.
-Q: I am too tired to walk. What are some alternatives?
- A:
-Gentle stretching or prenatal yoga
-Short 10-minute walks after meals
-Swimming or water aerobics for low-impact exercise
-Chatbot Action: If step logs show inactivity, send motivation:
- "Even a 5-minute walk can boost energy & mood! Want to try a short stroll? 🚶‍♀️"_
+  const convertWordsToNumbers = (text: string): string => {
+    return text.replace(
+      /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|half|quarter)([-\s]?(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety))?\b/gi,
+      (match) => {
+        const num = wordsToNumber(match.toLowerCase());
 
-6. Medication & Supplement Tracking
-Q: Why should I track my prenatal vitamins?
- A: Taking folic acid, iron, calcium, and DHA daily helps prevent birth defects and supports baby’s brain development.
-Q: I forget to take my supplements. Any suggestions?
- A:
-Keep vitamins near your bedside or toothbrush
-Use the app’s medication reminders
-Take pills at the same time every day
-Chatbot Action: If medication logs show missed doses, send a reminder:
- "Your baby needs those essential nutrients! Don’t forget your prenatal today 💊"_
+        return num !== null ? num.toString() : match;
+      }
+    );
+  };
 
-7. Weight Tracking & Healthy Pregnancy Goals
-Q: How much weight should I gain?
- A: Healthy weight gain depends on your pre-pregnancy BMI:
-Underweight (BMI <18.5): Gain 28-40 lbs
-Normal weight (BMI 18.5-24.9): Gain 25-35 lbs
-Overweight (BMI 25-29.9): Gain 15-25 lbs
-Obese (BMI ≥30): Gain 11-20 lbs
-Q: I am gaining too much weight. What should I do?
- A:
-Balance meals (more protein & fiber, less sugar)
-Stay active with walks or prenatal yoga
-Drink water before meals to reduce cravings
-Chatbot Action: If weight logs show sudden gain, suggest a diet check-in:
- "Noticed a jump in weight? Let’s review your meals to keep things balanced! 🍏"_
+  const processUserInput = async (userText: string) => {
+    console.log("Processing input:", userText);
 
-8. Emotional Well-being & Stress Management
-Q: How can I track my mood during pregnancy?
- A: Logging your mood helps identify triggers like lack of sleep, stress, or poor nutrition. If feeling overwhelmed, try:
-Breathing exercises
-Talking to a friend
-Light stretching or walking
-Q: I feel anxious often. Is this normal?
- A: Yes, but tracking anxiety levels can help. If stress is constant, talk to your doctor about pregnancy-safe therapy options.
-Chatbot Action: If mood logs show frequent anxiety, suggest mindfulness exercises.
- "Feeling a little anxious today? Try a 5-minute deep breathing session. Inhale… exhale… 💕"_
+    // Convert words like "fifty-six kg" → "56 kg"
+    userText = convertWordsToNumbers(userText);
 
-9. Labor & Delivery Tracking (For Third Trimester)
-Q: How can I prepare for labor?
- A:
-Track contractions (regular, intense = real labor)
-Pack your hospital bag (clothes, toiletries, baby essentials)
-Review birth plan (natural birth, epidural, C-section)
-Q: How do I know when to go to the hospital?
- A: Go to the hospital if:
-Contractions are every 5 minutes and last 60+ seconds
-Water breaks (clear fluid leaking)
-Severe pain or bleeding
-Chatbot Action: If logs show frequent contractions, suggest contacting a doctor:
- "Your contractions are getting closer. It might be time! Call your doctor. 👶💙"_
+    console.log("Converted input:", userText);
 
-10. Postpartum Recovery Tracking
-Q: How can I track my postpartum health?
- A:
-Monitor postpartum bleeding (should decrease after 2 weeks)
-Track baby’s feeding schedule (breastfeeding/bottle)
-Log sleep patterns (both yours & baby’s)
-Q: How can I avoid postpartum depression?
- A: Track mood & energy levels. If feeling persistently sad, anxious, or overwhelmed, seek support from a doctor, therapist, or support group.
-Chatbot Action: If postpartum logs indicate low mood, suggest reaching out:
- "You’ve been feeling down often. You’re not alone—talking to someone might help. 💕"_
+    // Updated regex to capture water/weight inputs
+    const waterMatch = userText.match(
+      /([\d]+(?:\.\d+)?)\s*(ml|milliliters|liters|litres|l)/i
+    );
+    const glassesMatch = userText.match(
+      /([\d]+(?:\.\d+)?)\s*(glass|glasses|cup|cups)/i
+    );
+    const weightMatch = userText.match(/([\d]+(?:\.\d+)?)\s*(kg|pounds|lbs)/i);
+    const stepsMatch = userText.match(
+      /(?:log|set|record)\s*(?:step\s*goal|steps\s*goal)\s*(?:to\s*)?([\d]+(?:\.\d+)?)/i
+    );
 
-Mood tracker
-Physical Discomforts
-1. Lower Back Pain
-Cause:
-Hormonal changes loosen ligaments & joints
-Growing belly shifts center of gravity
-Weak core muscles & posture changes
-Symptoms:
-Dull or sharp pain in lower back
-Worsens with prolonged standing or sitting
-Relief Tips:
-Use a maternity belt for support
-Sleep with a pillow between knees
-Gentle stretching, yoga, or swimming
-Avoid standing for long periods
-When to Seek Help:
-Severe or persistent pain affecting daily life
-Pain accompanied by fever or leg swelling
+    const sleepMatch = userText.match(
+      /set reminder from (\d{1,2}:\d{2}\s*(AM|PM)) to (\d{1,2}:\d{2}\s*(AM|PM))/i
+    );
 
-2. Pelvic Pain (Pelvic Girdle Pain or SPD)
-Cause:
-Loosening of pelvic joints
-Baby’s weight pressing on the pelvis
-Hormonal relaxin softens ligaments
-Symptoms:
-Pain in pelvic area, hips, or groin
-Difficulty walking or climbing stairs
-Relief Tips:
-Avoid wide-legged movements
-Sleep with a pillow between thighs
-Wear a pelvic support band
-Try prenatal physiotherapy
-When to Seek Help:
-Severe pain affecting mobility
-Pain not improving with rest
+    let logDetails = null;
 
-3. Round Ligament Pain
-Cause:
-Stretching of ligaments supporting the uterus
-Sudden movements like coughing or sneezing
-Symptoms:
-Sharp pain in lower belly or groin
-Brief stabbing sensation when moving
-Relief Tips:
-Move slowly when changing positions
-Support belly with a pillow
-Apply warm compress to the lower belly
-When to Seek Help:
-Constant severe pain
-Pain accompanied by fever or bleeding
+    if (waterMatch) {
+      let value = Number.parseFloat(waterMatch[1]);
+      const unit = waterMatch[2].toLowerCase();
 
-4. Headaches & Migraines
-Cause:
-Hormonal changes (high estrogen)
-Dehydration & low blood sugar
-Lack of sleep or stress
-Symptoms:
-Persistent headache or throbbing pain
-Sensitivity to light and sound
-Relief Tips:
-Drink enough water (2-3L per day)
-Rest in a dark, quiet room
-Cold compress on forehead
-Avoid caffeine withdrawal
-When to Seek Help:
-Severe, sudden headache with vision changes
-Headache unrelieved by hydration and rest
+      if (unit.startsWith("l")) {
+        value *= 1000; // Convert liters to milliliters
+      }
 
-5. Leg Cramps
-Cause:
-Calcium & magnesium deficiency
-Poor circulation & extra weight
-Dehydration
-Symptoms:
-Sudden tightness or cramping in calf or foot
-Usually occurs at night
-Relief Tips:
-Stretch your legs before bed
-Stay hydrated
-Eat calcium & magnesium-rich foods
-Massage or use warm compress
-When to Seek Help:
-Severe cramps that persist or worsen
-Swelling or redness in the leg
+      logDetails = {
+        category: "water_intake",
+        value,
+        unit: "ml",
+      };
+    } else if (glassesMatch) {
+      const value = Number.parseFloat(glassesMatch[1]);
+      // Assuming 1 glass = 250ml
+      logDetails = {
+        category: "water_intake",
+        value: value * 250,
+        unit: "ml",
+      };
+    } else if (weightMatch) {
+      const value = Number.parseFloat(weightMatch[1]);
+      const unit = weightMatch[2].toLowerCase().startsWith("lb")
+        ? "pounds"
+        : weightMatch[2].toLowerCase();
 
-6. Sciatica
-Cause:
-Baby’s weight pressing on sciatic nerve
-Posture changes due to growing belly
-Symptoms:
-Sharp pain in lower back and down leg
-Numbness or tingling in legs
-Relief Tips:
-Sleep on your left side with a pillow between knees
-Prenatal yoga & stretching
-Warm compress on lower back
-When to Seek Help:
-Numbness or loss of mobility
-Severe, constant pain
+      logDetails = {
+        category: "weight",
+        value,
+        unit,
+      };
+    } else if (stepsMatch) {
+      const value = Number.parseFloat(stepsMatch[1]);
 
-7. Breast Pain & Tenderness
-Cause:
-Hormonal changes increase blood flow
-Breasts prepare for milk production
-Symptoms:
-Soreness, swelling, or heaviness in breasts
-Sensitivity to touch
-Relief Tips:
-Wear a comfortable maternity bra
-Cold compress for pain relief
-Avoid tight clothing
-When to Seek Help:
-Unusual lumps or severe pain
+      logDetails = {
+        category: "steps_goal", // Changed to "steps_goal" category
+        value,
+        unit: "steps", // No need for units other than "steps"
+      };
+    } else if (sleepMatch) {
+      const sleepStart = sleepMatch[1]; // Extracted sleep start time (e.g., "10:00 PM")
+      const sleepEnd = sleepMatch[3]; // Extracted sleep end time (e.g., "07:00 AM")
 
-8. Rib Pain
-Cause:
-Baby pushing against ribs
-Hormonal changes loosening rib cage
-Symptoms:
-Sharp pain in ribs, usually in the third trimester
-Relief Tips:
-Change positions frequently
-Sit up straight & practice deep breathing
-Stretching exercises
-When to Seek Help:
-Severe pain or difficulty breathing
+      const currentDate = new Date().toISOString().split("T")[0];
 
-9. Hip Pain
-Cause:
-Relaxin hormone loosening hip joints
-Extra weight pressuring the hips
-Symptoms:
-Aching or sharp pain in hips, especially at night
-Relief Tips:
-Sleep with a pregnancy pillow
-Gentle hip stretches
-Use warm compresses
-When to Seek Help:
-Severe hip pain affecting movement
+      const sleepReminderData = {
+        date: currentDate, // Use today's date
+        sleepStart, // The start time of the sleep
+        sleepEnd, // The end time of the sleep
+      };
 
-10. Carpal Tunnel Syndrome
-Cause:
-Swelling in hands compresses wrist nerves
-Fluid retention worsens in later stages
-Symptoms:
-Tingling, numbness, or pain in hands and fingers
-Relief Tips:
-Wear wrist splints at night
-Avoid repetitive hand movements
-Elevate hands while resting
-When to Seek Help:
-Persistent numbness or weakness
+      console.log(sleepReminderData);
 
-11. Constipation & Bloating
-Cause:
-Progesterone slows digestion
-Growing uterus presses on intestines
-Symptoms:
-Difficulty passing stool, bloating, gas
-Relief Tips:
-Eat fiber-rich foods
-Drink plenty of water
-Walk or do gentle movement
-When to Seek Help:
-Severe constipation with pain or bleeding
+      logDetails = {
+        category: "reminder", // Category for sleep reminder
+        value: sleepReminderData,
+        unit: "hours",
+      };
+    }
 
-12. Heartburn & Acid Reflux
-Cause:
-Relaxed esophageal muscles due to hormones
-Baby pushing on stomach
-Symptoms:
-Burning sensation in chest after eating
-Relief Tips:
-Eat small meals & avoid spicy/fatty foods
-Sleep with head slightly elevated
-Drink warm milk or herbal tea
-When to Seek Help:
-Persistent heartburn affecting eating
+    if (
+      logDetails &&
+      typeof logDetails.value === "number" &&
+      logDetails.value > 0
+    ) {
+      console.log("✅ Extracted log:", logDetails);
+      await logData(logDetails);
+      return true;
+    } else {
+      console.log("❌ No valid data extracted.");
+      return false;
+    }
+  };
 
-13. Braxton Hicks Contractions
-Cause:
-Uterus practicing for real labor
-Symptoms:
-Irregular, painless tightening of the belly
-Relief Tips:
-Rest & hydrate
-Change positions
-Warm bath or deep breathing
-When to Seek Help:
-Contractions become regular and intense
+  const logData = async ({
+    category,
+    value,
+    unit,
+  }: {
+    category: string;
+    value: number | string | object;
+    unit: string;
+  }) => {
+    const userId = user.user_id;
 
-14. Vaginal & Perineal Pain
-Cause:
-Increased blood flow & pressure
-Baby engaging lower in pelvis
-Symptoms:
-Pressure or sharp pain in vaginal area
-Relief Tips:
-Use a cool gel pad
-Avoid standing too long
-Do Kegel exercises
-When to Seek Help:
-Severe pain or unusual discharge
+    try {
+      let responseMessage = "";
 
-15. Labor Pain
-Cause:
-Uterus contracting for delivery
-Symptoms:
-Intense lower abdominal & back pain
-Relief Tips:
-Breathing techniques (Lamaze, deep breathing)
-Warm showers or baths
-Change positions
-When to Seek Help:
-Contractions every 5 minutes lasting 60+ seconds
-"You’ve been feeling down often. You’re not alone—talking to someone might help. 💕"
-`;
+      if (category === "water_intake") {
+        const waterCount = Number(value) / 250; // Convert to glasses
+
+        await axios.post(
+          `https://crosscare-backends.onrender.com/api/user/activity/${userId}/water`,
+          { water: waterCount }
+        );
+
+        console.log("✅ Water intake logged:", waterCount, "glasses");
+
+        // Format response based on whether input was in ml or glasses
+        if (unit === "ml") {
+          responseMessage = `I have logged your water intake of ${value} milliliters (${waterCount.toFixed(
+            1
+          )} glasses). Keep staying hydrated!
+          `;
+        } else {
+          responseMessage = `I have logged your water intake of ${waterCount.toFixed(
+            1
+          )} glasses. Keep staying hydrated!`;
+        }
+      } else if (category === "weight") {
+        await axios.post(
+          `https://crosscare-backends.onrender.com/api/user/activity/${userId}/weight`,
+          { weight: value, weight_unit: unit }
+        );
+
+        console.log("✅ Weight logged:", value, unit);
+
+        responseMessage = `Your weight of ${value} ${unit} has been recorded.`;
+      } else if (category === "steps_goal") {
+        const response = await axios.post(
+          `https://crosscare-backends.onrender.com/api/user/activity/${userId}/steps`,
+          { stepsGoal: value }
+        );
+
+        console.log("✅ Steps goal logged:", value);
+
+        responseMessage = `Your steps goal of ${value} steps has been recorded.`;
+      } else if (category === "reminder") {
+        // API request for setting sleep reminder
+        const sleepData = value as {
+          date: string;
+          sleepStart: string;
+          sleepEnd: string;
+        };
+
+        console.log(sleepData);
+        await axios.post(
+          `https://crosscare-backends.onrender.com/api/user/activity/${userId}/sleep`,
+          sleepData
+        );
+
+        console.log("✅ Sleep reminder set:", sleepData);
+
+        responseMessage = `Your sleep reminder is set from ${sleepData.sleepStart} to ${sleepData.sleepEnd}.`;
+      }
+
+      // Add the response to messages
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        {
+          id: (Date.now() + 1).toString(),
+          type: "text",
+          content: responseMessage,
+          isUser: false,
+          timestamp: new Date(),
+        },
+      ]);
+
+      // Speak the response
+      speakResponse(responseMessage);
+
+      // Refresh health data after logging
+      setTimeout(() => {
+        fetchHealthData();
+      }, 1000);
+
+      return true;
+    } catch (error: any) {
+      console.error(
+        "❌ Error logging:",
+        error.response ? error.response.data : error.message
+      );
+
+      // Add error message to chat
+      const errorMessage =
+        "Sorry, there was an error saving your data. Please try again.";
+
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        {
+          id: (Date.now() + 1).toString(),
+          type: "text",
+          content: errorMessage,
+          isUser: false,
+          timestamp: new Date(),
+        },
+      ]);
+
+      speakResponse(errorMessage);
+
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    if (user && user.user_id) {
+      // Only fetch health data when user is available
+      console.log("Fetching health data for user:", user.user_id);
+      fetchHealthData();
+    } else {
+      console.log("User data is not available yet.");
+    }
+  }, [user]);
+
+  const fetchHealthData = async () => {
+    if (user.user_id) {
+      try {
+        // Use the specified endpoint format
+        const apiUrl = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}`;
+
+        console.log(`Making API call to: ${apiUrl}`);
+
+        // Make the API call
+        const response = await axios.get(apiUrl);
+
+        // Process the data if we got a response
+        if (
+          response.data &&
+          Array.isArray(response.data) &&
+          response.data.length > 0
+        ) {
+          console.log(
+            "API data found. First record:",
+            JSON.stringify(response.data[0], null, 2)
+          );
+
+          // Sort by date (newest first)
+          const sortedRecords = [...response.data].sort(
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+
+          // Get the most recent record
+          const latestRecord = sortedRecords[0];
+
+          // Get the last 7 days of records for weekly stats
+          const last7Days = sortedRecords.slice(0, 7);
+
+          // Get the last 30 days of records for monthly stats
+          const last30Days = sortedRecords.slice(0, 30);
+
+          // Calculate sleep duration in hours for a record
+          const calculateSleepDuration = (record: any) => {
+            if (
+              record.details &&
+              record.details.sleep &&
+              record.details.sleep.start &&
+              record.details.sleep.end
+            ) {
+              const start = new Date(record.details.sleep.start);
+              const end = new Date(record.details.sleep.end);
+              return (end.getTime() - start.getTime()) / (1000 * 60 * 60); // Convert ms to hours
+            }
+            return 0;
+          };
+
+          // Create a new stats object to update state
+          const newHealthStats = {
+            water: {
+              today: 0,
+              weekly: 0,
+              monthly: 0,
+              avgWeekly: 0,
+              avgMonthly: 0,
+            },
+            steps: {
+              today: 0,
+              weekly: 0,
+              monthly: 0,
+              avgWeekly: 0,
+              avgMonthly: 0,
+            },
+            weight: {
+              today: 0,
+              weekly: 0,
+              monthly: 0,
+              avgWeekly: 0,
+              avgMonthly: 0,
+              unit: "kg",
+            },
+            heart: {
+              today: 0,
+              weekly: 0,
+              monthly: 0,
+              avgWeekly: 0,
+              avgMonthly: 0,
+            },
+            sleep: {
+              today: 0,
+              weekly: 0,
+              monthly: 0,
+              avgWeekly: 0,
+              avgMonthly: 0,
+            },
+          };
+
+          // TODAY'S STATS
+          newHealthStats.water.today = latestRecord.details?.water || 0;
+          newHealthStats.steps.today = latestRecord.details?.steps || 0;
+          newHealthStats.heart.today = latestRecord.details?.heart || 0;
+          newHealthStats.sleep.today = calculateSleepDuration(latestRecord);
+
+          if (latestRecord.details?.weight?.value) {
+            newHealthStats.weight.today = latestRecord.details.weight.value;
+            newHealthStats.weight.unit =
+              latestRecord.details.weight.unit || "kg";
+          }
+
+          // WEEKLY STATS
+          const weeklyWaterRecords = last7Days.filter(
+            (r) =>
+              r.details?.water &&
+              typeof r.details.water === "number" &&
+              r.details.water > 0
+          );
+          const weeklyStepsRecords = last7Days.filter(
+            (r) =>
+              r.details?.steps &&
+              typeof r.details.steps === "number" &&
+              r.details.steps > 0
+          );
+          const weeklyHeartRecords = last7Days.filter(
+            (r) =>
+              r.details?.heart &&
+              typeof r.details.heart === "number" &&
+              r.details.heart > 0
+          );
+          const weeklySleepRecords = last7Days.filter(
+            (r) => calculateSleepDuration(r) > 0
+          );
+          const weeklyWeightRecords = last7Days.filter(
+            (r) =>
+              r.details?.weight?.value &&
+              typeof r.details.weight.value === "number" &&
+              r.details.weight.value > 0
+          );
+
+          // Calculate totals
+          newHealthStats.water.weekly = weeklyWaterRecords.reduce(
+            (sum, r) => sum + r.details.water,
+            0
+          );
+          newHealthStats.steps.weekly = weeklyStepsRecords.reduce(
+            (sum, r) => sum + r.details.steps,
+            0
+          );
+          newHealthStats.heart.weekly = weeklyHeartRecords.reduce(
+            (sum, r) => sum + r.details.heart,
+            0
+          );
+          newHealthStats.sleep.weekly = weeklySleepRecords.reduce(
+            (sum, r) => sum + calculateSleepDuration(r),
+            0
+          );
+          newHealthStats.weight.weekly = weeklyWeightRecords.reduce(
+            (sum, r) => sum + r.details.weight.value,
+            0
+          );
+
+          // Calculate averages
+          newHealthStats.water.avgWeekly =
+            weeklyWaterRecords.length > 0
+              ? newHealthStats.water.weekly / weeklyWaterRecords.length
+              : 0;
+          newHealthStats.steps.avgWeekly =
+            weeklyStepsRecords.length > 0
+              ? newHealthStats.steps.weekly / weeklyStepsRecords.length
+              : 0;
+          newHealthStats.heart.avgWeekly =
+            weeklyHeartRecords.length > 0
+              ? newHealthStats.heart.weekly / weeklyHeartRecords.length
+              : 0;
+          newHealthStats.sleep.avgWeekly =
+            weeklySleepRecords.length > 0
+              ? newHealthStats.sleep.weekly / weeklySleepRecords.length
+              : 0;
+          newHealthStats.weight.avgWeekly =
+            weeklyWeightRecords.length > 0
+              ? newHealthStats.weight.weekly / weeklyWeightRecords.length
+              : 0;
+
+          // MONTHLY STATS
+          const monthlyWaterRecords = last30Days.filter(
+            (r) =>
+              r.details?.water &&
+              typeof r.details.water === "number" &&
+              r.details.water > 0
+          );
+          const monthlyStepsRecords = last30Days.filter(
+            (r) =>
+              r.details?.steps &&
+              typeof r.details.steps === "number" &&
+              r.details.steps > 0
+          );
+          const monthlyHeartRecords = last30Days.filter(
+            (r) =>
+              r.details?.heart &&
+              typeof r.details.heart === "number" &&
+              r.details.heart > 0
+          );
+          const monthlySleepRecords = last30Days.filter(
+            (r) => calculateSleepDuration(r) > 0
+          );
+          const monthlyWeightRecords = last30Days.filter(
+            (r) =>
+              r.details?.weight?.value &&
+              typeof r.details.weight.value === "number" &&
+              r.details.weight.value > 0
+          );
+
+          // Calculate totals
+          newHealthStats.water.monthly = monthlyWaterRecords.reduce(
+            (sum, r) => sum + r.details.water,
+            0
+          );
+          newHealthStats.steps.monthly = monthlyStepsRecords.reduce(
+            (sum, r) => sum + r.details.steps,
+            0
+          );
+          newHealthStats.heart.monthly = monthlyHeartRecords.reduce(
+            (sum, r) => sum + r.details.heart,
+            0
+          );
+          newHealthStats.sleep.monthly = monthlySleepRecords.reduce(
+            (sum, r) => sum + calculateSleepDuration(r),
+            0
+          );
+          newHealthStats.weight.monthly = monthlyWeightRecords.reduce(
+            (sum, r) => sum + r.details.weight.value,
+            0
+          );
+
+          // Calculate averages
+          newHealthStats.water.avgMonthly =
+            monthlyWaterRecords.length > 0
+              ? newHealthStats.water.monthly / monthlyWaterRecords.length
+              : 0;
+          newHealthStats.steps.avgMonthly =
+            monthlyStepsRecords.length > 0
+              ? newHealthStats.steps.monthly / monthlyStepsRecords.length
+              : 0;
+          newHealthStats.heart.avgMonthly =
+            monthlyHeartRecords.length > 0
+              ? newHealthStats.heart.monthly / monthlyHeartRecords.length
+              : 0;
+          newHealthStats.sleep.avgMonthly =
+            monthlySleepRecords.length > 0
+              ? newHealthStats.sleep.monthly / monthlySleepRecords.length
+              : 0;
+          newHealthStats.weight.avgMonthly =
+            monthlyWeightRecords.length > 0
+              ? newHealthStats.weight.monthly / monthlyWeightRecords.length
+              : 0;
+
+          // Create health data object with safer property access (for backward compatibility)
+          const newHealthData = {
+            steps: {
+              today: newHealthStats.steps.today,
+              weekly: newHealthStats.steps.weekly,
+            },
+            water: {
+              today: newHealthStats.water.today,
+              weekly: newHealthStats.water.weekly,
+            },
+            weight: {
+              current: latestRecord.details?.weight?.value || 0,
+              unit: latestRecord.details?.weight?.unit || "kg",
+              previous: 0,
+            },
+          };
+
+          // Find previous weight record for backward compatibility
+          const prevWeightRecord = sortedRecords.find(
+            (r) =>
+              r !== latestRecord &&
+              r.details?.weight?.value &&
+              typeof r.details.weight.value === "number" &&
+              r.details.weight.value > 0
+          );
+
+          if (prevWeightRecord && prevWeightRecord.details?.weight) {
+            newHealthData.weight.previous =
+              prevWeightRecord.details.weight.value;
+          }
+
+          // Update state with the new health data
+          setHealthStats(newHealthStats);
+          setHealthData(newHealthData);
+
+          console.log(
+            "Health stats calculated successfully:",
+            JSON.stringify(newHealthStats, null, 2)
+          );
+        } else {
+          console.log("No valid data in API response");
+        }
+      } catch (error: any) {
+        console.error("API call error:", error.message);
+
+        if (error.response) {
+          console.error("API error response status:", error.response.status);
+          console.error(
+            "API error response data:",
+            JSON.stringify(error.response.data, null, 2)
+          );
+        }
+      }
+    } else {
+      console.log("No user ID available");
+    }
+  };
 
   const sendToAPI = async (
     messageContent: string,
@@ -391,12 +725,78 @@ Contractions every 5 minutes lasting 60+ seconds
       // Your API key should be stored in an environment variable in production
       const apiKey = "AIzaSyD0ISmMWP4_yDqEvlrjpNJB8TnuJBkhZPs"; // Replace with your actual API key
 
+      let enhancedPrompt = systemPrompts;
+
+      if (healthData) {
+        enhancedPrompt += `\n\nUser's health data:\n`;
+
+        if (healthStats.steps) {
+          enhancedPrompt += `
+- Steps: Today: ${
+            healthStats.steps.today
+          }, Weekly average: ${healthStats.steps.avgWeekly.toFixed(
+            0
+          )}, Monthly average: ${healthStats.steps.avgMonthly.toFixed(0)}
+`;
+        }
+
+        if (healthStats.water) {
+          enhancedPrompt += `
+- Water: Today: ${
+            healthStats.water.today
+          } glasses, Weekly average: ${healthStats.water.avgWeekly.toFixed(
+            1
+          )} glasses, Monthly average: ${healthStats.water.avgMonthly.toFixed(
+            1
+          )} glasses
+`;
+        }
+
+        if (healthStats.weight && healthStats.weight.avgWeekly > 0) {
+          enhancedPrompt += `
+- Weight: Current: ${healthStats.weight.today} ${
+            healthStats.weight.unit
+          }, Weekly average: ${healthStats.weight.avgWeekly.toFixed(1)} ${
+            healthStats.weight.unit
+          }, Monthly average: ${healthStats.weight.avgMonthly.toFixed(1)} ${
+            healthStats.weight.unit
+          }
+`;
+        }
+
+        if (healthStats.heart && healthStats.heart.avgWeekly > 0) {
+          enhancedPrompt += `
+- Heart rate: Current: ${
+            healthStats.heart.today
+          } bpm, Weekly average: ${healthStats.heart.avgWeekly.toFixed(
+            0
+          )} bpm, Monthly average: ${healthStats.heart.avgMonthly.toFixed(
+            0
+          )} bpm
+`;
+        }
+
+        if (healthStats.sleep && healthStats.sleep.avgWeekly > 0) {
+          enhancedPrompt += `
+- Sleep: Last night: ${healthStats.sleep.today.toFixed(
+            1
+          )} hours, Weekly average: ${healthStats.sleep.avgWeekly.toFixed(
+            1
+          )} hours, Monthly average: ${healthStats.sleep.avgMonthly.toFixed(
+            1
+          )} hours
+`;
+        }
+
+        enhancedPrompt += `\nPlease answer the user's question about their health metrics using this data. Be specific and encouraging.`;
+      }
+
       const requestBody = {
         contents: [
           {
             parts: [
               {
-                text: systemPrompt,
+                text: systemPrompts,
               },
               {
                 text: messageContent,
@@ -405,10 +805,7 @@ Contractions every 5 minutes lasting 60+ seconds
           },
         ],
         generationConfig: {
-          temperature: 0.0,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 100,
+          temperature: 1.0,
         },
       };
 
@@ -431,9 +828,11 @@ Contractions every 5 minutes lasting 60+ seconds
       const data = await response.json();
 
       // Extract the response text from Gemini's response format
-      const responseText =
+      let responseText =
         data.candidates?.[0]?.content?.parts?.[0]?.text ||
         "I'm sorry, I couldn't process your request at this time.";
+
+        responseText = responseText.replace(/\*/g, "");
 
       return {
         response: responseText,
@@ -444,6 +843,687 @@ Contractions every 5 minutes lasting 60+ seconds
         response:
           "I'm having trouble connecting right now. Please try again later.",
       };
+    }
+  };
+
+  const speakResponse = (text: string) => {
+    // This function would normally use text-to-speech
+
+    // For now, we'll just log the response
+
+    console.log("Speaking response:", text);
+  };
+
+  const getDataForDate = (date: string, metric: string) => {
+    console.log("Looking for date:", date)
+    console.log(
+      "Available health records:",
+      healthRecords.map((r) => r.date),
+    )
+
+    const record = healthRecords.find((r) => r.date === date)
+
+    console.log("Found record:", record ? "Yes" : "No")
+
+    if (!record) {
+      return null
+    }
+
+    let value = null
+    switch (metric) {
+      case "weight":
+        value = record.details?.weight?.value || null
+        break
+      case "steps":
+        value = record.details?.steps || null
+        break
+      case "water":
+        value = record.details?.water || null
+        break
+      case "heart":
+        value = record.details?.heart || null
+        break
+      case "sleep":
+        if (record.details?.sleep?.start && record.details?.sleep?.end) {
+          const start = new Date(record.details.sleep.start)
+          const end = new Date(record.details.sleep.end)
+          value = (end.getTime() - start.getTime()) / (1000 * 60 * 60) // Convert ms to hours
+        }
+        break
+    }
+
+    console.log(`Value for ${metric} on ${date}:`, value)
+    return value
+  }
+
+  // Function to get data for a specific day of the week
+  const getDataForDayOfWeek = (dayName: string, metric: string) => {
+    // Convert day name to day number (0 = Sunday, 1 = Monday, etc.)
+    const dayMap: { [key: string]: number } = {
+      sunday: 0,
+      monday: 1,
+      tuesday: 2,
+      wednesday: 3,
+      thursday: 4,
+      friday: 5,
+      saturday: 6,
+    }
+
+    const dayNumber = dayMap[dayName.toLowerCase()]
+    console.log("Looking for day:", dayName, "Day number:", dayNumber)
+
+    if (dayNumber === undefined) {
+      console.log("Invalid day name")
+      return null
+    }
+
+    // Get the current date
+    const today = new Date()
+    console.log("Today:", today.toISOString(), "Day of week:", today.getDay())
+
+    const currentDayNumber = today.getDay()
+
+    // Calculate how many days ago the requested day was
+    let daysAgo = currentDayNumber - dayNumber
+    if (daysAgo < 0) {
+      daysAgo += 7 // If the day is in the future (next week), get last week's day
+    }
+    console.log("Days ago:", daysAgo)
+
+    // Calculate the date for the requested day
+    const targetDate = new Date()
+    targetDate.setDate(today.getDate() - daysAgo)
+    console.log("Target date:", targetDate.toISOString())
+
+    // Format the date as YYYY-MM-DD
+    const formattedDate = targetDate.toISOString().split("T")[0]
+    console.log("Formatted date:", formattedDate)
+
+    // Log all available dates for debugging
+    console.log(
+      "All available dates:",
+      healthRecords.map((r) => r.date),
+    )
+
+    // Try multiple date formats and partial matches
+    let value = null
+
+    // First try exact match
+    let record = healthRecords.find((r) => r.date === formattedDate)
+
+    // If no exact match, try date that starts with our formatted date
+    if (!record) {
+      record = healthRecords.find((r) => r.date.startsWith(formattedDate))
+    }
+
+    // If still no match, try more flexible matching (e.g., different format but same day)
+    if (!record) {
+      // Try to match just the day part regardless of format
+      const targetDay = targetDate.getDate()
+      const targetMonth = targetDate.getMonth() + 1
+      const targetYear = targetDate.getFullYear()
+
+      record = healthRecords.find((r) => {
+        try {
+          const recordDate = new Date(r.date)
+          return (
+            recordDate.getDate() === targetDay &&
+            recordDate.getMonth() + 1 === targetMonth &&
+            recordDate.getFullYear() === targetYear
+          )
+        } catch (e) {
+          return false
+        }
+      })
+    }
+
+    console.log("Found record:", record ? "Yes" : "No")
+
+    if (record) {
+      switch (metric) {
+        case "weight":
+          value = record.details?.weight?.value || null
+          break
+        case "steps":
+          value = record.details?.steps || null
+          break
+        case "water":
+          value = record.details?.water || null
+          break
+        case "heart":
+          value = record.details?.heart || null
+          break
+        case "sleep":
+          if (record.details?.sleep?.start && record.details?.sleep?.end) {
+            const start = new Date(record.details.sleep.start)
+            const end = new Date(record.details.sleep.end)
+            value = (end.getTime() - start.getTime()) / (1000 * 60 * 60) // Convert ms to hours
+          }
+          break
+      }
+    }
+
+    console.log(`Value for ${metric} on ${dayName}:`, value)
+    return value
+  }
+
+  const processUserQuery = async (query: string) => {
+    try {
+      console.log("processUserQuery started with:", query);
+      setIsProcessing(true);
+
+      const dayOfWeekMatch = query.match(
+        /on\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i
+      );
+      const lastDayOfWeekMatch = query.match(/last\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i);
+      const specificDateMatch = query.match(/on\s+(\d{4}-\d{2}-\d{2})/i);
+
+      // Check for different types of health stat queries
+      const isWaterQuery = /water|hydration/i.test(query);
+      const isWeightQuery = /weight/i.test(query);
+      const isStepsQuery = /steps|step count|walking/i.test(query);
+      const isHeartQuery = /heart|pulse|bpm/i.test(query);
+      const isSleepQuery = /sleep|slept/i.test(query);
+
+      // Check for time period queries
+      const isAverageQuery = /average|avg/i.test(query);
+      const isTodayQuery = /today|current/i.test(query);
+      const isWeeklyQuery = /week|weekly|7 days/i.test(query);
+      const isMonthlyQuery = /month|monthly|30 days/i.test(query);
+
+      // Check for comprehensive stats query
+      const isComprehensiveQuery =
+        /all stats|all metrics|health summary|overview/i.test(query) ||
+        (/avg|average/i.test(query) &&
+          /heart|water|steps|sleep|weight/i.test(query));
+
+      console.log("Query analysis:", {
+        dayOfWeekMatch,
+        specificDateMatch,
+        isWaterQuery,
+        isWeightQuery,
+        isStepsQuery,
+        isHeartQuery,
+        isSleepQuery,
+        isAverageQuery,
+        isTodayQuery,
+        isWeeklyQuery,
+        isMonthlyQuery,
+        isComprehensiveQuery,
+      });
+
+      if (dayOfWeekMatch && isWeightQuery) {
+        const dayOfWeek = dayOfWeekMatch[1].toLowerCase();
+        let metric = "";
+
+        if (isStepsQuery) metric = "steps";
+        else if (isWaterQuery) metric = "water";
+        else if (isWeightQuery) metric = "weight";
+        else if (isHeartQuery) metric = "heart";
+        else if (isSleepQuery) metric = "sleep";
+
+        if (metric) {
+          const value = getDataForDayOfWeek(dayOfWeek, 'weight');
+
+          if (value !== null) {
+            let responseMessage = "";
+
+            if (metric === "steps") {
+              responseMessage = `On ${dayOfWeek}, you walked ${value} steps.`;
+            } else if (metric === "water") {
+              responseMessage = `On ${dayOfWeek}, you drank ${value} glasses of water.`;
+            } else if (metric === "weight") {
+              responseMessage = `On ${dayOfWeek}, your weight was ${value} ${healthStats.weight.unit}.`;
+            } else if (metric === "heart") {
+              responseMessage = `On ${dayOfWeek}, your heart rate was ${value} bpm.`;
+            } else if (metric === "sleep") {
+              responseMessage = `On ${dayOfWeek}, you slept for ${value.toFixed(
+                1
+              )} hours.`;
+            }
+
+            speakResponse(responseMessage);
+
+            setMessages((prevMessages) => [
+              ...prevMessages,
+              {
+                id: (Date.now() + 1).toString(),
+                type: "text",
+                content: responseMessage,
+                isUser: false,
+                timestamp: new Date(),
+              },
+            ]);
+
+            setIsProcessing(false);
+            return;
+          } else {
+            const noDataMessage = `I don't have any ${metric} data for ${dayOfWeek}.`;
+
+            speakResponse(noDataMessage);
+
+            setMessages((prevMessages) => [
+              ...prevMessages,
+              {
+                id: (Date.now() + 1).toString(),
+                type: "text",
+                content: noDataMessage,
+                isUser: false,
+                timestamp: new Date(),
+              },
+            ]);
+
+            setIsProcessing(false);
+            return;
+          }
+        }
+      }
+
+      // Handle specific date queries
+      if (specificDateMatch && isWeightQuery) {
+        const specificDate = specificDateMatch[1];
+        let metric = "";
+
+        if (isStepsQuery) metric = "steps";
+        else if (isWaterQuery) metric = "water";
+        else if (isWeightQuery) metric = "weight";
+        else if (isHeartQuery) metric = "heart";
+        else if (isSleepQuery) metric = "sleep";
+
+        if (metric) {
+          const value = getDataForDate(specificDate, "weight");
+
+          if (value !== null) {
+            let responseMessage = "";
+
+            if (metric === "steps") {
+              responseMessage = `On ${specificDate}, you walked ${value} steps.`;
+            } else if (metric === "water") {
+              responseMessage = `On ${specificDate}, you drank ${value} glasses of water.`;
+            } else if (metric === "weight") {
+              responseMessage = `On ${specificDate}, your weight was ${value} ${healthStats.weight.unit}.`;
+            } else if (metric === "heart") {
+              responseMessage = `On ${specificDate}, your heart rate was ${value} bpm.`;
+            } else if (metric === "sleep") {
+              responseMessage = `On ${specificDate}, you slept for ${value.toFixed(
+                1
+              )} hours.`;
+            }
+
+            speakResponse(responseMessage);
+
+            setMessages((prevMessages) => [
+              ...prevMessages,
+              {
+                id: (Date.now() + 1).toString(),
+                type: "text",
+                content: responseMessage,
+                isUser: false,
+                timestamp: new Date(),
+              },
+            ]);
+
+            setIsProcessing(false);
+            return;
+          } else {
+            const noDataMessage = `I don't have any ${metric} data for ${specificDate}.`;
+
+            speakResponse(noDataMessage);
+
+            setMessages((prevMessages) => [
+              ...prevMessages,
+              {
+                id: (Date.now() + 1).toString(),
+                type: "text",
+                content: noDataMessage,
+                isUser: false,
+                timestamp: new Date(),
+              },
+            ]);
+
+            setIsProcessing(false);
+            return;
+          }
+        }
+      }
+
+      // Handle comprehensive health stats query
+      if (isComprehensiveQuery) {
+        console.log("Detected comprehensive health stats query");
+
+        let statsMessage = ""; // Start with an empty message
+        let reportPeriod = "weekly"; // Default to weekly
+
+        if (isTodayQuery) reportPeriod = "today";
+        if (isMonthlyQuery) reportPeriod = "monthly";
+
+        // Check if it's specifically a weight query
+        const isWeightQueryOnly = /average\s*weight|avg\s*weight/i.test(query);
+        const isWaterQueryOnly = /average\s*water|avg\s*water/i.test(query);
+        const isStepsQueryOnly = /average\s*steps|avg\s*steps/i.test(query);
+        const isHeartRateQueryOnly =
+          /average\s*heart\s*rate|avg\s*heart\s*rate/i.test(query);
+        const isSleepQueryOnly = /average\s*sleep|avg\s*sleep/i.test(query);
+
+        // If it's only a weight query, we only append the weight info
+        if (isWeightQueryOnly) {
+          if (healthStats.weight.avgWeekly > 0) {
+            if (reportPeriod === "today") {
+              statsMessage = `Your weight is ${healthStats.weight.today} ${healthStats.weight.unit} today.`;
+            } else if (reportPeriod === "weekly") {
+              statsMessage = `Your average weight is ${healthStats.weight.avgWeekly.toFixed(
+                1
+              )} ${healthStats.weight.unit} (weekly average).`;
+            } else {
+              statsMessage = `Your average weight is ${healthStats.weight.avgMonthly.toFixed(
+                1
+              )} ${healthStats.weight.unit} (monthly average).`;
+            }
+          } else {
+            statsMessage =
+              "I don't have enough weight data to calculate statistics. Please log your weight regularly.";
+          }
+        }
+
+        // If it's only a water query, we only append the water info
+        else if (isWaterQueryOnly) {
+          if (reportPeriod === "today") {
+            statsMessage = `You drank ${healthStats.water.today} glasses of water today.`;
+          } else if (reportPeriod === "weekly") {
+            statsMessage = `Your average water intake is ${healthStats.water.avgWeekly.toFixed(
+              1
+            )} glasses per day (weekly average).`;
+          } else {
+            statsMessage = `Your average water intake is ${healthStats.water.avgMonthly.toFixed(
+              1
+            )} glasses per day (monthly average).`;
+          }
+        }
+
+        // If it's only a steps query, we only append the steps info
+        else if (isStepsQueryOnly) {
+          if (reportPeriod === "today") {
+            statsMessage = `You walked ${healthStats.steps.today} steps today.`;
+          } else if (reportPeriod === "weekly") {
+            statsMessage = `Your average steps are ${healthStats.steps.avgWeekly.toFixed(
+              0
+            )} steps per day (weekly average).`;
+          } else {
+            statsMessage = `Your average steps are ${healthStats.steps.avgMonthly.toFixed(
+              0
+            )} steps per day (monthly average).`;
+          }
+        }
+
+        // If it's only a heart rate query, we only append the heart rate info
+        else if (isHeartRateQueryOnly) {
+          if (reportPeriod === "today") {
+            statsMessage = `Your heart rate is ${healthStats.heart.today} bpm today.`;
+          } else if (reportPeriod === "weekly") {
+            statsMessage = `Your average heart rate is ${healthStats.heart.avgWeekly.toFixed(
+              0
+            )} bpm (weekly average).`;
+          } else {
+            statsMessage = `Your average heart rate is ${healthStats.heart.avgMonthly.toFixed(
+              0
+            )} bpm (monthly average).`;
+          }
+        }
+
+        // If it's only a sleep query, we only append the sleep info
+        else if (isSleepQueryOnly) {
+          if (reportPeriod === "today") {
+            statsMessage = `You slept ${healthStats.sleep.today.toFixed(
+              1
+            )} hours today.`;
+          } else if (reportPeriod === "weekly") {
+            statsMessage = `Your average sleep is ${healthStats.sleep.avgWeekly.toFixed(
+              1
+            )} hours per night (weekly average).`;
+          } else {
+            statsMessage = `Your average sleep is ${healthStats.sleep.avgMonthly.toFixed(
+              1
+            )} hours per night (monthly average).`;
+          }
+        }
+
+        // If it's not just one specific metric, provide the full summary
+        else {
+          statsMessage = "Here's a summary of your health statistics:\n\n";
+
+          // Water stats
+          if (reportPeriod === "today") {
+            statsMessage += `Water: ${healthStats.water.today} glasses today\n`;
+          } else if (reportPeriod === "weekly") {
+            statsMessage += `Water: ${healthStats.water.avgWeekly.toFixed(
+              1
+            )} glasses per day (weekly average)\n`;
+          } else {
+            statsMessage += `Water: ${healthStats.water.avgMonthly.toFixed(
+              1
+            )} glasses per day (monthly average)\n`;
+          }
+
+          // Steps stats
+          if (reportPeriod === "today") {
+            statsMessage += `Steps: ${healthStats.steps.today} steps today\n`;
+          } else if (reportPeriod === "weekly") {
+            statsMessage += `Steps: ${healthStats.steps.avgWeekly.toFixed(
+              0
+            )} steps per day (weekly average)\n`;
+          } else {
+            statsMessage += `Steps: ${healthStats.steps.avgMonthly.toFixed(
+              0
+            )} steps per day (monthly average)\n`;
+          }
+
+          // Weight stats
+          if (healthStats.weight.avgWeekly > 0) {
+            if (reportPeriod === "today") {
+              statsMessage += `Weight: ${healthStats.weight.today} ${healthStats.weight.unit} today\n`;
+            } else if (reportPeriod === "weekly") {
+              statsMessage += `Weight: ${healthStats.weight.avgWeekly.toFixed(
+                1
+              )} ${healthStats.weight.unit} (weekly average)\n`;
+            } else {
+              statsMessage += `Weight: ${healthStats.weight.avgMonthly.toFixed(
+                1
+              )} ${healthStats.weight.unit} (monthly average)\n`;
+            }
+          }
+
+          // Heart rate stats
+          if (healthStats.heart.avgWeekly > 0) {
+            if (reportPeriod === "today") {
+              statsMessage += `Heart rate: ${healthStats.heart.today} bpm today\n`;
+            } else if (reportPeriod === "weekly") {
+              statsMessage += `Heart rate: ${healthStats.heart.avgWeekly.toFixed(
+                0
+              )} bpm (weekly average)\n`;
+            } else {
+              statsMessage += `Heart rate: ${healthStats.heart.avgMonthly.toFixed(
+                0
+              )} bpm (monthly average)\n`;
+            }
+          }
+
+          // Sleep stats
+          if (healthStats.sleep.avgWeekly > 0) {
+            if (reportPeriod === "today") {
+              statsMessage += `Sleep: ${healthStats.sleep.today.toFixed(
+                1
+              )} hours today\n`;
+            } else if (reportPeriod === "weekly") {
+              statsMessage += `Sleep: ${healthStats.sleep.avgWeekly.toFixed(
+                1
+              )} hours per night (weekly average)\n`;
+            } else {
+              statsMessage += `Sleep: ${healthStats.sleep.avgMonthly.toFixed(
+                1
+              )} hours per night (monthly average)\n`;
+            }
+          }
+        }
+
+        // Add a note if some metrics are missing
+        if (
+          healthStats.heart.avgWeekly === 0 ||
+          healthStats.sleep.avgWeekly === 0
+        ) {
+          statsMessage +=
+            "\nSome metrics have no data. Regular tracking will provide more complete insights.";
+        }
+
+        // Speak the response
+        speakResponse(statsMessage);
+
+        // Add the response to messages
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          {
+            id: (Date.now() + 1).toString(),
+            type: "text",
+            content: statsMessage,
+            isUser: false,
+            timestamp: new Date(),
+          },
+        ]);
+
+        setIsProcessing(false);
+        return;
+      }
+
+      // Handle specific metric queries (example for water query)
+      if (isWaterQuery) {
+        let waterMessage = "";
+
+        if (isTodayQuery) {
+          waterMessage = `You've consumed ${healthStats.water.today} glasses of water today.`;
+        } else if (isWeeklyQuery || isAverageQuery) {
+          waterMessage = `Your average water consumption is ${healthStats.water.avgWeekly.toFixed(
+            1
+          )} glasses per day over the past week. Your total weekly consumption was ${
+            healthStats.water.weekly
+          } glasses.`;
+        } else if (isMonthlyQuery) {
+          waterMessage = `Your average water consumption is ${healthStats.water.avgMonthly.toFixed(
+            1
+          )} glasses per day over the past month. Your total monthly consumption was ${
+            healthStats.water.monthly
+          } glasses.`;
+        } else {
+          waterMessage = `Your average water consumption is ${healthStats.water.avgWeekly.toFixed(
+            1
+          )} glasses per day over the past week. Today you've had ${
+            healthStats.water.today
+          } glasses.`;
+        }
+
+        waterMessage += " Staying hydrated is important for your pregnancy!";
+
+        // Speak the response
+        speakResponse(waterMessage);
+
+        // Add the response to messages
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          {
+            id: (Date.now() + 1).toString(),
+            type: "text",
+            content: waterMessage,
+            isUser: false,
+            timestamp: new Date(),
+          },
+        ]);
+        setIsProcessing(false);
+        return;
+      }
+
+      // Handle specific weight query
+      if (
+        isWeightQuery &&
+        /^what('s| is) (my |the )?(avg|average) weight/i.test(query)
+      ) {
+        if (
+          healthStats.weight.avgWeekly === 0 &&
+          healthStats.weight.today === 0
+        ) {
+          const noDataMessage =
+            "I don't have enough weight data to calculate statistics. Please log your weight regularly to track your pregnancy progress.";
+          speakResponse(noDataMessage);
+
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            {
+              id: (Date.now() + 1).toString(),
+              type: "text",
+              content: noDataMessage,
+              isUser: false,
+              timestamp: new Date(),
+            },
+          ]);
+
+          setIsProcessing(false);
+          return;
+        }
+
+        let weightMessage = "";
+        if (isMonthlyQuery) {
+          weightMessage = `Your average weight is ${healthStats.weight.avgMonthly.toFixed(
+            1
+          )} ${healthStats.weight.unit} over the past month.`;
+        } else {
+          weightMessage = `Your average weight is ${healthStats.weight.avgWeekly.toFixed(
+            1
+          )} ${healthStats.weight.unit} over the past week.`;
+        }
+
+        speakResponse(weightMessage);
+
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          {
+            id: (Date.now() + 1).toString(),
+            type: "text",
+            content: weightMessage,
+            isUser: false,
+            timestamp: new Date(),
+          },
+        ]);
+
+        setIsProcessing(false);
+        return;
+      }
+
+      // For non-health specific queries, use the regular API
+      const apiResponse = await sendToAPI(query, "text");
+
+      if (apiResponse) {
+        const assistantMessage = apiResponse.response;
+        speakResponse(assistantMessage);
+
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          {
+            id: (Date.now() + 1).toString(),
+            type: "text",
+            content: assistantMessage,
+            isUser: false,
+            timestamp: new Date(),
+          },
+        ]);
+      }
+
+      setIsProcessing(false);
+    } catch (error: any) {
+      console.error("Error in processUserQuery:", error.message);
+      console.error("Error stack:", error.stack);
+
+      setIsProcessing(false);
+      Alert.alert(
+        "Error",
+        "I couldn't process your request. Please try again."
+      );
     }
   };
 
@@ -487,28 +1567,57 @@ Contractions every 5 minutes lasting 60+ seconds
       setIsTyping(true);
       setIsAssistantResponding(true);
 
-      // Send the message to the API
-      const apiResponse = await sendToAPI(messageContent, "text");
+      // First check if this is a logging command
+      const isLoggingCommand =
+        /log|record|track|add|my weight is|i weigh|i drank|i had|glasses|cups/i.test(
+          messageContent
+        );
 
-      setTimeout(() => {
+      if (isLoggingCommand) {
+        const wasLogged = await processUserInput(messageContent);
+
+        if (wasLogged) {
+          setIsTyping(false);
+          setIsAssistantResponding(false);
+          return;
+        }
+      }
+
+      // Check if this is a health-related query
+      const isHealthQuery =
+        /weight|water|hydration|steps|walking|heart|pulse|bpm|sleep|slept|health|stats|metrics/i.test(
+          messageContent
+        );
+
+      if (isHealthQuery) {
+        // Process health-related query
+        await processUserQuery(messageContent);
         setIsTyping(false);
         setIsAssistantResponding(false);
+      } else {
+        // Send the message to the API
+        const apiResponse = await sendToAPI(messageContent, "text");
 
-        if (apiResponse) {
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            {
-              id: (Date.now() + 1).toString(),
-              type: "text",
-              content:
-                apiResponse?.response ||
-                "Thank you for your message. I'll address your concerns shortly.",
-              isUser: false,
-              timestamp: new Date(),
-            },
-          ]);
-        }
-      }, 1500);
+        setTimeout(() => {
+          setIsTyping(false);
+          setIsAssistantResponding(false);
+
+          if (apiResponse) {
+            setMessages((prevMessages) => [
+              ...prevMessages,
+              {
+                id: (Date.now() + 1).toString(),
+                type: "text",
+                content:
+                  apiResponse?.response ||
+                  "Thank you for your message. I'll address your concerns shortly.",
+                isUser: false,
+                timestamp: new Date(),
+              },
+            ]);
+          }
+        }, 1500);
+      }
     }
   };
 
@@ -616,6 +1725,14 @@ Contractions every 5 minutes lasting 60+ seconds
     );
   };
 
+  const [language, setLanguage] = useState("en");
+
+  const handleLanguageChange = () => {
+    // Toggle between English and Spanish
+    setLanguage((prevLanguage) => (prevLanguage === "en" ? "es" : "en"));
+    console.log("Selected language:", language === "en" ? "English" : "Spanish");
+  };
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -623,7 +1740,7 @@ Contractions every 5 minutes lasting 60+ seconds
       keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
     >
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content"  backgroundColor={'white'}/>
+        <StatusBar barStyle="dark-content" backgroundColor={"white"} />
 
         {/* Header */}
         <View style={styles.header}>
@@ -631,8 +1748,18 @@ Contractions every 5 minutes lasting 60+ seconds
             <Ionicons name="chevron-back" size={20} color="#434343" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Ask Your Doula</Text>
-          <TouchableOpacity>
-            <Feather name="more-vertical" size={20} color="#E5E5E5" />
+          <TouchableOpacity style={{
+            flexDirection:'row',
+            gap:5,
+            alignItems:'center',
+            borderWidth:1,
+            borderColor:'#FF80AB',
+            paddingHorizontal:5,
+            paddingVertical:4,
+            borderRadius:20,
+          }} onPress={handleLanguageChange}>
+            <Ionicons name='language-outline' size={15} color="#FF80AB" />
+            <Text>{language === 'en' ? "en" : "es"}</Text>
           </TouchableOpacity>
         </View>
 
@@ -794,7 +1921,8 @@ Contractions every 5 minutes lasting 60+ seconds
               />
               <VoiceRecorder
                 onSendAudio={handleAudioSent}
-                systemPrompt={systemPrompt}
+                systemPrompt={systemPrompts}
+                language={language}
               />
             </View>
 

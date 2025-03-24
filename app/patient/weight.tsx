@@ -367,7 +367,7 @@ const WeightScreen = () => {
         // But we'll continue to fetch the latest data from the API
       }
 
-      const response = await fetch(`http://192.168.1.102:8000/api/user/activity/${user.user_id}/weightStatus`, {
+      const response = await fetch(`https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/weightStatus`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
