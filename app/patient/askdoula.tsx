@@ -428,9 +428,10 @@ export default function askdoula() {
       const data = await response.json()
 
       // Extract the response text from Gemini's response format
-      const responseText =
+      let responseText =
         data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm sorry, I couldn't process your request at this time."
 
+        responseText = responseText.replace(/\*/g, '')
       return {
         response: responseText,
       }
@@ -1915,6 +1916,13 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     opacity: 0.5,
+  },
+  doulaBubble: {
+    backgroundColor: "#FFF",
+    borderTopLeftRadius: 4,
+    borderWidth: 0.5,
+    borderColor: "#E5E5E5",
+    marginLeft: 8,
   },
 })
 

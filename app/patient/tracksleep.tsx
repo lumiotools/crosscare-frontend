@@ -12,68 +12,70 @@ import {
   Animated,
   Dimensions,
   Modal,
-} from "react-native"
-import { Ionicons, MaterialIcons, Feather } from "@expo/vector-icons"
-import { SafeAreaView } from "react-native-safe-area-context"
-import { router } from "expo-router"
-import { useEffect, useMemo, useRef, useState } from "react"
-import { LinearGradient } from "expo-linear-gradient"
-import MoonIcon from "@/assets/images/Svg/MoonIcon"
-import SleepLogModal from "./modal/sleepmodal"
-import { MenuProvider } from "react-native-popup-menu"
-import DeleteMenu from "./modal/deletemodal"
-import MoonIcon1 from "@/assets/images/Svg/MoonIcon1"
-import { useSelector } from "react-redux"
-import { ActivityIndicator } from "react-native"
-import AsyncStorage from "@react-native-async-storage/async-storage"
+  Alert,
+} from "react-native";
+import { Ionicons, MaterialIcons, Feather } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { LinearGradient } from "expo-linear-gradient";
+import MoonIcon from "@/assets/images/Svg/MoonIcon";
+import SleepLogModal from "./modal/sleepmodal";
+import { MenuProvider } from "react-native-popup-menu";
+import DeleteMenu from "./modal/deletemodal";
+import MoonIcon1 from "@/assets/images/Svg/MoonIcon1";
+import { useSelector } from "react-redux";
+import { ActivityIndicator } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFitbit } from "@/zustandStore/useFitbitStore";
 
-const { width } = Dimensions.get("window")
-const BAR_WIDTH = 20
-const SPACING = (width - BAR_WIDTH * 10) / 8
-const MAX_HEIGHT = 200
+const { width } = Dimensions.get("window");
+const BAR_WIDTH = 20;
+const SPACING = (width - BAR_WIDTH * 10) / 8;
+const MAX_HEIGHT = 200;
 
 type CustomBarProps = {
   item: {
-    day: string
-    hours: number
-    date: string
-    isRangeLabel?: boolean
-    rangeLabel?: string
-  }
-  index: number
-  isSelected: boolean
-  timeRange: string
-}
+    day: string;
+    hours: number;
+    date: string;
+    isRangeLabel?: boolean;
+    rangeLabel?: string;
+  };
+  index: number;
+  isSelected: boolean;
+  timeRange: string;
+};
 
 interface ChartDataEntry {
-  day: string
-  hours: number
-  date: string
-  isRangeLabel?: boolean
-  rangeLabel?: string
-  id?: string
+  day: string;
+  hours: number;
+  date: string;
+  isRangeLabel?: boolean;
+  rangeLabel?: string;
+  id?: string;
 }
 
 interface SleepEntry {
-  id: string
-  date: string
-  sleepStart: string
-  sleepEnd: string
-  duration: string
+  id: string;
+  date: string;
+  sleepStart: string;
+  sleepEnd: string;
+  duration: string;
 }
 
 // Time range options
 type TimeRangeOption = {
-  id: string
-  label: string
-}
+  id: string;
+  label: string;
+};
 
 const timeRangeOptions: TimeRangeOption[] = [
   { id: "today", label: "Today" },
   { id: "week", label: "Last 7 Days" },
   { id: "month", label: "This Month" },
   { id: "lastMonth", label: "Last Month" },
-]
+];
 
 const sleepData: SleepEntry[] = [
   {
@@ -90,7 +92,7 @@ const sleepData: SleepEntry[] = [
     sleepEnd: "7:30 AM",
     duration: "8 hr",
   },
-]
+];
 
 // Default empty chart data
 const emptyChartData = [
@@ -101,50 +103,273 @@ const emptyChartData = [
   { day: "T", hours: 0, date: "" },
   { day: "F", hours: 0, date: "" },
   { day: "S", hours: 0, date: "" },
-]
+];
 
 // Default empty today data
-const emptyTodayData = [{ day: "Today", hours: 0, date: new Date().toISOString().split("T")[0] }]
+const emptyTodayData = [
+  { day: "Today", hours: 0, date: new Date().toISOString().split("T")[0] },
+];
 
 export default function tracksleep() {
   // Mock data for the weekly chart
-  const [logAdded, setLogAdded] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
-  const [tooltipAnim] = useState(new Animated.Value(0)) // Start with 0 opacity
-  const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const [sleepLogs, setSleepLogs] = useState<SleepEntry[]>(sleepData)
-  const [chartData, setChartData] = useState<ChartDataEntry[]>(emptyChartData)
-  const [lastResetDate, setLastResetDate] = useState<Date | null>(null)
-  const [timeRange, setTimeRange] = useState("week") // "today", "week", "month", "lastMonth"
-  const [filteredData, setFilteredData] = useState<ChartDataEntry[]>([])
+  const [logAdded, setLogAdded] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [tooltipAnim] = useState(new Animated.Value(0)); // Start with 0 opacity
+  const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [sleepLogs, setSleepLogs] = useState<SleepEntry[]>(sleepData);
+  const [chartData, setChartData] = useState<ChartDataEntry[]>(emptyChartData);
+  const [lastResetDate, setLastResetDate] = useState<Date | null>(null);
+  const [timeRange, setTimeRange] = useState("week"); // "today", "week", "month", "lastMonth"
+  const [filteredData, setFilteredData] = useState<ChartDataEntry[]>([]);
 
   // Dropdown state
-  const [dropdownVisible, setDropdownVisible] = useState(false)
-  const periodSelectorRef = useRef(null)
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0, width: 0 })
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const periodSelectorRef = useRef(null);
+  const [dropdownPosition, setDropdownPosition] = useState({
+    top: 0,
+    right: 0,
+    width: 0,
+  });
 
-  const user = useSelector((state: any) => state.user)
+  const {
+      isConnected,
+      isLoading: fitbitLoading,
+      connect,
+      disconnect,
+      getDataForRange,
+    } = useFitbit();
+  
+    const [initialCheckDone, setInitialCheckDone] = useState(false);
+  
+    useEffect(() => {
+      const checkInitialConnection = async () => {
+        try {
+          // Wait for the hook's connection check to complete
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          setInitialCheckDone(true);
+        } catch (error) {
+          console.error("Error in initial connection check:", error);
+          setInitialCheckDone(true);
+        }
+      };
+  
+      checkInitialConnection();
+    }, []);
+  
+    const handleFitbitConnection = async () => {
+      if (isConnected) {
+        // Disconnect from Fitbit
+        await disconnect();
+        Alert.alert('Disconnected', 'Successfully disconnected from Fitbit');
+      } else {
+        // Connect to Fitbit
+        const success = await connect();
+        if (success) {
+          Alert.alert('Success', 'Connected to Fitbit');
+          getSleepStatus(); // Refresh data with Fitbit data
+        } else {
+          Alert.alert('Error', 'Failed to connect to Fitbit');
+        }
+      }
+    };
 
-  const [isModalVisible, setIsModalVisible] = useState(false)
+  const user = useSelector((state: any) => state.user);
+
+  const fetchFitbitSleepData = async () => {
+    try {
+      // Determine date range based on timeRange
+      const today = new Date();
+      let startDate = new Date();
+      
+      if (timeRange === 'today') {
+        // Just today
+      } else if (timeRange === 'week') {
+        startDate.setDate(today.getDate() - 7);
+      } else if (timeRange === 'month') {
+        startDate.setMonth(today.getMonth() - 1);
+      } else if (timeRange === 'lastMonth') {
+        startDate.setMonth(today.getMonth() - 2);
+        const endDate = new Date();
+        endDate.setMonth(today.getMonth() - 1);
+        today.setTime(endDate.getTime());
+      }
+      
+      // Format dates for Fitbit API (yyyy-MM-dd)
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = today.toISOString().split('T')[0];
+      
+      // Get data for date range
+      const data = await getDataForRange('sleep', startDateStr, endDateStr);
+      
+      if (!data) {
+        throw new Error('Failed to fetch Fitbit sleep data');
+      }
+      
+      return processFitbitSleepData(data);
+    } catch (error) {
+      console.error('Error fetching Fitbit sleep data:', error);
+      return null;
+    }
+  };
+  
+  // Process Fitbit sleep data
+  const processFitbitSleepData = async (fitbitData: any) => {
+    if (!fitbitData || !fitbitData.sleep) {
+      return [];
+    }
+    
+    const sleepData = fitbitData.sleep;
+    const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"];
+    const processedData = [];
+    
+    // Create a map to store sleep data by date
+    const sleepByDate = new Map();
+    
+    // Process all sleep records
+    for (const sleepRecord of sleepData) {
+      try {
+        // Get the date from the sleep record
+        const dateStr = sleepRecord.dateOfSleep;
+        const date = new Date(dateStr);
+        
+        // Validate the date is valid before proceeding
+        if (isNaN(date.getTime())) {
+          console.error("Invalid date from Fitbit:", dateStr);
+          continue; // Skip this record
+        }
+        
+        const dayIndex = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
+        const dayAbbr = fixedWeekdays[dayIndex];
+        
+        // Parse the ISO timestamps from Fitbit
+        const sleepStart = new Date(sleepRecord.startTime);
+        const sleepEnd = new Date(sleepRecord.endTime);
+        
+        // Validate timestamps are valid
+        if (isNaN(sleepStart.getTime()) || isNaN(sleepEnd.getTime())) {
+          console.error("Invalid timestamps from Fitbit:", sleepRecord.startTime, sleepRecord.endTime);
+          continue; // Skip this record
+        }
+        
+        // Format times for display in 12-hour format
+        const formattedSleepStart = sleepStart.toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        });
+        
+        const formattedSleepEnd = sleepEnd.toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        });
+        
+        // Calculate sleep duration in hours
+        const durationMs = sleepRecord.duration;
+        const hours = durationMs / (1000 * 60 * 60);
+        
+        // Format duration for display
+        const durationHours = Math.floor(hours);
+        const durationMinutes = Math.round((hours - durationHours) * 60);
+        const formattedDuration = `${durationHours} hr${
+          durationMinutes > 0 ? ` ${durationMinutes} min` : ""
+        }`;
+        
+        // Format the date for display - use a more reliable format
+        const formattedDate = `${date.getDate()} ${date.toLocaleString('en-US', { month: 'short' })}, ${date.getFullYear()}`;
+        
+        // Send data to your API
+        try {
+          // Prepare data in the format your API expects
+          const sleepDataForAPI = {
+            date: dateStr, // Format: YYYY-MM-DD
+            displayDate: formattedDate, // Add formatted date for display
+            sleepStart: formattedSleepStart, // Format: "9:00 PM"
+            sleepEnd: formattedSleepEnd // Format: "7:29 AM"
+          };
+          
+          console.log("Sending sleep data to API:", sleepDataForAPI);
+          
+          // Make POST request to your API - use sleepAttachment endpoint
+          const response = await fetch(
+            `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/sleep`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(sleepDataForAPI),
+            }
+          );
+          
+          if (!response.ok) {
+            throw new Error(`Failed to save sleep data: ${response.statusText}`);
+          }
+          
+          console.log(`Successfully saved sleep data for ${dateStr}`);
+        } catch (error) {
+          console.error("Error saving sleep data to database:", error);
+        }
+        
+        // Continue with your existing code for processing the data for the UI
+        if (sleepByDate.has(dateStr)) {
+          const existingEntry = sleepByDate.get(dateStr);
+          existingEntry.hours += hours;
+          
+          // Add to sleep logs
+          existingEntry.logs.push({
+            id: sleepRecord.logId.toString(),
+            date: formattedDate, // Use the formatted date here
+            sleepStart: formattedSleepStart,
+            sleepEnd: formattedSleepEnd,
+            duration: formattedDuration,
+          });
+        } else {
+          // Create a new entry
+          sleepByDate.set(dateStr, {
+            day: dayAbbr,
+            hours: hours,
+            date: dateStr,
+            displayDate: formattedDate, // Add formatted date for display
+            logs: [{
+              id: sleepRecord.logId.toString(),
+              date: formattedDate, // Use the formatted date here
+              sleepStart: formattedSleepStart,
+              sleepEnd: formattedSleepEnd,
+              duration: formattedDuration,
+            }],
+          });
+        }
+      } catch (error) {
+        console.error("Error processing sleep record:", error);
+        // Continue to the next record
+      }
+    }
+    
+    // Convert map to array
+    return Array.from(sleepByDate.values());
+  };
+
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   // Get the current selected time range label
   const getTimeRangeLabel = () => {
-    const option = timeRangeOptions.find((option) => option.id === timeRange)
-    return option ? option.label : "Last 7 Days"
-  }
+    const option = timeRangeOptions.find((option) => option.id === timeRange);
+    return option ? option.label : "Last 7 Days";
+  };
 
   // Generate all days for the selected time range
   const generateAllDays = (timeRange: string): ChartDataEntry[] => {
-    const today = new Date()
-    const days = []
-    let startDate: Date
-    let endDate: Date
+    const today = new Date();
+    const days = [];
+    let startDate: Date;
+    let endDate: Date;
 
     if (timeRange === "today") {
       // Today view - just show today
-      const todayStr = today.toISOString().split("T")[0]
-      const dayName = today.toLocaleDateString("en-US", { weekday: "long" })
+      const todayStr = today.toISOString().split("T")[0];
+      const dayName = today.toLocaleDateString("en-US", { weekday: "long" });
 
       return [
         {
@@ -153,26 +378,28 @@ export default function tracksleep() {
           day: "Today",
           hours: 0,
         },
-      ]
+      ];
     } else if (timeRange === "week") {
       // Weekly view - show each day
-      startDate = new Date(today)
-      const dayOfWeek = startDate.getDay()
-      startDate.setDate(startDate.getDate() - dayOfWeek)
+      startDate = new Date(today);
+      const dayOfWeek = startDate.getDay();
+      startDate.setDate(startDate.getDate() - dayOfWeek);
 
-      endDate = new Date(startDate)
-      endDate.setDate(startDate.getDate() + 6)
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
 
-      const currentDate = new Date(startDate)
+      const currentDate = new Date(startDate);
       while (currentDate <= endDate) {
-        const dateString = currentDate.toISOString().split("T")[0]
+        const dateString = currentDate.toISOString().split("T")[0];
         days.push({
           id: `empty-${dateString}`,
           date: dateString,
-          day: currentDate.toLocaleDateString("en-US", { weekday: "short" }).charAt(0),
+          day: currentDate
+            .toLocaleDateString("en-US", { weekday: "short" })
+            .charAt(0),
           hours: 0,
-        })
-        currentDate.setDate(currentDate.getDate() + 1)
+        });
+        currentDate.setDate(currentDate.getDate() + 1);
       }
     } else if (timeRange === "month" || timeRange === "lastMonth") {
       // For month views, create date ranges around key dates
@@ -184,25 +411,25 @@ export default function tracksleep() {
         { label: "20", start: 20, end: 24 },
         { label: "25", start: 25, end: 29 },
         { label: "30", start: 30, end: 31 },
-      ]
+      ];
 
       if (timeRange === "month") {
-        startDate = new Date(today.getFullYear(), today.getMonth(), 1)
-        endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
       } else {
-        startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1)
-        endDate = new Date(today.getFullYear(), today.getMonth(), 0)
+        startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        endDate = new Date(today.getFullYear(), today.getMonth(), 0);
       }
 
-      const lastDay = endDate.getDate()
+      const lastDay = endDate.getDate();
 
       // Generate entries for each date range
       for (const range of dateRanges) {
         if (range.start <= lastDay) {
           // Add the main label date
-          const labelDate = new Date(startDate)
-          labelDate.setDate(range.start)
-          const labelDateString = labelDate.toISOString().split("T")[0]
+          const labelDate = new Date(startDate);
+          labelDate.setDate(range.start);
+          const labelDateString = labelDate.toISOString().split("T")[0];
 
           days.push({
             id: `label-${labelDateString}`,
@@ -210,13 +437,17 @@ export default function tracksleep() {
             day: range.label,
             hours: 0,
             isRangeLabel: true, // Mark this as a label for the range
-          })
+          });
 
           // Add individual days in the range
-          for (let day = range.start; day <= Math.min(range.end, lastDay); day++) {
-            const currentDate = new Date(startDate)
-            currentDate.setDate(day)
-            const dateString = currentDate.toISOString().split("T")[0]
+          for (
+            let day = range.start;
+            day <= Math.min(range.end, lastDay);
+            day++
+          ) {
+            const currentDate = new Date(startDate);
+            currentDate.setDate(day);
+            const dateString = currentDate.toISOString().split("T")[0];
 
             days.push({
               id: `day-${dateString}`,
@@ -224,80 +455,88 @@ export default function tracksleep() {
               day: "", // Empty string for non-label days
               hours: 0,
               rangeLabel: range.label, // Reference to which label this belongs to
-            })
+            });
           }
         }
       }
     }
 
-    return days
-  }
+    return days;
+  };
 
   // Function to get the current week number
   const getWeekNumber = (date: Date) => {
-    const firstDayOfYear = new Date(date.getFullYear(), 0, 1)
-    const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000
-    return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7)
-  }
+    const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+    const pastDaysOfYear =
+      (date.getTime() - firstDayOfYear.getTime()) / 86400000;
+    return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+  };
 
   // Function to check if we need to reset the chart data
   const checkAndResetWeeklyData = async () => {
     try {
       // Get current date
-      const currentDate = new Date()
-      const currentWeek = getWeekNumber(currentDate)
-      const currentYear = currentDate.getFullYear()
+      const currentDate = new Date();
+      const currentWeek = getWeekNumber(currentDate);
+      const currentYear = currentDate.getFullYear();
 
       // Get the stored last reset info from AsyncStorage
-      const lastResetInfo = await AsyncStorage.getItem("lastChartResetInfo")
-      let lastResetWeek = 0
-      let lastResetYear = 0
+      const lastResetInfo = await AsyncStorage.getItem("lastChartResetInfo");
+      let lastResetWeek = 0;
+      let lastResetYear = 0;
 
       if (lastResetInfo) {
-        const parsedInfo = JSON.parse(lastResetInfo)
-        lastResetWeek = parsedInfo.week
-        lastResetYear = parsedInfo.year
-        setLastResetDate(new Date(parsedInfo.date))
+        const parsedInfo = JSON.parse(lastResetInfo);
+        lastResetWeek = parsedInfo.week;
+        lastResetYear = parsedInfo.year;
+        setLastResetDate(new Date(parsedInfo.date));
       }
 
-      console.log("Current week/year:", currentWeek, currentYear)
-      console.log("Last reset week/year:", lastResetWeek, lastResetYear)
+      console.log("Current week/year:", currentWeek, currentYear);
+      console.log("Last reset week/year:", lastResetWeek, lastResetYear);
 
       // Reset if it's a new week or a new year
-      if (!lastResetInfo || lastResetWeek !== currentWeek || lastResetYear !== currentYear) {
-        console.log("Resetting chart data for new week")
+      if (
+        !lastResetInfo ||
+        lastResetWeek !== currentWeek ||
+        lastResetYear !== currentYear
+      ) {
+        console.log("Resetting chart data for new week");
 
         // Reset chart data
-        setChartData(emptyChartData)
+        setChartData(emptyChartData);
 
         // Store the current week info
         const resetInfo = {
           week: currentWeek,
           year: currentYear,
           date: currentDate.toISOString(),
-        }
+        };
 
-        await AsyncStorage.setItem("lastChartResetInfo", JSON.stringify(resetInfo))
-        setLastResetDate(currentDate)
+        await AsyncStorage.setItem(
+          "lastChartResetInfo",
+          JSON.stringify(resetInfo)
+        );
+        setLastResetDate(currentDate);
 
-        return true // Indicate that we reset the data
+        return true; // Indicate that we reset the data
       }
 
-      return false // No reset needed
+      return false; // No reset needed
     } catch (error) {
-      console.error("Error in checkAndResetWeeklyData:", error)
-      return false
+      console.error("Error in checkAndResetWeeklyData:", error);
+      return false;
     }
-  }
+  };
 
   // Add these functions to handle the modal
   const handleOpenModal = () => {
-    setIsModalVisible(true)
-  }
+    setIsModalVisible(true);
+  };
 
   const handleCloseModal = () => {
-    setIsModalVisible(false)
-  }
+    setIsModalVisible(false);
+  };
 
   const handleSaveSleepLog = (date: Date, sleepTime: Date, wakeTime: Date) => {
     // Format the times for display using toLocaleTimeString
@@ -305,35 +544,39 @@ export default function tracksleep() {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
-    })
+    });
 
     const formattedWakeTime = wakeTime.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
-    })
+    });
 
     // Calculate duration (this is a simple calculation, might need adjustment)
-    const sleepMs = sleepTime.getTime()
-    const wakeMs = wakeTime.getTime()
-    let durationMs = wakeMs - sleepMs
+    const sleepMs = sleepTime.getTime();
+    const wakeMs = wakeTime.getTime();
+    let durationMs = wakeMs - sleepMs;
 
     // If wake time is earlier than sleep time, assume it's the next day
     if (durationMs < 0) {
-      durationMs += 24 * 60 * 60 * 1000
+      durationMs += 24 * 60 * 60 * 1000;
     }
 
-    const durationHours = Math.floor(durationMs / (60 * 60 * 1000))
-    const durationMinutes = Math.floor((durationMs % (60 * 60 * 1000)) / (60 * 1000))
+    const durationHours = Math.floor(durationMs / (60 * 60 * 1000));
+    const durationMinutes = Math.floor(
+      (durationMs % (60 * 60 * 1000)) / (60 * 1000)
+    );
 
-    const formattedDuration = `${durationHours} hr${durationMinutes > 0 ? ` ${durationMinutes} min` : ""}`
+    const formattedDuration = `${durationHours} hr${
+      durationMinutes > 0 ? ` ${durationMinutes} min` : ""
+    }`;
 
     // Format the date using toLocaleDateString
     const formattedDate = date.toLocaleDateString("en-US", {
       day: "numeric",
       month: "short",
       year: "numeric",
-    })
+    });
 
     // Create a new sleep entry
     const newEntry: SleepEntry = {
@@ -342,36 +585,36 @@ export default function tracksleep() {
       sleepStart: formattedSleepTime,
       sleepEnd: formattedWakeTime,
       duration: formattedDuration,
-    }
+    };
 
     // Add the new entry to the sleep data
-    setSleepLogs((prevLogs) => [newEntry, ...prevLogs])
-    setIsModalVisible(false)
+    setSleepLogs((prevLogs) => [newEntry, ...prevLogs]);
+    setIsModalVisible(false);
 
     // Refresh the chart data
-    getSleepStatus()
-  }
+    getSleepStatus();
+  };
 
   // Process and filter data based on time range
   const processDataForTimeRange = (data: any[], timeRange: string) => {
-    const allDays = generateAllDays(timeRange)
+    const allDays = generateAllDays(timeRange);
 
     if (data.length === 0) {
-      return allDays
+      return allDays;
     }
 
-    const dataMap = new Map()
+    const dataMap = new Map();
     data.forEach((item) => {
       if (item.date) {
-        const dateKey = new Date(item.date).toISOString().split("T")[0]
-        dataMap.set(dateKey, item)
+        const dateKey = new Date(item.date).toISOString().split("T")[0];
+        dataMap.set(dateKey, item);
       }
-    })
+    });
 
     // For "today" view, we need to specifically check if today's data exists
     if (timeRange === "today") {
-      const todayStr = new Date().toISOString().split("T")[0]
-      const todayData = dataMap.get(todayStr)
+      const todayStr = new Date().toISOString().split("T")[0];
+      const todayData = dataMap.get(todayStr);
 
       if (todayData) {
         return [
@@ -381,150 +624,194 @@ export default function tracksleep() {
             day: "Today",
             hours: todayData.hours || 0,
           },
-        ]
+        ];
       } else {
-        return allDays // Return empty today template
+        return allDays; // Return empty today template
       }
     }
 
     // For other views, map the data as before
     return allDays.map((day) => {
-      const existingData = dataMap.get(day.date)
+      const existingData = dataMap.get(day.date);
       if (existingData) {
         return {
           ...day,
           hours: existingData.hours || 0,
           isRangeLabel: day.isRangeLabel,
           rangeLabel: day.rangeLabel,
-        }
+        };
       }
-      return day
-    })
-  }
+      return day;
+    });
+  };
 
   const getSleepStatus = async () => {
-    setLoading(true) // Show loader
+    setLoading(true); // Show loader
     try {
       // Check if we need to reset weekly data first
-      const wasReset = await checkAndResetWeeklyData()
+      const wasReset = await checkAndResetWeeklyData();
 
       // If we just reset the data, we might want to show empty chart initially
       if (wasReset) {
-        console.log("Chart was reset, showing empty data")
+        console.log("Chart was reset, showing empty data");
         // You could choose to return early here if you want to show empty chart
         // return;
       }
 
-      const response = await fetch(`https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/sleepstatus`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      })
+      if (isConnected) {
+        // Get sleep data from Fitbit
+        const fitbitData = await fetchFitbitSleepData();
+        
+        if (fitbitData && fitbitData.length > 0) {
+          // Extract sleep logs from the processed data
+            const sleepLogsFromFitbit: SleepEntry[] = [];
+          fitbitData.forEach(item => {
+            if (item.logs && item.logs.length > 0) {
+              sleepLogsFromFitbit.push(...item.logs);
+            }
+          });
+          
+          // Set sleep logs from Fitbit
+          if (sleepLogsFromFitbit.length > 0) {
+            setSleepLogs(sleepLogsFromFitbit);
+          }
+          
+          // Set chart data from Fitbit
+          setChartData(fitbitData);
+          
+          // Process data for current time range
+          const filteredData = processDataForTimeRange(fitbitData, timeRange);
+          setFilteredData(filteredData);
+          setLoading(false);
+          return;
+        }
+      }
 
-      const data = await response.json()
-      console.log("API data:", data)
-      setSleepLogs(data)
+      const response = await fetch(
+        `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/sleepstatus`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"]
-      const fullWeekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+      const data = await response.json();
+      console.log("API data:", data);
+      setSleepLogs(data);
+
+      const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"];
+      const fullWeekdays = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ];
 
       // Create a map to store unique sleep data
-      const sleepMap = new Map()
+      const sleepMap = new Map();
 
       // Process all data regardless of time range
-      data.forEach((entry: { date: string | number | Date; duration: string }) => {
-        const entryDate = new Date(entry.date)
-        const fullDay = entryDate.toLocaleString("en-US", { weekday: "long" }) // Get full weekday name
-        const dayIndex = fullWeekdays.indexOf(fullDay) // Get unique index
+      data.forEach(
+        (entry: { date: string | number | Date; duration: string }) => {
+          const entryDate = new Date(entry.date);
+          const fullDay = entryDate.toLocaleString("en-US", {
+            weekday: "long",
+          }); // Get full weekday name
+          const dayIndex = fullWeekdays.indexOf(fullDay); // Get unique index
 
-        if (dayIndex === -1) return // Skip invalid dates
+          if (dayIndex === -1) return; // Skip invalid dates
 
-        const dayLetter = fixedWeekdays[dayIndex] // Get S, M, T, W...
+          const dayLetter = fixedWeekdays[dayIndex]; // Get S, M, T, W...
 
-        // Extract sleep duration
-        let hours = 0
-        let minutes = 0
+          // Extract sleep duration
+          let hours = 0;
+          let minutes = 0;
 
-        if (entry.duration) {
-          const durationParts = entry.duration.split(" ")
-          if (durationParts.length >= 1) {
-            hours = Number.parseFloat(durationParts[0]) || 0
+          if (entry.duration) {
+            const durationParts = entry.duration.split(" ");
+            if (durationParts.length >= 1) {
+              hours = Number.parseFloat(durationParts[0]) || 0;
+            }
+            if (durationParts.length >= 3) {
+              minutes = Number.parseFloat(durationParts[2]) || 0;
+            }
           }
-          if (durationParts.length >= 3) {
-            minutes = Number.parseFloat(durationParts[2]) || 0
-          }
+
+          const totalHours = hours + minutes / 60;
+          const dateString = entryDate.toISOString().split("T")[0];
+
+          // Store data with ISO date string as key
+          sleepMap.set(dateString, {
+            day: dayLetter,
+            hours: totalHours,
+            date: dateString,
+          });
         }
-
-        const totalHours = hours + minutes / 60
-        const dateString = entryDate.toISOString().split("T")[0]
-
-        // Store data with ISO date string as key
-        sleepMap.set(dateString, {
-          day: dayLetter,
-          hours: totalHours,
-          date: dateString,
-        })
-      })
+      );
 
       // Convert map to array
-      const processedData = Array.from(sleepMap.values())
-      setChartData(processedData)
+      const processedData = Array.from(sleepMap.values());
+      setChartData(processedData);
 
       // Process data for current time range
-      const filteredData = processDataForTimeRange(processedData, timeRange)
-      setFilteredData(filteredData)
+      const filteredData = processDataForTimeRange(processedData, timeRange);
+      setFilteredData(filteredData);
     } catch (error) {
-      console.error("Error fetching sleep data:", error)
+      console.error("Error fetching sleep data:", error);
 
       // If there's an error, still set filtered data based on time range
-      const filteredData = processDataForTimeRange([], timeRange)
-      setFilteredData(filteredData)
+      const filteredData = processDataForTimeRange([], timeRange);
+      setFilteredData(filteredData);
     } finally {
-      setLoading(false) // Hide loader
+      setLoading(false); // Hide loader
     }
-  }
+  };
 
   // Update filtered data when time range changes
   useEffect(() => {
-    const filtered = processDataForTimeRange(chartData, timeRange)
-    setFilteredData(filtered)
+    const filtered = processDataForTimeRange(chartData, timeRange);
+    setFilteredData(filtered);
 
     // Reset selected index when changing time range
-    setSelectedIndex(null)
-  }, [timeRange, chartData])
+    setSelectedIndex(null);
+  }, [timeRange, chartData]);
 
   // Initialize data when component mounts
   useEffect(() => {
     const initializeData = async () => {
       // Load the last reset date from storage
-      const lastResetInfo = await AsyncStorage.getItem("lastChartResetInfo")
+      const lastResetInfo = await AsyncStorage.getItem("lastChartResetInfo");
       if (lastResetInfo) {
-        const parsedInfo = JSON.parse(lastResetInfo)
-        setLastResetDate(new Date(parsedInfo.date))
+        const parsedInfo = JSON.parse(lastResetInfo);
+        setLastResetDate(new Date(parsedInfo.date));
       }
 
       // Check for reset and fetch data
-      await getSleepStatus()
-    }
+      await getSleepStatus();
+    };
 
-    initializeData()
+    initializeData();
 
     // Set up a check that runs when the app is opened or comes to foreground
     const checkInterval = setInterval(() => {
       checkAndResetWeeklyData().then((wasReset) => {
         if (wasReset) {
           // If data was reset, refresh the sleep status
-          getSleepStatus()
+          getSleepStatus();
         }
-      })
-    }, 3600000) // Check every hour
+      });
+    }, 3600000); // Check every hour
 
-    return () => clearInterval(checkInterval)
-  }, [])
+    return () => clearInterval(checkInterval);
+  }, []);
 
   const handleDeleteLog = async (id: string) => {
-    console.log(id)
+    console.log(id);
     const response = await fetch(
       `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/sleepstatus/delete/${id}`,
       {
@@ -532,96 +819,105 @@ export default function tracksleep() {
         headers: {
           "Content-Type": "application/json",
         },
-      },
-    )
-    const data = await response.json()
-    console.log(data)
-    setSleepLogs(sleepLogs.filter((log) => log.id !== id))
+      }
+    );
+    const data = await response.json();
+    console.log(data);
+    setSleepLogs(sleepLogs.filter((log) => log.id !== id));
 
     // Refresh chart data after deletion
-    getSleepStatus()
-  }
+    getSleepStatus();
+  };
 
   // ✅ Convert "10.0" to "10 hr 0 min" format
   const formatDuration = (duration: string | null | undefined) => {
-    if (!duration) return "0 hr 0 min" // Default if missing
-    const totalMinutes = Number.parseFloat(duration) * 60
-    if (isNaN(totalMinutes)) return "0 hr 0 min" // Handle invalid numbers
+    if (!duration) return "0 hr 0 min"; // Default if missing
+    const totalMinutes = Number.parseFloat(duration) * 60;
+    if (isNaN(totalMinutes)) return "0 hr 0 min"; // Handle invalid numbers
 
-    const hours = Math.floor(totalMinutes / 60)
-    const minutes = Math.round(totalMinutes % 60)
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = Math.round(totalMinutes % 60);
 
-    return minutes > 0 ? `${hours} hr ${minutes} min` : `${hours} hr`
-  }
+    return minutes > 0 ? `${hours} hr ${minutes} min` : `${hours} hr`;
+  };
 
   // ✅ Convert "03/08/2025" to "08 March, 25"
   const formatDate = (dateString: string) => {
-    if (!dateString) return ""
+    if (!dateString) return "";
     try {
-      const date = new Date(dateString)
-      return date
-        .toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        })
-        .toUpperCase()
+      // Try to parse the date
+      const date = new Date(dateString);
+      
+      // Check if the date is valid
+      if (isNaN(date.getTime())) {
+        return ""; // Return empty string for invalid dates
+      }
+      
+      // Format using a more reliable method
+      return `${date.getDate()} ${date.toLocaleString('en-US', { month: 'short' })}, ${date.getFullYear()}`;
     } catch (e) {
-      return dateString // Return original if parsing fails
+      console.error("Error formatting date:", e);
+      return ""; // Return empty string on error
     }
-  }
+  };
 
   // Calculate y-axis values using useMemo to prevent recalculation on every render
   const { yAxisLabels, roundedMax, roundedMin } = useMemo(() => {
     // Filter out zero values for calculation
-    const nonZeroValues = filteredData.filter((item) => !item.isRangeLabel && item.hours > 0).map((item) => item.hours)
+    const nonZeroValues = filteredData
+      .filter((item) => !item.isRangeLabel && item.hours > 0)
+      .map((item) => item.hours);
 
     // If no non-zero values, use default range
     if (nonZeroValues.length === 0) {
-      return { yAxisLabels: [10, 8, 6, 4, 2, 0], roundedMax: 10, roundedMin: 0 }
+      return {
+        yAxisLabels: [10, 8, 6, 4, 2, 0],
+        roundedMax: 10,
+        roundedMin: 0,
+      };
     }
 
-    const maxWeight = Math.max(...nonZeroValues)
-    const minWeight = Math.min(...nonZeroValues)
+    const maxWeight = Math.max(...nonZeroValues);
+    const minWeight = Math.min(...nonZeroValues);
 
     // Add padding to the range - increase the padding for the max value
-    const paddedMax = maxWeight * 1.1 // Add 10% padding to max value
-    const paddedMin = Math.max(0, minWeight - 1)
+    const paddedMax = maxWeight * 1.1; // Add 10% padding to max value
+    const paddedMin = Math.max(0, minWeight - 1);
 
     // Calculate rounded max for y-axis (round up to nearest 1)
-    const roundedMax = Math.ceil(paddedMax)
+    const roundedMax = Math.ceil(paddedMax);
     // Calculate rounded min for y-axis (round down to nearest 1)
-    const roundedMin = Math.floor(paddedMin)
+    const roundedMin = Math.floor(paddedMin);
 
     // Create appropriate y-axis labels based on data range
-    const range = roundedMax - roundedMin
-    const step = Math.max(1, Math.ceil(range / 5)) // We want about 5 labels, minimum step of 1
+    const range = roundedMax - roundedMin;
+    const step = Math.max(1, Math.ceil(range / 5)); // We want about 5 labels, minimum step of 1
 
-    const labels = []
+    const labels = [];
     for (let i = 0; i <= 5; i++) {
-      const value = roundedMin + step * i
+      const value = roundedMin + step * i;
       if (value <= roundedMax) {
-        labels.push(value)
+        labels.push(value);
       }
     }
 
     // Make sure max value is included
     if (labels[labels.length - 1] < roundedMax) {
-      labels.push(roundedMax)
+      labels.push(roundedMax);
     }
 
     return {
       yAxisLabels: labels.reverse(), // Reverse for top-to-bottom display
       roundedMax,
       roundedMin,
-    }
-  }, [filteredData]) // Recalculate when filtered data changes
+    };
+  }, [filteredData]); // Recalculate when filtered data changes
 
   // Function to hide tooltip after a delay
   const hideTooltipAfterDelay = () => {
     // Clear any existing timeout
     if (tooltipTimeoutRef.current) {
-      clearTimeout(tooltipTimeoutRef.current)
+      clearTimeout(tooltipTimeoutRef.current);
     }
 
     // Set a new timeout to hide the tooltip after 3 seconds
@@ -631,23 +927,23 @@ export default function tracksleep() {
         duration: 200,
         useNativeDriver: true,
       }).start(() => {
-        setSelectedIndex(null)
-      })
-    }, 3000)
-  }
+        setSelectedIndex(null);
+      });
+    }, 3000);
+  };
 
   const handleBarPress = (index: number): void => {
     // Get the actual item
-    const item = filteredData[index]
+    const item = filteredData[index];
 
     // Skip if it's a range label or has no data
     if (item.isRangeLabel || item.hours <= 0) {
-      return
+      return;
     }
 
     if (selectedIndex === index) {
-      setSelectedIndex(null) // Deselect if already selected
-      return
+      setSelectedIndex(null); // Deselect if already selected
+      return;
     }
 
     // Animate tooltip disappearing and reappearing
@@ -662,26 +958,31 @@ export default function tracksleep() {
         duration: 300,
         useNativeDriver: true,
       }),
-    ]).start()
+    ]).start();
 
-    setSelectedIndex(index)
+    setSelectedIndex(index);
 
     // Set timeout to hide tooltip after delay
-    hideTooltipAfterDelay()
-  }
+    hideTooltipAfterDelay();
+  };
 
   // Clean up timeout on unmount
   useEffect(() => {
     return () => {
       if (tooltipTimeoutRef.current) {
-        clearTimeout(tooltipTimeoutRef.current)
+        clearTimeout(tooltipTimeoutRef.current);
       }
-    }
-  }, [])
+    };
+  }, []);
 
-  const CustomBar = ({ item, index, isSelected, timeRange }: CustomBarProps) => {
+  const CustomBar = ({
+    item,
+    index,
+    isSelected,
+    timeRange,
+  }: CustomBarProps) => {
     // Check if this is a month view
-    const isMonthView = timeRange !== "week" && timeRange !== "today"
+    const isMonthView = timeRange !== "week" && timeRange !== "today";
 
     // Skip rendering for range labels in month view - they're just for organization
     if (isMonthView && item.isRangeLabel) {
@@ -689,24 +990,25 @@ export default function tracksleep() {
         <View style={styles.dateRangeContainer}>
           <Text style={styles.dateRangeLabel}>{item.day}</Text>
         </View>
-      )
+      );
     }
 
     // Check if the bar has data
-    const hasData = item.hours > 0
+    const hasData = item.hours > 0;
 
     // Calculate bar height based on data range
-    const dataRange = roundedMax - roundedMin
+    const dataRange = roundedMax - roundedMin;
     // Ensure we don't exceed the maximum height for very large values
-    const normalizedWeight = Math.min(item.hours - roundedMin, dataRange)
-    const barHeight = dataRange > 0 ? (normalizedWeight / dataRange) * MAX_HEIGHT : 0
+    const normalizedWeight = Math.min(item.hours - roundedMin, dataRange);
+    const barHeight =
+      dataRange > 0 ? (normalizedWeight / dataRange) * MAX_HEIGHT : 0;
 
     // Use thinner bars for month views, wider for today view
-    let barWidth = BAR_WIDTH
+    let barWidth = BAR_WIDTH;
     if (isMonthView) {
-      barWidth = 4
+      barWidth = 4;
     } else if (timeRange === "today") {
-      barWidth = BAR_WIDTH * 2 // Wider bar for today view
+      barWidth = BAR_WIDTH * 2; // Wider bar for today view
     }
 
     return (
@@ -724,7 +1026,12 @@ export default function tracksleep() {
           isMonthView && {
             width: barWidth,
             marginRight: 2, // Tighter spacing for clustered bars
-            marginLeft: item.rangeLabel && index > 0 && filteredData[index - 1].rangeLabel !== item.rangeLabel ? 10 : 0, // Add space between ranges
+            marginLeft:
+              item.rangeLabel &&
+              index > 0 &&
+              filteredData[index - 1].rangeLabel !== item.rangeLabel
+                ? 10
+                : 0, // Add space between ranges
           },
         ]}
         disabled={!hasData} // Disable touch for bars with no data
@@ -737,13 +1044,24 @@ export default function tracksleep() {
         )}
 
         {hasData && (
-          <View style={[styles.barWrapper, { height: barHeight || 0 }, { width: barWidth }]}>
+          <View
+            style={[
+              styles.barWrapper,
+              { height: barHeight || 0 },
+              { width: barWidth },
+            ]}
+          >
             <LinearGradient
-              colors={isSelected ? ["#B0C0D0", "#B0C0D0"] : ["#8AA1B9", "#8AA1B9"]}
+              colors={
+                isSelected ? ["#B0C0D0", "#B0C0D0"] : ["#8AA1B9", "#8AA1B9"]
+              }
               style={[
                 styles.bar,
                 { height: "100%" },
-                isMonthView && { borderTopLeftRadius: 2, borderTopRightRadius: 2 },
+                isMonthView && {
+                  borderTopLeftRadius: 2,
+                  borderTopRightRadius: 2,
+                },
               ]}
             />
           </View>
@@ -771,8 +1089,8 @@ export default function tracksleep() {
           </Animated.View>
         )}
       </TouchableOpacity>
-    )
-  }
+    );
+  };
 
   return (
     <MenuProvider>
@@ -781,7 +1099,10 @@ export default function tracksleep() {
 
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
             <Ionicons name="chevron-back" size={20} color="white" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Track Sleep</Text>
@@ -1047,7 +1368,9 @@ export default function tracksleep() {
                           fontSize: 12,
                         }}
                       >
-                        {formatDate(entry.date)}
+                        {entry.date && typeof entry.date === 'string' && entry.date.includes(',') 
+            ? entry.date 
+            : formatDate(entry.date)}
                       </Text>
                     </View>
                     <DeleteMenu onDelete={() => handleDeleteLog(entry.id)} />
@@ -1122,7 +1445,10 @@ export default function tracksleep() {
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>Connect to Application</Text>
             <View style={styles.connectItem}>
-              <Image source={require("../../assets/images/applehealth.png")} style={{ width: 24, height: 24 }} />
+              <Image
+                source={require("../../assets/images/applehealth.png")}
+                style={{ width: 24, height: 24 }}
+              />
               <Text style={styles.connectText}>Health App</Text>
               <TouchableOpacity>
                 <Text style={styles.connectButton}>CONNECT</Text>
@@ -1134,10 +1460,21 @@ export default function tracksleep() {
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>Connect to Device</Text>
             <View style={styles.connectItem}>
-              <Image source={require("../../assets/images/fitbit.png")} style={{ width: 24, height: 24 }} />
+              <Image
+                source={require("../../assets/images/fitbit.png")}
+                style={{ width: 24, height: 24 }}
+              />
               <Text style={styles.connectText}>Fitbit</Text>
-              <TouchableOpacity>
-                <Text style={styles.connectButton}>CONNECT</Text>
+              <TouchableOpacity onPress={handleFitbitConnection}>
+                <Text style={styles.connectButton}>
+                  {!initialCheckDone
+                    ? "CHECKING..."
+                    : fitbitLoading
+                    ? "CONNECTING..."
+                    : isConnected
+                    ? "DISCONNECT"
+                    : "CONNECT"}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1154,14 +1491,23 @@ export default function tracksleep() {
                 style={styles.periodSelector}
                 onPress={() => {
                   // Measure the position of the period selector button
-                  periodSelectorRef.current?.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
-                    setDropdownPosition({
-                      top: pageY + 10,
-                      right: Dimensions.get("window").width - (pageX + width),
-                      width: width,
-                    })
-                    setDropdownVisible(true)
-                  })
+                  periodSelectorRef.current?.measure(
+                    (
+                      x: number,
+                      y: number,
+                      width: number,
+                      height: number,
+                      pageX: number,
+                      pageY: number
+                    ) => {
+                      setDropdownPosition({
+                        top: pageY + 10,
+                        right: Dimensions.get("window").width - (pageX + width),
+                        width: width,
+                      });
+                      setDropdownVisible(true);
+                    }
+                  );
                 }}
               >
                 <Text style={styles.periodText}>{getTimeRangeLabel()}</Text>
@@ -1185,7 +1531,13 @@ export default function tracksleep() {
             <View style={styles.chartContainer}>
               {/* Horizontal grid lines */}
               {yAxisLabels.map((_, index) => (
-                <View key={index} style={[styles.gridLine, { top: (index / (yAxisLabels.length - 1)) * MAX_HEIGHT }]} />
+                <View
+                  key={index}
+                  style={[
+                    styles.gridLine,
+                    { top: (index / (yAxisLabels.length - 1)) * MAX_HEIGHT },
+                  ]}
+                />
               ))}
 
               {/* For month views, render date labels at the bottom */}
@@ -1206,7 +1558,9 @@ export default function tracksleep() {
                 style={[
                   styles.barsContainer,
                   timeRange === "today" && styles.todayBarsContainer,
-                  (timeRange === "month" || timeRange === "lastMonth") && { paddingHorizontal: 10 },
+                  (timeRange === "month" || timeRange === "lastMonth") && {
+                    paddingHorizontal: 10,
+                  },
                 ]}
               >
                 {loading ? (
@@ -1220,13 +1574,23 @@ export default function tracksleep() {
                 ) : (
                   // For month views, filter out the range labels as they're shown separately
                   filteredData
-                    .filter((item) => timeRange === "week" || timeRange === "today" || !item.isRangeLabel)
+                    .filter(
+                      (item) =>
+                        timeRange === "week" ||
+                        timeRange === "today" ||
+                        !item.isRangeLabel
+                    )
                     .map((item, index) => (
                       <CustomBar
                         key={index}
                         item={item}
-                        index={filteredData.findIndex((d) => d.date === item.date)} // Use original index for reference
-                        isSelected={selectedIndex === filteredData.findIndex((d) => d.date === item.date)}
+                        index={filteredData.findIndex(
+                          (d) => d.date === item.date
+                        )} // Use original index for reference
+                        isSelected={
+                          selectedIndex ===
+                          filteredData.findIndex((d) => d.date === item.date)
+                        }
                         timeRange={timeRange}
                       />
                     ))
@@ -1239,7 +1603,9 @@ export default function tracksleep() {
           <View style={styles.bottomContainer}>
             <View style={styles.messageContainer}>
               <Text style={styles.messageTitle}>Get a good night's sleep</Text>
-              <Text style={styles.messageSubtitle}>Set a reminder and stay on track.</Text>
+              <Text style={styles.messageSubtitle}>
+                Set a reminder and stay on track.
+              </Text>
             </View>
             <TouchableOpacity style={styles.reminderButton}>
               <Ionicons name="alarm" size={16} color="#FEF8FD" />
@@ -1255,7 +1621,11 @@ export default function tracksleep() {
           animationType="fade"
           onRequestClose={() => setDropdownVisible(false)}
         >
-          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setDropdownVisible(false)}>
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setDropdownVisible(false)}
+          >
             <View
               style={[
                 styles.dropdownContainer,
@@ -1270,16 +1640,27 @@ export default function tracksleep() {
               {timeRangeOptions.map((option) => (
                 <TouchableOpacity
                   key={option.id}
-                  style={[styles.dropdownItem, timeRange === option.id && styles.dropdownItemSelected]}
+                  style={[
+                    styles.dropdownItem,
+                    timeRange === option.id && styles.dropdownItemSelected,
+                  ]}
                   onPress={() => {
-                    setTimeRange(option.id)
-                    setDropdownVisible(false)
+                    setTimeRange(option.id);
+                    setDropdownVisible(false);
                   }}
                 >
-                  <Text style={[styles.dropdownItemText, timeRange === option.id && styles.dropdownItemTextSelected]}>
+                  <Text
+                    style={[
+                      styles.dropdownItemText,
+                      timeRange === option.id &&
+                        styles.dropdownItemTextSelected,
+                    ]}
+                  >
                     {option.label}
                   </Text>
-                  {timeRange === option.id && <Ionicons name="checkmark" size={16} color="#E5E5E5" />}
+                  {timeRange === option.id && (
+                    <Ionicons name="checkmark" size={16} color="#E5E5E5" />
+                  )}
                 </TouchableOpacity>
               ))}
             </View>
@@ -1294,7 +1675,7 @@ export default function tracksleep() {
         />
       </SafeAreaView>
     </MenuProvider>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -1769,5 +2150,4 @@ const styles = StyleSheet.create({
   dropdownItemTextSelected: {
     fontFamily: "Inter600",
   },
-})
-
+});
