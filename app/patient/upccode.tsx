@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Text, View, StyleSheet, Button, ActivityIndicator, ScrollView } from 'react-native';
-import { BarCodeScanner } from 'expo-barcode-scanner';
+// import { BarCodeScanner } from 'expo-barcode-scanner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // USDA Food Data Central API key
@@ -88,7 +88,7 @@ export default function upccode() {
   const [error, setError] = useState('');
 
   const askForCameraPermission = useCallback(async () => {
-    const { status } = await BarCodeScanner.requestPermissionsAsync();
+    // const { status } = await BarCodeScanner.requestPermissionsAsync();
     setHasPermission(status === 'granted');
   }, []);
 
@@ -424,10 +424,10 @@ export default function upccode() {
       {!scanned ? (
         <View style={styles.scannerContainer}>
           <View style={styles.barcodebox}>
-            <BarCodeScanner
+            {/* <BarCodeScanner
               onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
               style={{ height: 400, width: 400 }}
-            />
+            /> */}
           </View>
           <Text style={styles.instructionText}>Scan a food product barcode</Text>
         </View>

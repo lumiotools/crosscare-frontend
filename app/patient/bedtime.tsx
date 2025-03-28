@@ -16,6 +16,7 @@ import { calculateBedtimes, calculateWakeupTimes, parseTimeString } from "@/cons
 import SunIcon from "@/assets/images/Svg/SunIcon";
 import { width } from "../../constants/helper";
 import MoonIcon from "@/assets/images/Svg/MoonIcon";
+import { useSelector } from "react-redux";
 
 // Handle time change
 interface TimeChangeEvent {
@@ -33,6 +34,7 @@ const bedtime = () => {
   const [showWakeUpPicker, setShowWakeUpPicker] = useState(false);
   const [showSleepPicker, setShowSleepPicker] = useState(false);
 
+  const user = useSelector((state:any)=>state.user);
   // Format time to display in the button
 
   const formatTime: FormatTime = (date) => {
@@ -123,7 +125,7 @@ const bedtime = () => {
         </View>
 
         {/* Welcome Text */}
-        <Text style={styles.greeting}>Hi Name!</Text>
+        <Text style={styles.greeting}>Hi {user.user_name}!</Text>
         <Text style={styles.welcomeText}>
           Welcome to your bedtime calculator, pick a time to get started.
         </Text>
