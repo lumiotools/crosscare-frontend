@@ -124,7 +124,7 @@ export default function HeartRateScreen() {
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 })
 
   // Use the simplified Fitbit hook
-  const { isConnected, isLoading: fitbitLoading, connect, disconnect, getHeartRateData, getDataForRange, testConnect } = useFitbit();
+  const { isConnected, isLoading: fitbitLoading, connect, disconnect, getHeartRateData, getDataForRange, } = useFitbit();
 
   // Function to fetch heart rate data from Fitbit
   const fetchFitbitHeartRateData = async () => {
@@ -174,7 +174,7 @@ export default function HeartRateScreen() {
       const data = await getHeartRateData(today);
       console.log("this is the data", JSON.stringify(data));
       if (!data) {
-        return 79; // Default value if no data
+        return 0; // Default value if no data
       } 
        
       
@@ -190,10 +190,10 @@ export default function HeartRateScreen() {
         return restingHR;
       }
       
-      return 75; // Default value if no specific data
+      return 0; // Default value if no specific data
     } catch (error) {
       console.error('Error fetching current heart rate:', error);
-      return 75; // Default value on error
+      return 0; // Default value on error
     }
   };
 
@@ -214,6 +214,7 @@ export default function HeartRateScreen() {
       
       // Get the resting heart rate or default to 0
       const bpm = item.value?.restingHeartRate || 0;
+      console.log(bpm);
       
       return {
         day: dayAbbr,
@@ -523,12 +524,14 @@ export default function HeartRateScreen() {
           const latestHeartRate = await getCurrentHeartRate();
           setCurrentHeartRate(latestHeartRate);
           
+          console.log(latestHeartRate);
           // Set heart rate data from Fitbit
           setHeartRateData(fitbitData);
           
           // Process data for current time range
           const filteredData = processDataForTimeRange(fitbitData, timeRange);
           setFilteredData(filteredData);
+          console.log(filteredData);
           setIsLoading(false);
           return;
         }

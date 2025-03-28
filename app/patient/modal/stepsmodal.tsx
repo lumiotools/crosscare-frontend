@@ -33,7 +33,7 @@ const StepsModal = ({ visible, onClose, onSave, reload }: StepGoalModalProps) =>
 
     try {
       const response = await fetch(
-        `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/steps`,
+        `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/stepsGoal`,
         {
           method: "POST",
           headers: {

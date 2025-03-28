@@ -8,8 +8,8 @@ import { Buffer } from 'buffer';
 WebBrowser.maybeCompleteAuthSession();
 
 // Fitbit API configuration - replace with your values
-const FITBIT_CLIENT_ID = "23QC7H";
-const FITBIT_CLIENT_SECRET = "0cc7128899b8045505e6f0683b51274f";
+const FITBIT_CLIENT_ID = "23QC62";
+const FITBIT_CLIENT_SECRET = "8424a72f8e691b958ab909fd833e2b9f";
 const FITBIT_AUTH_ENDPOINT = "https://www.fitbit.com/oauth2/authorize";
 const FITBIT_TOKEN_ENDPOINT = "https://api.fitbit.com/oauth2/token";
 const REDIRECT_URI = AuthSession.makeRedirectUri({
