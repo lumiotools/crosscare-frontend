@@ -198,7 +198,7 @@ const Home = () => {
         backgroundColor: "white",
       }}
     >
-      <StatusBar backgroundColor="#FAB5E8" barStyle="dark-content" />
+      <StatusBar backgroundColor="white" barStyle="dark-content" />
       <LinearGradient
         colors={["#FAB5E8", "#F76CCFFF"]}
         start={{ x: 0.027, y: 0 }}

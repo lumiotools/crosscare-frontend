@@ -36,8 +36,13 @@ const FITBIT_CLIENT_SECRET = "8424a72f8e691b958ab909fd833e2b9f"; // Add this
 const FITBIT_AUTH_ENDPOINT = "https://www.fitbit.com/oauth2/authorize"
 const FITBIT_TOKEN_ENDPOINT = "https://api.fitbit.com/oauth2/token"
 const REDIRECT_URI = AuthSession.makeRedirectUri({
-  native: "com.crosscare.tech://fitbit/callback",
+  scheme: 'com.crosscare.tech',
+  path: 'expo-development-client',
+  preferLocalhost: true,
 });
+
+// Log the redirect URI to help with debugging
+console.log('Using REDIRECT_URI:', REDIRECT_URI);
 
 // Handle bar press
 interface DataItem {
@@ -390,7 +395,19 @@ export default function HeartRateScreen() {
     console.log("Connecting...")
     if (fitbitConnected) {
       // Disconnect from Fitbit
-      console.log("Connected");
+      try {
+        await AsyncStorage.removeItem('fitbitAccessToken');
+        await AsyncStorage.removeItem('fitbitRefreshToken');
+        await AsyncStorage.removeItem('fitbitTokenExpiry');
+        setFitbitConnected(false);
+        Alert.alert('Success', 'Disconnected from Fitbit');
+        
+        // Reset to simulated data
+        getHeartRateStatus();
+      } catch (error) {
+        console.error('Error disconnecting from Fitbit:', error);
+        Alert.alert('Error', 'Failed to disconnect from Fitbit');
+      }
     } else {
       // Connect to Fitbit
       try {

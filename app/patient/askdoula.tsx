@@ -1769,6 +1769,13 @@ const styles = StyleSheet.create({
     borderColor: "#FBBBE9",
     marginRight: 8,
   },
+  doulaBubble: {
+    backgroundColor: "#FFF",
+    borderTopLeftRadius: 4,
+    borderWidth: 0.5,
+    borderColor: "#E5E5E5",
+    marginLeft: 8,
+  },
   messageText: {
     fontSize: 14,
     lineHeight: 22,
