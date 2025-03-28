@@ -1,5 +1,3 @@
-//
-
 import { useState, useEffect, useMemo, useRef } from "react"
 import {
   View,
@@ -14,6 +12,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Modal,
+  Alert,
 } from "react-native"
 import { Ionicons, Feather, MaterialIcons } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
@@ -22,11 +21,15 @@ import { LinearGradient } from "expo-linear-gradient"
 import HeartCard from "@/components/HeartCard"
 import { useSelector } from "react-redux"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import * as WebBrowser from "expo-web-browser"
+import { useFitbit } from "@/zustandStore/useFitbitStore"
 
 const { width } = Dimensions.get("window")
 const BAR_WIDTH = 20
 const SPACING = (width - BAR_WIDTH * 10) / 8
 const MAX_HEIGHT = 200
+
+WebBrowser.maybeCompleteAuthSession();
 
 // Handle bar press
 interface DataItem {
@@ -75,7 +78,7 @@ const emptyChartData = [
 const emptyTodayData = [{ day: "Today", bpm: 0, date: new Date().toISOString().split("T")[0] }]
 
 // Sample data for the heart rate
-// Replace the existing DUMMY_HEART_DATA constant with this:
+// Replace the existing DUMMY_HEART_DATA constant with this function
 const generateRealtimeHeartData = () => {
   const today = new Date()
   const result = []
@@ -119,6 +122,124 @@ export default function HeartRateScreen() {
   // Add a ref for the period selector button
   const periodSelectorRef = useRef<TouchableOpacity>(null)
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 })
+
+  // Use the simplified Fitbit hook
+  const { isConnected, isLoading: fitbitLoading, connect, disconnect, getHeartRateData, getDataForRange, testConnect } = useFitbit();
+
+  // Function to fetch heart rate data from Fitbit
+  const fetchFitbitHeartRateData = async () => {
+    try {
+      // Determine date range based on timeRange
+      const today = new Date();
+      let startDate = new Date();
+      
+      if (timeRange === 'today') {
+        // Just today
+      } else if (timeRange === 'week') {
+        startDate.setDate(today.getDate() - 7);
+      } else if (timeRange === 'month') {
+        startDate.setMonth(today.getMonth() - 1);
+      } else if (timeRange === 'lastMonth') {
+        startDate.setMonth(today.getMonth() - 2);
+        const endDate = new Date();
+        endDate.setMonth(today.getMonth() - 1);
+        today.setTime(endDate.getTime());
+      }
+      
+      // Format dates for Fitbit API (yyyy-MM-dd)
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = today.toISOString().split('T')[0];
+      
+      // Get data for date range
+      const data = await getDataForRange('activities/heart', startDateStr, endDateStr);
+      
+      if (!data) {
+        throw new Error('Failed to fetch Fitbit data');
+      }
+      
+      return processFitbitHeartRateData(data);
+    } catch (error) {
+      console.error('Error fetching Fitbit heart rate data:', error);
+      return null;
+    }
+  };
+
+  // Function to get current heart rate
+  const getCurrentHeartRate = async () => {
+    try {
+      // Get today's date in yyyy-MM-dd format
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Get heart rate data for today
+      const data = await getHeartRateData(today);
+      console.log("this is the data", JSON.stringify(data));
+      if (!data) {
+        return 79; // Default value if no data
+      } 
+       
+      
+      // Try to get the most recent heart rate value
+      const intradayData = data['activities-heart-intraday']?.dataset;
+      if (intradayData && intradayData.length > 0) {
+        return intradayData[intradayData.length - 1].value;
+      }
+      
+      // If no intraday data, try to get resting heart rate
+      const restingHR = data['activities-heart'][0]?.value?.restingHeartRate;
+      if (restingHR) {
+        return restingHR;
+      }
+      
+      return 75; // Default value if no specific data
+    } catch (error) {
+      console.error('Error fetching current heart rate:', error);
+      return 75; // Default value on error
+    }
+  };
+
+  // Process Fitbit heart rate data
+  const processFitbitHeartRateData = (fitbitData: any) => {
+    if (!fitbitData || !fitbitData['activities-heart']) {
+      return [];
+    }
+    
+    const heartRateData = fitbitData['activities-heart'];
+    const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"];
+    
+    // Map Fitbit data to app format
+    return heartRateData.map((item: any) => {
+      const date = new Date(item.dateTime);
+      const dayIndex = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const dayAbbr = fixedWeekdays[dayIndex];
+      
+      // Get the resting heart rate or default to 0
+      const bpm = item.value?.restingHeartRate || 0;
+      
+      return {
+        day: dayAbbr,
+        bpm: bpm,
+        date: item.dateTime,
+      };
+    });
+  };
+
+  // Handle Fitbit connection/disconnection
+  const handleFitbitConnection = async () => {
+    if (isConnected) {
+      // Disconnect from Fitbit
+      await disconnect();
+      Alert.alert('Disconnected', 'Successfully disconnected from Fitbit');
+    } else {
+      // Connect to Fitbit
+      const success = await connect();
+      if (success) {
+        Alert.alert('Success', 'Connected to Fitbit');
+        getHeartRateStatus(); // Refresh data with Fitbit data
+      } else {
+        Alert.alert('Error', 'Failed to connect to Fitbit');
+      }
+    }
+  };
 
   // Function to get the current week number
   const getWeekNumber = (date: Date) => {
@@ -390,83 +511,75 @@ export default function HeartRateScreen() {
     setIsLoading(true)
     try {
       // First check if we need to reset weekly data
-      const wasReset = await checkAndResetWeeklyData()
+      const wasReset = await checkAndResetWeeklyData();
 
-      // If we just reset the data, we might want to show the reset data
-      if (wasReset) {
-        console.log("Heart rate data was reset for new week")
-        // The reset function already updated the state, so we could return early
-        // But we'll continue to fetch the latest data from the API
+      // If connected to Fitbit, get data from there
+      if (isConnected) {
+        // Get heart rate data from Fitbit
+        const fitbitData = await fetchFitbitHeartRateData();
+        
+        if (fitbitData && fitbitData.length > 0) {
+          // Get current heart rate from Fitbit
+          const latestHeartRate = await getCurrentHeartRate();
+          setCurrentHeartRate(latestHeartRate);
+          
+          // Set heart rate data from Fitbit
+          setHeartRateData(fitbitData);
+          
+          // Process data for current time range
+          const filteredData = processDataForTimeRange(fitbitData, timeRange);
+          setFilteredData(filteredData);
+          setIsLoading(false);
+          return;
+        }
       }
 
-      // In a real app, you would fetch data from an API
-      // For now, we'll use the sample data
-      // const response = await fetch(`https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/heartRateStatus`, {
-      //   method: "GET",
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //   },
-      // })
-
-      // const data = await response.json()
-      // console.log("API heart rate data:", data)
-
-      // Simulate API response with dummy data
-      // In the getHeartRateStatus function, replace the data simulation with:
+      // If not connected to Fitbit or no Fitbit data, use simulated data
       const data = {
         data: {
           lastHeartRate: currentHeartRate,
           heartRateData: generateRealtimeHeartData(),
         },
-      }
+      };
+      
+      setCurrentHeartRate(data.data.lastHeartRate);
+      
+      if (data.data.heartRateData && data.data.heartRateData.length > 0) {
+        // Process the heart rate data from the API
+        const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"]
+        const fullWeekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
-      if (data.data) {
-        setCurrentHeartRate(data.data.lastHeartRate)
+        // Create a map to store unique heart rate data for each day
+        const heartRateMap = new Map()
 
-        if (data.data.heartRateData && data.data.heartRateData.length > 0) {
-          // Process the heart rate data from the API
-          const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"]
-          const fullWeekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+        // Process all data regardless of time range
+        data.data.heartRateData.forEach((entry: { date: string | number | Date; bpm: any }) => {
+          const entryDate = new Date(entry.date)
+          const fullDay = entryDate.toLocaleString("en-US", { weekday: "long" }) // Get full weekday name
+          const dayIndex = fullWeekdays.indexOf(fullDay) // Get unique index
 
-          // Create a map to store unique heart rate data for each day
-          const heartRateMap = new Map()
+          if (dayIndex === -1) return // Skip invalid dates
 
-          // Process all data regardless of time range
-          data.data.heartRateData.forEach((entry: { date: string | number | Date; bpm: any }) => {
-            const entryDate = new Date(entry.date)
-            const fullDay = entryDate.toLocaleString("en-US", { weekday: "long" }) // Get full weekday name
-            const dayIndex = fullWeekdays.indexOf(fullDay) // Get unique index
+          const dayLetter = fixedWeekdays[dayIndex] // Get S, M, T, W...
+          const dateString = entryDate.toISOString().split("T")[0]
 
-            if (dayIndex === -1) return // Skip invalid dates
-
-            const dayLetter = fixedWeekdays[dayIndex] // Get S, M, T, W...
-            const dateString = entryDate.toISOString().split("T")[0]
-
-            // Store data with ISO date string as key
-            heartRateMap.set(dateString, {
-              day: dayLetter,
-              bpm: entry.bpm,
-              date: dateString,
-            })
+          // Store data with ISO date string as key
+          heartRateMap.set(dateString, {
+            day: dayLetter,
+            bpm: entry.bpm,
+            date: dateString,
           })
+        })
 
-          // Convert map to array
-          const processedData = Array.from(heartRateMap.values())
-          setHeartRateData(processedData)
+        // Convert map to array
+        const processedData = Array.from(heartRateMap.values())
+        setHeartRateData(processedData)
 
-          // Process data for current time range
-          const filteredData = processDataForTimeRange(processedData, timeRange)
-          setFilteredData(filteredData)
-        } else {
-          // Use default days with zero heart rate
-          setHeartRateData(DUMMY)
-
-          // Process data for current time range
-          const filteredData = processDataForTimeRange(DUMMY, timeRange)
-          setFilteredData(filteredData)
-        }
+        // Process data for current time range
+        const filteredData = processDataForTimeRange(processedData, timeRange)
+        setFilteredData(filteredData)
       } else {
-        // Handle case where data.data is undefined
+        // Use default days with zero heart rate
         setHeartRateData(DUMMY)
 
         // Process data for current time range
@@ -523,54 +636,88 @@ export default function HeartRateScreen() {
     return () => clearInterval(checkInterval)
   }, [])
 
-  // Simulate changing heart rate for the live display
-  // Update the useEffect that simulates changing heart rate to also update today's data in the chart
+  // Simulate changing heart rate for the live display if not connected to Fitbit
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentHeartRate((prevRate) => {
-        // Random fluctuation between 70-85
-        const newRate = prevRate + (Math.random() * 2 - 1) // Random fluctuation
-        // Round to the nearest integer and clamp between 70 and 85
-        const updatedRate = Math.min(Math.max(Math.round(newRate), 70), 85)
+    // Only simulate heart rate if not connected to Fitbit
+    if (!isConnected) {
+      const interval = setInterval(() => {
+        setCurrentHeartRate((prevRate) => {
+          // Random fluctuation between 70-85
+          const newRate = prevRate + (Math.random() * 2 - 1) // Random fluctuation
+          // Round to the nearest integer and clamp between 70 and 85
+          const updatedRate = Math.min(Math.max(Math.round(newRate), 70), 85)
 
-        // Update today's heart rate in the chart data
-        const today = new Date()
-        const todayStr = today.toISOString().split("T")[0]
+          // Update today's heart rate in the chart data
+          const today = new Date()
+          const todayStr = today.toISOString().split("T")[0]
 
-        // Update the heart rate data for today
-        setHeartRateData((prevData) => {
-          const updatedData = [...prevData]
-          const todayIndex = updatedData.findIndex(
-            (item) => new Date(item.date).toISOString().split("T")[0] === todayStr,
-          )
+          // Update the heart rate data for today
+          setHeartRateData((prevData) => {
+            const updatedData = [...prevData]
+            const todayIndex = updatedData.findIndex(
+              (item) => new Date(item.date).toISOString().split("T")[0] === todayStr,
+            )
 
-          if (todayIndex >= 0) {
-            // Update existing entry
-            updatedData[todayIndex] = {
-              ...updatedData[todayIndex],
-              bpm: updatedRate,
+            if (todayIndex >= 0) {
+              // Update existing entry
+              updatedData[todayIndex] = {
+                ...updatedData[todayIndex],
+                bpm: updatedRate,
+              }
+            } else {
+              // Add new entry for today
+              const dayIndex = today.getDay() // 0 = Sunday, 1 = Monday, etc.
+              const dayAbbr = "SMTWTFS"[dayIndex]
+
+              updatedData.push({
+                day: dayAbbr,
+                bpm: updatedRate,
+                date: todayStr,
+              })
             }
-          } else {
-            // Add new entry for today
-            const dayIndex = today.getDay() // 0 = Sunday, 1 = Monday, etc.
-            const dayAbbr = "SMTWTFS"[dayIndex]
 
-            updatedData.push({
-              day: dayAbbr,
-              bpm: updatedRate,
-              date: todayStr,
-            })
-          }
+            return updatedData
+          })
 
-          return updatedData
+          return updatedRate
         })
+      }, 1000)
 
-        return updatedRate
-      })
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }, [])
+      return () => clearInterval(interval)
+    } else {
+      // If connected to Fitbit, periodically refresh the current heart rate
+      const interval = setInterval(async () => {
+        try {
+          const latestHeartRate = await getCurrentHeartRate();
+          setCurrentHeartRate(latestHeartRate);
+          
+          // Update today's heart rate in the chart data
+          const today = new Date();
+          const todayStr = today.toISOString().split("T")[0];
+          
+          setHeartRateData((prevData) => {
+            const updatedData = [...prevData];
+            const todayIndex = updatedData.findIndex(
+              (item) => new Date(item.date).toISOString().split("T")[0] === todayStr,
+            );
+            
+            if (todayIndex >= 0) {
+              updatedData[todayIndex] = {
+                ...updatedData[todayIndex],
+                bpm: latestHeartRate,
+              };
+            }
+            
+            return updatedData;
+          });
+        } catch (error) {
+          console.error("Error updating heart rate:", error);
+        }
+      }, 60000); // Refresh every minute
+      
+      return () => clearInterval(interval);
+    }
+  }, [isConnected])
 
   // Calculate y-axis values using useMemo to prevent recalculation on every render
   const { yAxisLabels, roundedMax, roundedMin } = useMemo(() => {
@@ -854,10 +1001,33 @@ export default function HeartRateScreen() {
           <View style={styles.connectItem}>
             <Image source={require("../../assets/images/fitbit.png")} style={{ width: 24, height: 24 }} />
             <Text style={styles.connectText}>Fitbit</Text>
-            <TouchableOpacity>
-              <Text style={styles.connectButton}>CONNECT</Text>
+             <TouchableOpacity 
+              onPress={handleFitbitConnection}
+            >
+              <Text style={styles.connectButton}>
+                {fitbitLoading ? 'CONNECTING...' : isConnected ? 'DISCONNECT' : 'CONNECT'}
+              </Text>
             </TouchableOpacity>
           </View>
+          
+          {/* Test connect button - can be removed in production */}
+          {/* {!isConnected && (
+            <View style={styles.connectItem}>
+              <Image source={require("../../assets/images/fitbit.png")} style={{ width: 24, height: 24 }} />
+              <Text style={styles.connectText}>Test Mode</Text>
+              <TouchableOpacity 
+                onPress={async () => {
+                  const success = await testConnect();
+                  if (success) {
+                    Alert.alert('Test Mode', 'Connected with test data');
+                    getHeartRateStatus();
+                  }
+                }}
+              >
+                <Text style={styles.connectButton}>TEST DATA</Text>
+              </TouchableOpacity>
+            </View>
+          )} */}
         </View>
 
         {/* Analysis Section */}
@@ -1303,7 +1473,6 @@ const styles = StyleSheet.create({
   // Dropdown styles
   modalOverlay: {
     flex: 1,
-    // backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -1344,4 +1513,3 @@ const styles = StyleSheet.create({
     fontFamily: "Inter600",
   },
 })
-
