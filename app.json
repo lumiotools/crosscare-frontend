@@ -35,6 +35,7 @@
       "package": "com.crosscare.tech"
     },
     "plugins": [
+      
       "expo-router",
       [
         "expo-splash-screen",
@@ -51,6 +52,13 @@
           "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
           "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
           "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/app-logo.png",
+          "color": "#ffffff"
         }
       ]
     ],

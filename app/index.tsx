@@ -23,6 +23,7 @@ const Index = () => {
   }, [dispatch]);
 
   if (isLoading) return null; // Prevent rendering until token is checked
+  
 
   return (
   <Redirect href={user?.token ? "/patient/(tabs)/home" : "/login"} />

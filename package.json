@@ -36,6 +36,7 @@
     "expo-asset": "^11.0.2",
     "expo-auth-session": "~6.0.3",
     "expo-av": "^15.0.2",
+    "expo-background-fetch": "~13.0.5",
     "expo-blur": "~14.0.3",
     "expo-camera": "~16.0.18",
     "expo-constants": "~17.0.3",
@@ -76,7 +77,8 @@
     "react-native-webview": "13.12.5",
     "react-redux": "^9.2.0",
     "redux-persist": "^6.0.0",
-    "zustand": "^5.0.3"
+    "zustand": "^5.0.3",
+    "expo-notifications": "~0.29.14"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

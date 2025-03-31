@@ -11,7 +11,7 @@ import {
   Platform,
   FlatList,
 } from "react-native";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { SimpleLineIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
@@ -24,6 +24,7 @@ import { width } from "@/constants/helper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import GradientText from "@/components/GradientText";
 import { LinearGradient } from "expo-linear-gradient";
+import { requestNotificationPermissions } from "@/utils/NotificationManager";
 
 export default function OnBoardingScreen() {
   const router = useRouter();
@@ -35,6 +36,10 @@ export default function OnBoardingScreen() {
     const currentIndex = Math.round(contentOffsetX / screenWidth);
     setActive(currentIndex);
   };
+
+  useEffect(() => {
+    requestNotificationPermissions();
+  }, []);
 
   const handleSkip = async () => {
     console.log("done");

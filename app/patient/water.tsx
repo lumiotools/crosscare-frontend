@@ -837,7 +837,12 @@ export default function water() {
               Set a reminder and stay on track.
             </Text>
           </View>
-          <TouchableOpacity style={styles.reminderButton}>
+          <TouchableOpacity style={styles.reminderButton} onPress={() => {
+            router.push({
+              pathname: '/patient/settings/reminder',
+              params: { type: 'water' }
+            });
+          }}>
             <Ionicons name="alarm" size={16} color="white" />
             <Text style={styles.reminderButtonText}>Set Reminder</Text>
           </TouchableOpacity>
