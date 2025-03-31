@@ -805,7 +805,7 @@ export default function tracksleep() {
           getSleepStatus();
         }
       });
-    }, 3600000); // Check every hour
+    }, 60000); // Check every hour
 
     return () => clearInterval(checkInterval);
   }, []);

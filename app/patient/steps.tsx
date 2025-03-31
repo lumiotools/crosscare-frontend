@@ -583,24 +583,26 @@ const step = () => {
       if (isConnected) {
         // Get step data from Fitbit
         const fitbitData = await fetchFitbitStepData();
+
+        // console.log(fitbitData);
         
-        if (fitbitData && fitbitData.length > 0) {
-          // Get today's steps for the current count
-          const today = new Date().toISOString().split('T')[0];
-          const todayData = fitbitData.find(item => item.date === today);
-          if (todayData) {
-            setStepsWalked(todayData.steps);
-          }
+        // if (fitbitData && fitbitData.length > 0) {
+        //   // Get today's steps for the current count
+        //   const today = new Date().toISOString().split('T')[0];
+        //   const todayData = fitbitData.find(item => item.date === today);
+        //   if (todayData) {
+        //     setStepsWalked(todayData.steps);
+        //   }
           
-          // Set step data from Fitbit
-          setStepData(fitbitData);
+        //   // Set step data from Fitbit
+        //   setStepData(fitbitData);
           
-          // Process data for current time range
-          const filteredData = processDataForTimeRange(fitbitData, timeRange);
-          setFilteredData(filteredData);
-          // setIsLoading(false);
-          return;
-        }
+        //   // Process data for current time range
+        //   const filteredData = processDataForTimeRange(fitbitData, timeRange);
+        //   setFilteredData(filteredData);
+        //   // setIsLoading(false);
+        //   return;
+        // }
       }
 
       // If we just reset the data, we might want to show the reset data

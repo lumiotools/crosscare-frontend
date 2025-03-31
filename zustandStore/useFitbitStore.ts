@@ -3,6 +3,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Buffer } from 'buffer';
+import { router } from 'expo-router';
 
 // Ensure the browser can complete the auth session
 WebBrowser.maybeCompleteAuthSession();
@@ -15,6 +16,9 @@ const FITBIT_TOKEN_ENDPOINT = "https://api.fitbit.com/oauth2/token";
 const REDIRECT_URI = AuthSession.makeRedirectUri({
   native: "com.crosscare.tech://auth"
 });
+
+
+
 
 export function useFitbit() {
   const [isConnected, setIsConnected] = useState(false);

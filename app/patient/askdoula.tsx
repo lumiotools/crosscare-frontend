@@ -100,6 +100,7 @@ export default function askdoula() {
   const [messages, setMessages] = useState<Message[]>([])
   const user = useSelector((state: any) => state.user)
   const [healthData, setHealthData] = useState(null)
+  const [isRecording, setIsRecording] = useState(false)
   const [healthStats, setHealthStats] = useState({
     water: { today: 0, weekly: 0, monthly: 0, avgWeekly: 0, avgMonthly: 0 },
     steps: { today: 0, weekly: 0, monthly: 0, avgWeekly: 0, avgMonthly: 0 },
@@ -1923,13 +1924,6 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     opacity: 0.5,
-  },
-  doulaBubble: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 4,
-    borderWidth: 0.5,
-    borderColor: "#E5E5E5",
-    marginLeft: 8,
   },
 })
 
