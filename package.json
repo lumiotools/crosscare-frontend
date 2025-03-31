@@ -29,6 +29,7 @@
     "@supabase/supabase-js": "^2.47.12",
     "aws-sdk": "^2.1692.0",
     "axios": "^1.8.1",
+    "base-64": "^1.0.0",
     "buffer": "^6.0.3",
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",

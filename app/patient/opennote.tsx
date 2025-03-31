@@ -13,14 +13,16 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useSelector } from "react-redux";
 
 export default function OpenNote() {
   const params = useLocalSearchParams();
+  const user = useSelector((state:any)=>state.user);
 
   // Parse the params.item (which is likely a string)
   const item = typeof params.item === "string" ? JSON.parse(params.item) : null;
 
-  console.log("Parsed Note Data:", item);
+  console.log("Parsed Note Data:", item.id);
 
   const [title, setTitle] = useState(
     item?.title || "This is the title of your note"
@@ -29,11 +31,37 @@ export default function OpenNote() {
     item?.description || "This is the content of your note"
   );
   const [isEditing, setIsEditing] = useState(false);
+  
+   const handleSave = async (id: number) => {
+      try {
+        const response = await fetch(
+          `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/note/${id}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ title: title, description: content }),
+          }
+        );
+    
+        if (!response.ok) {
+          throw new Error(`Failed to save note: ${response.statusText}`);
+        }
+    
+        const data = await response.json();
+        console.log("Note saved successfully:", data);
+        setIsEditing(false);
+      } catch (error:any) {
+        console.error("Error saving note:", error.message);
+        alert("Failed to save the note. Please try again.");
+      }
+    };
 
-  const handleSave = () => {
-    console.log("Saved Entry:", { title, content });
-    setIsEditing(false);
-  };
+  // const handleSave = () => {
+  //   console.log("Saved Entry:", { title, content });
+  //   setIsEditing(false);
+  // };
 
   const handleCancel = () => {
     setTitle(""); // Clear title
@@ -51,7 +79,7 @@ export default function OpenNote() {
           <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
         <Text style={styles.headerText}>New Entry</Text>
-        <TouchableOpacity onPress={handleSave}>
+        <TouchableOpacity onPress={()=>handleSave(item.id)}>
           <Text style={styles.saveText}>Save</Text>
         </TouchableOpacity>
       </View>

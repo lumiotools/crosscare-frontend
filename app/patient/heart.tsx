@@ -103,6 +103,8 @@ const generateRealtimeHeartData = () => {
     })
   }
 
+  console.log(result);
+
   return result
 }
 
@@ -536,6 +538,17 @@ export default function HeartRateScreen() {
           return;
         }
       }
+      
+      const userId = user?.user_id;
+
+      const response  = await fetch(`https://crosscare-backends.onrender.com/api/user/activity/${userId}/heartstatus`,{
+        method:'GET',
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      const data1 = await response.json();
+      console.log("Heart Rate",data1);
 
       // If not connected to Fitbit or no Fitbit data, use simulated data
       const data = {
@@ -545,7 +558,7 @@ export default function HeartRateScreen() {
         },
       };
       
-      setCurrentHeartRate(data.data.lastHeartRate);
+      setCurrentHeartRate(data1.heartRate);
       
       if (data.data.heartRateData && data.data.heartRateData.length > 0) {
         // Process the heart rate data from the API
@@ -1489,6 +1502,7 @@ const styles = StyleSheet.create({
     width: 160,
     overflow: "hidden",
     shadowColor: "#000",
+    marginTop:-25,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
