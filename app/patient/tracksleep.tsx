@@ -133,46 +133,46 @@ export default function tracksleep() {
   });
 
   const {
-      isConnected,
-      isLoading: fitbitLoading,
-      connect,
-      disconnect,
-      getDataForRange,
-    } = useFitbit();
-  
-    const [initialCheckDone, setInitialCheckDone] = useState(false);
-  
-    useEffect(() => {
-      const checkInitialConnection = async () => {
-        try {
-          // Wait for the hook's connection check to complete
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          setInitialCheckDone(true);
-        } catch (error) {
-          console.error("Error in initial connection check:", error);
-          setInitialCheckDone(true);
-        }
-      };
-  
-      checkInitialConnection();
-    }, []);
-  
-    const handleFitbitConnection = async () => {
-      if (isConnected) {
-        // Disconnect from Fitbit
-        await disconnect();
-        Alert.alert('Disconnected', 'Successfully disconnected from Fitbit');
-      } else {
-        // Connect to Fitbit
-        const success = await connect();
-        if (success) {
-          Alert.alert('Success', 'Connected to Fitbit');
-          getSleepStatus(); // Refresh data with Fitbit data
-        } else {
-          Alert.alert('Error', 'Failed to connect to Fitbit');
-        }
+    isConnected,
+    isLoading: fitbitLoading,
+    connect,
+    disconnect,
+    getDataForRange,
+  } = useFitbit();
+
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
+
+  useEffect(() => {
+    const checkInitialConnection = async () => {
+      try {
+        // Wait for the hook's connection check to complete
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        setInitialCheckDone(true);
+      } catch (error) {
+        console.error("Error in initial connection check:", error);
+        setInitialCheckDone(true);
       }
     };
+
+    checkInitialConnection();
+  }, []);
+
+  const handleFitbitConnection = async () => {
+    if (isConnected) {
+      // Disconnect from Fitbit
+      await disconnect();
+      Alert.alert("Disconnected", "Successfully disconnected from Fitbit");
+    } else {
+      // Connect to Fitbit
+      const success = await connect();
+      if (success) {
+        Alert.alert("Success", "Connected to Fitbit");
+        getSleepStatus(); // Refresh data with Fitbit data
+      } else {
+        Alert.alert("Error", "Failed to connect to Fitbit");
+      }
+    }
+  };
 
   const user = useSelector((state: any) => state.user);
 
@@ -181,104 +181,111 @@ export default function tracksleep() {
       // Determine date range based on timeRange
       const today = new Date();
       let startDate = new Date();
-      
-      if (timeRange === 'today') {
+
+      if (timeRange === "today") {
         // Just today
-      } else if (timeRange === 'week') {
+      } else if (timeRange === "week") {
         startDate.setDate(today.getDate() - 7);
-      } else if (timeRange === 'month') {
+      } else if (timeRange === "month") {
         startDate.setMonth(today.getMonth() - 1);
-      } else if (timeRange === 'lastMonth') {
+      } else if (timeRange === "lastMonth") {
         startDate.setMonth(today.getMonth() - 2);
         const endDate = new Date();
         endDate.setMonth(today.getMonth() - 1);
         today.setTime(endDate.getTime());
       }
-      
+
       // Format dates for Fitbit API (yyyy-MM-dd)
-      const startDateStr = startDate.toISOString().split('T')[0];
-      const endDateStr = today.toISOString().split('T')[0];
-      
+      const startDateStr = startDate.toISOString().split("T")[0];
+      const endDateStr = today.toISOString().split("T")[0];
+
       // Get data for date range
-      const data = await getDataForRange('sleep', startDateStr, endDateStr);
-      
+      const data = await getDataForRange("sleep", startDateStr, endDateStr);
+
       if (!data) {
-        throw new Error('Failed to fetch Fitbit sleep data');
+        throw new Error("Failed to fetch Fitbit sleep data");
       }
-      
+
       return processFitbitSleepData(data);
     } catch (error) {
-      console.error('Error fetching Fitbit sleep data:', error);
+      console.error("Error fetching Fitbit sleep data:", error);
       return null;
     }
   };
-  
+
   // Process Fitbit sleep data
   const processFitbitSleepData = async (fitbitData: any) => {
     if (!fitbitData || !fitbitData.sleep) {
       return [];
     }
-    
+
     const sleepData = fitbitData.sleep;
     const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"];
     const processedData = [];
-    
+
     // Create a map to store sleep data by date
     const sleepByDate = new Map();
-    
+
     // Process all sleep records
     for (const sleepRecord of sleepData) {
       try {
         // Get the date from the sleep record
         const dateStr = sleepRecord.dateOfSleep;
         const date = new Date(dateStr);
-        
+
         // Validate the date is valid before proceeding
         if (isNaN(date.getTime())) {
           console.error("Invalid date from Fitbit:", dateStr);
           continue; // Skip this record
         }
-        
+
         const dayIndex = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
         const dayAbbr = fixedWeekdays[dayIndex];
-        
+
         // Parse the ISO timestamps from Fitbit
         const sleepStart = new Date(sleepRecord.startTime);
         const sleepEnd = new Date(sleepRecord.endTime);
-        
+
         // Validate timestamps are valid
         if (isNaN(sleepStart.getTime()) || isNaN(sleepEnd.getTime())) {
-          console.error("Invalid timestamps from Fitbit:", sleepRecord.startTime, sleepRecord.endTime);
+          console.error(
+            "Invalid timestamps from Fitbit:",
+            sleepRecord.startTime,
+            sleepRecord.endTime
+          );
           continue; // Skip this record
         }
-        
+
         // Format times for display in 12-hour format
         const formattedSleepStart = sleepStart.toLocaleTimeString("en-US", {
           hour: "numeric",
           minute: "2-digit",
           hour12: true,
         });
-        
+
         const formattedSleepEnd = sleepEnd.toLocaleTimeString("en-US", {
           hour: "numeric",
           minute: "2-digit",
           hour12: true,
         });
-        
+
         // Calculate sleep duration in hours
         const durationMs = sleepRecord.duration;
         const hours = durationMs / (1000 * 60 * 60);
-        
+
         // Format duration for display
         const durationHours = Math.floor(hours);
         const durationMinutes = Math.round((hours - durationHours) * 60);
         const formattedDuration = `${durationHours} hr${
           durationMinutes > 0 ? ` ${durationMinutes} min` : ""
         }`;
-        
+
         // Format the date for display - use a more reliable format
-        const formattedDate = `${date.getDate()} ${date.toLocaleString('en-US', { month: 'short' })}, ${date.getFullYear()}`;
-        
+        const formattedDate = `${date.getDate()} ${date.toLocaleString(
+          "en-US",
+          { month: "short" }
+        )}, ${date.getFullYear()}`;
+
         // Send data to your API
         try {
           // Prepare data in the format your API expects
@@ -286,11 +293,11 @@ export default function tracksleep() {
             date: dateStr, // Format: YYYY-MM-DD
             displayDate: formattedDate, // Add formatted date for display
             sleepStart: formattedSleepStart, // Format: "9:00 PM"
-            sleepEnd: formattedSleepEnd // Format: "7:29 AM"
+            sleepEnd: formattedSleepEnd, // Format: "7:29 AM"
           };
-          
+
           console.log("Sending sleep data to API:", sleepDataForAPI);
-          
+
           // Make POST request to your API - use sleepAttachment endpoint
           const response = await fetch(
             `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/sleep`,
@@ -302,21 +309,23 @@ export default function tracksleep() {
               body: JSON.stringify(sleepDataForAPI),
             }
           );
-          
+
           if (!response.ok) {
-            throw new Error(`Failed to save sleep data: ${response.statusText}`);
+            throw new Error(
+              `Failed to save sleep data: ${response.statusText}`
+            );
           }
-          
+
           console.log(`Successfully saved sleep data for ${dateStr}`);
         } catch (error) {
           console.error("Error saving sleep data to database:", error);
         }
-        
+
         // Continue with your existing code for processing the data for the UI
         if (sleepByDate.has(dateStr)) {
           const existingEntry = sleepByDate.get(dateStr);
           existingEntry.hours += hours;
-          
+
           // Add to sleep logs
           existingEntry.logs.push({
             id: sleepRecord.logId.toString(),
@@ -332,13 +341,15 @@ export default function tracksleep() {
             hours: hours,
             date: dateStr,
             displayDate: formattedDate, // Add formatted date for display
-            logs: [{
-              id: sleepRecord.logId.toString(),
-              date: formattedDate, // Use the formatted date here
-              sleepStart: formattedSleepStart,
-              sleepEnd: formattedSleepEnd,
-              duration: formattedDuration,
-            }],
+            logs: [
+              {
+                id: sleepRecord.logId.toString(),
+                date: formattedDate, // Use the formatted date here
+                sleepStart: formattedSleepStart,
+                sleepEnd: formattedSleepEnd,
+                duration: formattedDuration,
+              },
+            ],
           });
         }
       } catch (error) {
@@ -346,7 +357,7 @@ export default function tracksleep() {
         // Continue to the next record
       }
     }
-    
+
     // Convert map to array
     return Array.from(sleepByDate.values());
   };
@@ -661,24 +672,24 @@ export default function tracksleep() {
       if (isConnected) {
         // Get sleep data from Fitbit
         const fitbitData = await fetchFitbitSleepData();
-        
+
         if (fitbitData && fitbitData.length > 0) {
           // Extract sleep logs from the processed data
-            const sleepLogsFromFitbit: SleepEntry[] = [];
-          fitbitData.forEach(item => {
+          const sleepLogsFromFitbit: SleepEntry[] = [];
+          fitbitData.forEach((item) => {
             if (item.logs && item.logs.length > 0) {
               sleepLogsFromFitbit.push(...item.logs);
             }
           });
-          
+
           // Set sleep logs from Fitbit
           if (sleepLogsFromFitbit.length > 0) {
             setSleepLogs(sleepLogsFromFitbit);
           }
-          
+
           // Set chart data from Fitbit
           setChartData(fitbitData);
-          
+
           // Process data for current time range
           const filteredData = processDataForTimeRange(fitbitData, timeRange);
           setFilteredData(filteredData);
@@ -847,14 +858,16 @@ export default function tracksleep() {
     try {
       // Try to parse the date
       const date = new Date(dateString);
-      
+
       // Check if the date is valid
       if (isNaN(date.getTime())) {
         return ""; // Return empty string for invalid dates
       }
-      
+
       // Format using a more reliable method
-      return `${date.getDate()} ${date.toLocaleString('en-US', { month: 'short' })}, ${date.getFullYear()}`;
+      return `${date.getDate()} ${date.toLocaleString("en-US", {
+        month: "short",
+      })}, ${date.getFullYear()}`;
     } catch (e) {
       console.error("Error formatting date:", e);
       return ""; // Return empty string on error
@@ -1368,9 +1381,11 @@ export default function tracksleep() {
                           fontSize: 12,
                         }}
                       >
-                        {entry.date && typeof entry.date === 'string' && entry.date.includes(',') 
-            ? entry.date 
-            : formatDate(entry.date)}
+                        {entry.date &&
+                        typeof entry.date === "string" &&
+                        entry.date.includes(",")
+                          ? entry.date
+                          : formatDate(entry.date)}
                       </Text>
                     </View>
                     <DeleteMenu onDelete={() => handleDeleteLog(entry.id)} />
@@ -1607,7 +1622,15 @@ export default function tracksleep() {
                 Set a reminder and stay on track.
               </Text>
             </View>
-            <TouchableOpacity style={styles.reminderButton}>
+            <TouchableOpacity
+              style={styles.reminderButton}
+              onPress={() =>
+                router.push({
+                  pathname: "/patient/settings/reminder",
+                  params: { type: "sleep" },
+                })
+              }
+            >
               <Ionicons name="alarm" size={16} color="#FEF8FD" />
               <Text style={styles.reminderButtonText}>Set Reminder</Text>
             </TouchableOpacity>
