@@ -51,9 +51,14 @@ const calculateProgress = (weeksComplete: number): Progress => {
 // });
 
 // Define prop types for the components
+interface UserProfile {
+  questionnaires?: { isCompleted: boolean }[];
+  questionResponses?: { questionnaireId: string }[];
+}
 
 const Home = () => {
   const dispatch = useDispatch();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const router = useRouter();
   const [userData, setUserData] = useState<any>(null);
   const token = useSelector((state: any) => state.user.token);
@@ -79,6 +84,50 @@ const Home = () => {
     };
     getUserData();
   }, [token]);
+
+  const getProfile = async () => {
+    const response = await fetch(`https://crosscare-backends.onrender.com/api/user/${user?.user_id}/profile`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+  
+    const data = await response.json();
+    // console.log("Profile data:", data);
+    
+    // Extract and log question responses
+    const questionResponses = data?.user?.questionResponses || data?.questionResponses;
+    console.log("Question responses:", questionResponses);
+    
+    setProfile(data);
+  };
+  
+  useEffect(() => {
+    if (user?.user_id) {
+      getProfile();
+    }
+  }, [user?.user_id]);
+  
+  // Updated useEffect to handle questionnaire navigation based on responses
+  useEffect(() => {
+    // Get questionResponses from either profile.user.questionResponses or profile.questionResponses
+    const questionResponses = profile?.questionResponses;
+    
+    // Check if profile is loaded
+    if (profile) {
+      // Check if there are any question responses
+      if (!questionResponses || questionResponses.length === 0) {
+        // No responses yet, navigate to AskDoula
+        console.log("No question responses found, redirecting to AskDoula");
+        router.push("/patient/askdoula");
+      } else {
+        console.log("Found question responses:", questionResponses.length);
+        // You can add additional logic here if needed
+      }
+    }
+  }, [profile, router]);
 
   // console.log("Auth providers:", user);
 
