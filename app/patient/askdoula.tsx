@@ -22,6 +22,8 @@ import { useSelector } from "react-redux"
 import axios from "axios"
 import { systemPrompts } from '@/constants/systemPrompts';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { QUESTIONNAIRE_DOMAINS, type QuestionnaireResponse } from "@/constants/questionaireData"
+import QuestionnaireManager from "@/components/QuestionaireManager"
 
 interface Message {
   id: string
@@ -114,6 +116,272 @@ export default function askdoula() {
 
   const scrollViewRef = useRef<ScrollView>(null)
   const loadingAnimation = useRef(new Animated.Value(0)).current
+
+  // Questionnaire state
+  const [showStartQuestionnaire, setShowStartQuestionnaire] = useState(false);
+
+  // Initialize questionnaire manager
+  const questionnaireManager = QuestionnaireManager({
+    userId: user?.user_id,
+    onQuestionReady: (question) => {
+      // Add the question as a message from the assistant
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        {
+          id: Date.now().toString(),
+          type: "text",
+          content: question,
+          isUser: false,
+          timestamp: new Date(),
+        },
+      ])
+    },
+    onQuestionnaireComplete: () => {
+      // Send a completion message
+      // setMessages((prevMessages) => [
+      //   ...prevMessages,
+      //   {
+      //     id: Date.now().toString(),
+      //     type: "text",
+      //     content:
+      //       "Thank you for sharing this information with me. Understanding these aspects of your life helps me provide better support and connect you with resources that can address any challenges you're facing. Remember, you're not alone, and there are organizations ready to assist you.",
+      //     isUser: false,
+      //     timestamp: new Date(),
+      //   },
+      // ])
+    },
+    onResponseSaved: (response: QuestionnaireResponse) => {
+      // You can do additional processing here if needed
+      console.log("Response saved:", response)
+    }
+  })
+
+  // useEffect(() => {
+  //   if (messages.length === 0 && questionnaireManager.isActive) {
+  //     // Add welcome message
+  //     setMessages([
+  //       {
+  //         id: Date.now().toString(),
+  //         type: "text",
+  //         content: `Hello ${user?.user_name || "there"}!  as your doula, I'm here to support you not just physically, but also emotionally and socially throughout your pregnancy and postpartum journey.`,
+  //         isUser: false,
+  //         timestamp: new Date(),
+  //       },
+  //     ])
+  //   }
+  // }, [questionnaireManager.isActive, messages.length])
+
+  // Check if we should show the questionnaire option
+   
+  // Replace the existing useEffect for checkQuestionnaireStatus with this:
+  
+  const checkQuestionnaireCompletionStatus = async () => {
+    try {
+      const completedStatus = await AsyncStorage.getItem(`questionnaire_completed_${user?.user_id}`)
+      return completedStatus === "true"
+    } catch (error) {
+      console.error("Error checking questionnaire completion status:", error)
+      return false
+    }
+  }
+
+  // Replace the existing useEffect for checkQuestionnaireStatus with this:
+  // useEffect(() => {
+  //   const checkQuestionnaireStatus = async () => {
+  //     try {
+  //       // First check if questionnaire is already completed
+  //       const isCompleted = await checkQuestionnaireCompletionStatus()
+  //       console.log("Questionnaire completed status:", isCompleted)
+  
+  //       // If completed, don't do anything with the questionnaire
+  //       if (isCompleted) {
+  //         console.log("Questionnaire already completed, not starting again")
+  
+  //         // If we have no messages yet, add a welcome message
+  //         if (messages.length === 0) {
+  //           setMessages([
+  //             {
+  //               id: Date.now().toString(),
+  //               type: "text",
+  //               content: `Hello ${user?.user_name || "there"}! How can I help you today?`,
+  //               isUser: false,
+  //               timestamp: new Date(),
+  //             },
+  //           ])
+  //         }
+  //         return
+  //       }
+  
+  //       // Check if there's a paused questionnaire
+  //       const isPaused = await questionnaireManager.checkForPausedQuestionnaire()
+  //       console.log("Paused questionnaire status:", isPaused)
+  
+  //       // If there's a paused questionnaire and no messages yet, ask if they want to continue
+  //       if (isPaused && messages.length === 0) {
+  //         console.log("Found paused questionnaire, asking to continue")
+  
+  //         // Get domain information to provide context
+  //         try {
+  //           const savedState = await AsyncStorage.getItem(`questionnaire_state_${user?.user_id}`)
+  //           if (savedState) {
+  //             const parsedState = JSON.parse(savedState)
+              
+  //             // Tell the user what domain we were in, and what's coming next
+  //             const currentDomain = QUESTIONNAIRE_DOMAINS[parsedState.currentDomainIndex]
+              
+  //             // Check if we were at the end of the current domain
+  //             if (parsedState.currentQuestionIndex >= currentDomain.questions.length) {
+  //               const nextDomainIndex = parsedState.currentDomainIndex + 1
+  //               if (nextDomainIndex < QUESTIONNAIRE_DOMAINS.length) {
+  //                 const nextDomain = QUESTIONNAIRE_DOMAINS[nextDomainIndex]
+  //                 setMessages([
+  //                   {
+  //                     id: Date.now().toString(),
+  //                     type: "text",
+  //                     content: `Hey ${user?.user_name || "there"}, you have an unfinished questionnaire. We were about to start discussing ${nextDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
+  //                     isUser: false,
+  //                     timestamp: new Date(),
+  //                   },
+  //                 ])
+  //                 return
+  //               }
+  //             }
+              
+  //             // If we weren't at the end, we were in the middle of a domain
+  //             if (currentDomain) {
+  //               setMessages([
+  //                 {
+  //                   id: Date.now().toString(),
+  //                   type: "text",
+  //                   content: `Hey ${user?.user_name || "there"}, you have an unfinished questionnaire about ${currentDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
+  //                   isUser: false,
+  //                   timestamp: new Date(),
+  //                 },
+  //               ])
+  //               return
+  //             }
+  //           }
+  //         } catch (error) {
+  //           console.error("Error getting saved questionnaire state:", error)
+  //         }
+  
+  //         // Fallback message if we can't determine the domain
+  //         setMessages([
+  //           {
+  //             id: Date.now().toString(),
+  //             type: "text",
+  //             content: `Hey ${user?.user_name || "there"}, you have an unfinished questionnaire. Would you like to continue where you left off?`,
+  //             isUser: false,
+  //             timestamp: new Date(),
+  //           },
+  //         ])
+  //         return
+  //       }
+  
+  //       // Only if NOT completed, NOT paused, and no messages, auto-start it
+  //       if (!isPaused && messages.length === 0) {
+  //         console.log("Starting new questionnaire")
+  //         questionnaireManager.startQuestionnaire()
+  //       }
+  //     } catch (error) {
+  //       console.error("Error checking questionnaire status:", error)
+  //     }
+  //   }
+  
+  //   // Only run this effect if we have a user ID
+  //   if (user?.user_id) {
+  //     checkQuestionnaireStatus()
+  //   }
+  // }, [user?.user_id])
+
+  const userId = user?.user_id;
+
+  useEffect(() => {
+    const checkQuestionnaireStatus = async () => {
+      try {
+        // First check if questionnaire is already completed
+        const isCompleted = await checkQuestionnaireCompletionStatus()
+        console.log("Questionnaire completed status:", isCompleted)
+
+        // Check if there are existing question responses from the API
+        let hasExistingResponses = false
+        if (user?.user_id) {
+          try {
+            const response = await fetch(`https://crosscare-backends.onrender.com/api/user/${user.user_id}/profile`)
+            if (response.ok) {
+              const data = await response.json()
+              console.log("Profile data:", data)
+
+              // Extract question responses from the profile data
+              const questionResponses = data?.questionResponses || []
+              console.log("Question responses:", questionResponses)
+
+              // If there are question responses, don't start the questionnaire
+              if (questionResponses && questionResponses.length > 0) {
+                console.log("Found existing question responses, not starting questionnaire")
+                hasExistingResponses = true
+
+                // Mark questionnaire as completed since responses exist
+                await AsyncStorage.setItem(`questionnaire_completed_${user.user_id}`, "true")
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching profile data:", error)
+          }
+        }
+
+        // If completed or has existing responses, don't do anything with the questionnaire
+        if (isCompleted || hasExistingResponses) {
+          console.log("Questionnaire already completed or has responses, not starting again")
+
+          // If we have no messages yet, add a welcome message
+          if (messages.length === 0) {
+            setMessages([
+              {
+                id: Date.now().toString(),
+                type: "text",
+                content: `Hello ${user?.user_name || "there"}! How can I help you today?`,
+                isUser: false,
+                timestamp: new Date(),
+              },
+            ])
+          }
+          return
+        }
+
+        // Check if there's a paused questionnaire
+        const isPaused = await questionnaireManager.checkForPausedQuestionnaire()
+
+        // If there's a paused questionnaire and no messages yet, ask if they want to continue
+        if (isPaused && messages.length === 0) {
+          console.log("Found paused questionnaire, asking to continue")
+          setMessages([
+            {
+              id: Date.now().toString(),
+              type: "text",
+              content: `Hey ${user?.user_name || "there"}, you have an unfinished questionnaire. Would you like to continue where you left off?`,
+              isUser: false,
+              timestamp: new Date(),
+            },
+          ])
+          return
+        }
+
+        // Only if NOT completed, NOT paused, NO existing responses, and no messages, auto-start it
+        if (!isPaused && messages.length === 0) {
+          console.log("Starting new questionnaire")
+          questionnaireManager.startQuestionnaire()
+        }
+      } catch (error) {
+        console.error("Error checking questionnaire status:", error)
+      }
+    }
+
+    // Only run this effect if we have a user ID
+    if (user?.user_id) {
+      checkQuestionnaireStatus()
+    }
+  }, [user?.user_id])
 
   // Fetch health data when component mounts
   useEffect(() => {
@@ -632,7 +900,7 @@ export default function askdoula() {
           
           const waterValue = patternMatch.isGlasses 
             ? patternMatch.value 
-            : Math.round(patternMatch.value / 250);
+            : Math.round((patternMatch.value ?? 0) / 250);
           
           const isIncrement = patternMatch.isIncremental || false;
           
@@ -1013,7 +1281,7 @@ export default function askdoula() {
           // Otherwise, convert ml to glasses (assuming 250ml per glass)
           const waterGoal = extractedData.isGlasses 
             ? extractedData.value 
-            : Math.round(extractedData.value / 250);
+            : Math.round((extractedData.value ?? 0) / 250);
           
           requestData = { waterGoal: waterGoal };
           successMessage = `I've set your water intake goal to ${waterGoal} glasses per day.`;
@@ -1080,6 +1348,75 @@ export default function askdoula() {
     try {
       console.log("processUserQuery started with:", query);
       setIsProcessing(true);
+
+      // Check if this is a response to the "continue paused questionnaire" question
+      if (messages.length > 0 && !messages[messages.length - 1].isUser) {
+        // Look for specific continuation patterns
+        const lastMessage = messages[messages.length - 1].content;
+        
+        // Check if the last message is asking about continuing
+        const continuationPrompts = [
+          /continue this conversation/i,
+          /continue where you left off/i,
+          /unfinished questionnaire/i,
+          /we can continue/i,
+          /ready. Just let me know/i,
+          /would you like to continue/i
+        ];
+        
+        const isContinuationPrompt = continuationPrompts.some(pattern => pattern.test(lastMessage));
+        
+        if (isContinuationPrompt) {
+          console.log("Detected continuation prompt response");
+          
+          // Check for positive responses
+          const positiveResponses = [
+            /^yes$/i, /^yeah$/i, /^sure$/i, /^ok$/i, /^okay$/i, 
+            /^continue$/i, /^let's continue$/i, /^ready$/i, 
+            /^resume$/i, /^let's go$/i, /^go$/i
+          ];
+          
+          if (positiveResponses.some(pattern => pattern.test(query.trim()))) {
+            console.log("User wants to resume questionnaire");
+            
+            // Add a confirmation message
+            setMessages(prevMessages => [
+              ...prevMessages,
+              {
+                id: Date.now().toString(),
+                type: "text",
+                content: "Great! Let's pick up where we left off.",
+                isUser: false,
+                timestamp: new Date()
+              }
+            ]);
+            
+            // Use a slight delay before resuming
+            setTimeout(() => {
+              questionnaireManager.resumeQuestionnaire();
+            }, 800);
+            
+            setIsProcessing(false);
+            return;
+          }
+        }
+      }
+
+      // First check if this is a questionnaire response
+      if (questionnaireManager.isActive) {
+        const wasHandledAsQuestionnaireResponse = questionnaireManager.handleUserResponse(query)
+        if (wasHandledAsQuestionnaireResponse) {
+          setIsProcessing(false)
+          return
+        }
+      }
+
+      // Check if this is a request to start the questionnaire
+      if (/start questionnaire|begin questionnaire|take questionnaire|health assessment|assessment/i.test(query)) {
+        questionnaireManager.startQuestionnaire()
+        setIsProcessing(false)
+        return
+      }
       
       // First check if this is a log request
       const wasHandledAsLogRequest = await detectAndHandleLogRequest(query);
@@ -1487,6 +1824,41 @@ export default function askdoula() {
     sendMessage(optionText)
   }
 
+  const clearChatHistory = async () => {
+    try {
+      // Clear chat history from AsyncStorage
+      await AsyncStorage.removeItem("chatHistory")
+      
+      // Clear messages from state
+      setMessages([]) 
+      
+      // Reset questionnaire state in AsyncStorage
+      await AsyncStorage.removeItem(`questionnaire_completed_${user?.user_id}`)
+      await AsyncStorage.removeItem(`questionnaire_state_${user?.user_id}`)
+      
+      console.log("Chat history cleared successfully")
+      
+      // Show confirmation to the user with option to start questionnaire
+      Alert.alert(
+        "Chat History Cleared", 
+        "Your conversation history has been deleted. Would you like to start the health questionnaire now?",
+        [
+          { 
+            text: "Yes", 
+            onPress: () => {
+              // Start the questionnaire
+              questionnaireManager.startQuestionnaire()
+            }
+          },
+          { text: "Not now" }
+        ]
+      )
+    } catch (error) {
+      console.error("Error clearing chat history:", error)
+      Alert.alert("Error", "Failed to clear chat history. Please try again.")
+    }
+  }
+
   const renderTypingIndicator = () => {
     const dot1Opacity = loadingAnimation.interpolate({
       inputRange: [0, 0.3, 0.6, 1],
@@ -1532,8 +1904,12 @@ export default function askdoula() {
   };
 
   // Function to load messages from AsyncStorage
+  // Function to load messages from AsyncStorage
   const loadMessages = async () => {
     try {
+      // First check if questionnaire is completed
+      const isCompleted = await checkQuestionnaireCompletionStatus();
+      
       const savedMessages = await AsyncStorage.getItem('chatHistory');
       
       if (savedMessages) {
@@ -1543,8 +1919,48 @@ export default function askdoula() {
           timestamp: new Date(msg.timestamp)
         }));
         
-        setMessages(parsedMessages);
-        console.log('Loaded', parsedMessages.length, 'messages from storage');
+        // If the questionnaire is completed, filter out questionnaire-related messages
+        if (isCompleted) {
+          // Keep only user messages and non-questionnaire assistant messages
+          const filteredMessages = parsedMessages.filter((msg: Message) => {
+            if (msg.isUser) return true; // Keep all user messages
+            
+            // Filter out assistant messages that are likely part of the questionnaire
+            const questionnaireKeywords = [
+              "I'd like to ask a few questions about your living situation",
+              "Now I'd like to ask you about",
+              "Would you like to keep going, or shall we pause",
+              "Many factors in our daily lives",
+              "To provide you with the best possible support"
+            ];
+            
+            // Check if message contains any questionnaire keywords
+            const isQuestionnaireMessage = questionnaireKeywords.some(keyword => 
+              msg.content.includes(keyword)
+            );
+            
+            return !isQuestionnaireMessage;
+          });
+          
+          // If we filtered out all messages, add a welcome message
+          if (filteredMessages.length === 0) {
+            setMessages([
+              {
+                id: Date.now().toString(),
+                type: "text",
+                content: `Hello ${user?.user_name || "there"}! How can I help you today?`,
+                isUser: false,
+                timestamp: new Date(),
+              },
+            ]);
+          } else {
+            setMessages(filteredMessages);
+          }
+          console.log('Loaded and filtered messages (questionnaire completed)');
+        } else {
+          setMessages(parsedMessages);
+          console.log('Loaded messages (questionnaire not completed)');
+        }
       }
     } catch (error) {
       console.error('Error loading messages:', error);
@@ -1569,6 +1985,15 @@ export default function askdoula() {
           <TouchableOpacity>
             <Feather name="more-vertical" size={20} color="#E5E5E5" />
           </TouchableOpacity>
+
+           <View style={{ flexDirection: "row" }}>
+            <TouchableOpacity onPress={clearChatHistory} style={{ marginRight: 12 }}>
+              <Feather name="trash-2" size={20} color="#E5E5E5" />
+            </TouchableOpacity>
+            <TouchableOpacity>
+              <Feather name="more-vertical" size={20} color="#E5E5E5" />
+            </TouchableOpacity>
+          </View> 
         </View>
 
         {/* Chat Container */}
