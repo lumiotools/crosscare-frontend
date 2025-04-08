@@ -298,90 +298,97 @@ export default function askdoula() {
 
   useEffect(() => {
     const checkQuestionnaireStatus = async () => {
-      try {
-        // First check if questionnaire is already completed
-        const isCompleted = await checkQuestionnaireCompletionStatus()
-        console.log("Questionnaire completed status:", isCompleted)
+      const isPaused = await questionnaireManager.checkForPausedQuestionnaire()
 
-        // Check if there are existing question responses from the API
-        let hasExistingResponses = false
-        if (user?.user_id) {
-          try {
-            const response = await fetch(`https://crosscare-backends.onrender.com/api/user/${user.user_id}/profile`)
-            if (response.ok) {
-              const data = await response.json()
-              console.log("Profile data:", data)
+      // In the useEffect for checkQuestionnaireStatus, modify the paused questionnaire section
+      // If there's a paused questionnaire and no messages yet, ask if they want to continue
+      if (isPaused && messages.length === 0) {
+        console.log("Found paused questionnaire, asking to continue")
 
-              // Extract question responses from the profile data
-              const questionResponses = data?.questionResponses || []
-              console.log("Question responses:", questionResponses)
+        // Try to load the last question that was asked
+        try {
+          const lastQuestionJson = await AsyncStorage.getItem(`last_question_${user?.user_id}`)
+          if (lastQuestionJson) {
+            const lastQuestion = JSON.parse(lastQuestionJson)
+            console.log("Found last question for paused questionnaire:", lastQuestion)
 
-              // If there are question responses, don't start the questionnaire
-              if (questionResponses && questionResponses.length > 0) {
-                console.log("Found existing question responses, not starting questionnaire")
-                hasExistingResponses = true
+            // If the last message was a pause confirmation, use a different message to resume
+            if (lastQuestion.domainId === "pause") {
+              setMessages([
+                {
+                  id: Date.now().toString(),
+                  type: "text",
+                  content: `Hey ${user?.user_name || "there"}, you have an unfinished questionnaire. Would you like to continue where you left off?`,
+                  isUser: false,
+                  timestamp: new Date(),
+                },
+              ])
+              return
+            }
 
-                // Mark questionnaire as completed since responses exist
-                await AsyncStorage.setItem(`questionnaire_completed_${user.user_id}`, "true")
+            // If it was a domain continuation question, use that context
+            if (lastQuestion.domainId === "continue") {
+              const savedState = await AsyncStorage.getItem(`questionnaire_state_${user?.user_id}`)
+              if (savedState) {
+                const parsedState = JSON.parse(savedState)
+                const nextDomainIndex = parsedState.currentDomainIndex + 1
+
+                if (nextDomainIndex < QUESTIONNAIRE_DOMAINS.length) {
+                  const nextDomain = QUESTIONNAIRE_DOMAINS[parsedState.currentDomainIndex]
+                  setMessages([
+                    {
+                      id: Date.now().toString(),
+                      type: "text",
+                      content: `Hey ${user?.user_name || "there"}, we were discussing ${QUESTIONNAIRE_DOMAINS[parsedState.currentDomainIndex].description.toLowerCase()} and about to move to ${nextDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
+                      isUser: false,
+                      timestamp: new Date(),
+                    },
+                  ])
+                  return
+                }
               }
             }
-          } catch (error) {
-            console.error("Error fetching profile data:", error)
+
+            // For a regular question, use the domain context
+            const savedState = await AsyncStorage.getItem(`questionnaire_state_${user?.user_id}`)
+            if (savedState) {
+              const parsedState = JSON.parse(savedState)
+              const currentDomain = QUESTIONNAIRE_DOMAINS[parsedState.currentDomainIndex]
+
+              if (currentDomain) {
+                setMessages([
+                  {
+                    id: Date.now().toString(),
+                    type: "text",
+                    content: `Hey ${user?.user_name || "there"}, you have an unfinished questionnaire about ${currentDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
+                    isUser: false,
+                    timestamp: new Date(),
+                  },
+                ])
+                return
+              }
+            }
           }
+        } catch (error) {
+          console.error("Error getting last question:", error)
         }
 
-        // If completed or has existing responses, don't do anything with the questionnaire
-        if (isCompleted || hasExistingResponses) {
-          console.log("Questionnaire already completed or has responses, not starting again")
-
-          // If we have no messages yet, add a welcome message
-          if (messages.length === 0) {
-            setMessages([
-              {
-                id: Date.now().toString(),
-                type: "text",
-                content: `Hello ${user?.user_name || "there"}! How can I help you today?`,
-                isUser: false,
-                timestamp: new Date(),
-              },
-            ])
-          }
-          return
-        }
-
-        // Check if there's a paused questionnaire
-        const isPaused = await questionnaireManager.checkForPausedQuestionnaire()
-
-        // If there's a paused questionnaire and no messages yet, ask if they want to continue
-        if (isPaused && messages.length === 0) {
-          console.log("Found paused questionnaire, asking to continue")
-          setMessages([
-            {
-              id: Date.now().toString(),
-              type: "text",
-              content: `Hey ${user?.user_name || "there"}, you have an unfinished questionnaire. Would you like to continue where you left off?`,
-              isUser: false,
-              timestamp: new Date(),
-            },
-          ])
-          return
-        }
-
-        // Only if NOT completed, NOT paused, NO existing responses, and no messages, auto-start it
-        if (!isPaused && messages.length === 0) {
-          console.log("Starting new questionnaire")
-          questionnaireManager.startQuestionnaire()
-        }
-      } catch (error) {
-        console.error("Error checking questionnaire status:", error)
+        // Fallback message if we can't determine the context
+        setMessages([
+          {
+            id: Date.now().toString(),
+            type: "text",
+            content: `Hey ${user?.user_name || "there"}, you have an unfinished questionnaire. Would you like to continue where you left off?`,
+            isUser: false,
+            timestamp: new Date(),
+          },
+        ])
+        return
       }
     }
 
-    // Only run this effect if we have a user ID
-    if (user?.user_id) {
-      checkQuestionnaireStatus()
-    }
-  }, [user?.user_id])
+    checkQuestionnaireStatus()
+  }, [questionnaireManager, messages, user, checkQuestionnaireCompletionStatus])
 
   // Fetch health data when component mounts
   useEffect(() => {
@@ -1351,56 +1358,72 @@ export default function askdoula() {
 
       // Check if this is a response to the "continue paused questionnaire" question
       if (messages.length > 0 && !messages[messages.length - 1].isUser) {
-        // Look for specific continuation patterns
-        const lastMessage = messages[messages.length - 1].content;
-        
-        // Check if the last message is asking about continuing
-        const continuationPrompts = [
-          /continue this conversation/i,
-          /continue where you left off/i,
-          /unfinished questionnaire/i,
-          /we can continue/i,
-          /ready. Just let me know/i,
-          /would you like to continue/i
-        ];
-        
-        const isContinuationPrompt = continuationPrompts.some(pattern => pattern.test(lastMessage));
-        
-        if (isContinuationPrompt) {
-          console.log("Detected continuation prompt response");
-          
-          // Check for positive responses
-          const positiveResponses = [
-            /^yes$/i, /^yeah$/i, /^sure$/i, /^ok$/i, /^okay$/i, 
-            /^continue$/i, /^let's continue$/i, /^ready$/i, 
-            /^resume$/i, /^let's go$/i, /^go$/i
-          ];
-          
-          if (positiveResponses.some(pattern => pattern.test(query.trim()))) {
-            console.log("User wants to resume questionnaire");
-            
-            // Add a confirmation message
-            setMessages(prevMessages => [
-              ...prevMessages,
-              {
-                id: Date.now().toString(),
-                type: "text",
-                content: "Great! Let's pick up where we left off.",
-                isUser: false,
-                timestamp: new Date()
-              }
-            ]);
-            
-            // Use a slight delay before resuming
-            setTimeout(() => {
-              questionnaireManager.resumeQuestionnaire();
-            }, 800);
-            
-            setIsProcessing(false);
-            return;
+      // Look for specific continuation patterns
+      const lastMessage = messages[messages.length - 1].content
+
+      // Check if the last message is asking about continuing
+      const continuationPrompts = [
+        /continue this conversation/i,
+        /continue where you left off/i,
+        /unfinished questionnaire/i,
+        /we can continue/i,
+        /ready. Just let me know/i,
+        /would you like to continue/i,
+      ]
+
+      const isContinuationPrompt = continuationPrompts.some((pattern) => pattern.test(lastMessage))
+
+      if (isContinuationPrompt) {
+        console.log("Detected continuation prompt response")
+
+        // Check for positive responses
+        const positiveResponses = [
+          /^yes$/i,
+          /^yeah$/i,
+          /^sure$/i,
+          /^ok$/i,
+          /^okay$/i,
+          /^continue$/i,
+          /^let's continue$/i,
+          /^ready$/i,
+          /^resume$/i,
+          /^let's go$/i,
+          /^go$/i,
+        ]
+
+        if (positiveResponses.some((pattern) => pattern.test(query.trim()))) {
+          console.log("User wants to resume questionnaire")
+
+          // Add user's message to the chat
+          const userMessage: Message = {
+            id: Date.now().toString(),
+            type: "text",
+            content: query,
+            isUser: true,
+            timestamp: new Date(),
           }
+          setMessages((prevMessages) => [...prevMessages, userMessage])
+
+          // Add a single confirmation message
+          const confirmationMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            type: "text",
+            content: "Great! Let's pick up where we left off.",
+            isUser: false,
+            timestamp: new Date(),
+          }
+          setMessages((prevMessages) => [...prevMessages, confirmationMessage])
+
+          // Use a slight delay before resuming
+          setTimeout(() => {
+            questionnaireManager.resumeQuestionnaire()
+          }, 800)
+
+          setIsProcessing(false)
+          return
         }
       }
+    }
 
       // First check if this is a questionnaire response
       if (questionnaireManager.isActive) {
@@ -1835,6 +1858,7 @@ export default function askdoula() {
       // Reset questionnaire state in AsyncStorage
       await AsyncStorage.removeItem(`questionnaire_completed_${user?.user_id}`)
       await AsyncStorage.removeItem(`questionnaire_state_${user?.user_id}`)
+      await AsyncStorage.removeItem(`intro_shown_${user?.user_id}`)
       
       console.log("Chat history cleared successfully")
       
@@ -1908,64 +1932,31 @@ export default function askdoula() {
   const loadMessages = async () => {
     try {
       // First check if questionnaire is completed
-      const isCompleted = await checkQuestionnaireCompletionStatus();
-      
-      const savedMessages = await AsyncStorage.getItem('chatHistory');
-      
+      const isCompleted = await checkQuestionnaireCompletionStatus()
+
+      const savedMessages = await AsyncStorage.getItem("chatHistory")
+
       if (savedMessages) {
         // Parse the JSON and convert timestamp strings back to Date objects
         const parsedMessages = JSON.parse(savedMessages).map((msg: any) => ({
           ...msg,
-          timestamp: new Date(msg.timestamp)
-        }));
-        
-        // If the questionnaire is completed, filter out questionnaire-related messages
-        if (isCompleted) {
-          // Keep only user messages and non-questionnaire assistant messages
-          const filteredMessages = parsedMessages.filter((msg: Message) => {
-            if (msg.isUser) return true; // Keep all user messages
-            
-            // Filter out assistant messages that are likely part of the questionnaire
-            const questionnaireKeywords = [
-              "I'd like to ask a few questions about your living situation",
-              "Now I'd like to ask you about",
-              "Would you like to keep going, or shall we pause",
-              "Many factors in our daily lives",
-              "To provide you with the best possible support"
-            ];
-            
-            // Check if message contains any questionnaire keywords
-            const isQuestionnaireMessage = questionnaireKeywords.some(keyword => 
-              msg.content.includes(keyword)
-            );
-            
-            return !isQuestionnaireMessage;
-          });
-          
-          // If we filtered out all messages, add a welcome message
-          if (filteredMessages.length === 0) {
-            setMessages([
-              {
-                id: Date.now().toString(),
-                type: "text",
-                content: `Hello ${user?.user_name || "there"}! How can I help you today?`,
-                isUser: false,
-                timestamp: new Date(),
-              },
-            ]);
-          } else {
-            setMessages(filteredMessages);
-          }
-          console.log('Loaded and filtered messages (questionnaire completed)');
+          timestamp: new Date(msg.timestamp),
+        }))
+
+        // If we have messages, load them
+        if (parsedMessages.length > 0) {
+          setMessages(parsedMessages)
+          console.log("Loaded messages from AsyncStorage, count:", parsedMessages.length)
         } else {
-          setMessages(parsedMessages);
-          console.log('Loaded messages (questionnaire not completed)');
+          console.log("No messages found in saved chat history")
         }
+      } else {
+        console.log("No saved messages found in AsyncStorage")
       }
     } catch (error) {
-      console.error('Error loading messages:', error);
+      console.error("Error loading messages:", error)
     }
-  };
+  }
 
   return (
     <KeyboardAvoidingView
