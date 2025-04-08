@@ -27,6 +27,8 @@ const QuestionnaireManager = ({
   const [state, setState] = useState<QuestionnaireState>(initialQuestionnaireState)
   const [introStep, setIntroStep] = useState(0) // Track which intro message we're on
   const [hasStartedQuestionnaire, setHasStartedQuestionnaire] = useState(false)
+  const [hasAskedForTime, setHasAskedForTime] = useState(false) // Track if we've asked "Do you have a few minutes?"
+  const [userWantsToStart, setUserWantsToStart] = useState(false) // Track user's response to time question
   const user = useSelector((state: any) => state.user)
 
   // Use refs to track sent messages and prevent duplicates
@@ -126,6 +128,8 @@ const QuestionnaireManager = ({
           setIntroStep(4) // Skip intro sequence
           setHasStartedQuestionnaire(true)
           setHasSeenIntro(true) // Mark intro as seen when resuming a paused questionnaire
+          setHasAskedForTime(true) // Skip the "Do you have a few minutes?" question
+          setUserWantsToStart(true) // Assume user wants to start since they've already started before
 
           // CRITICAL: Also ensure the intro_shown flag is set in AsyncStorage
           await AsyncStorage.setItem(`intro_shown_${userId}`, "true")
@@ -149,6 +153,8 @@ const QuestionnaireManager = ({
         setHasSeenIntro(true)
         setIntroStep(4)
         setHasStartedQuestionnaire(true)
+        setHasAskedForTime(true) // Skip the "Do you have a few minutes?" question
+        setUserWantsToStart(true) // Assume user wants to start since they've already started before
 
         // Set the questionnaire to active state if it wasn't already
         setState((prevState) => ({
@@ -183,6 +189,10 @@ const QuestionnaireManager = ({
     // Mark intro as seen
     setHasSeenIntro(true)
 
+    // Mark that we've asked for time and user wants to start
+    setHasAskedForTime(true)
+    setUserWantsToStart(true)
+
     // Send the first question after a short delay to ensure state updates have propagated
     setTimeout(() => {
       if (!sentMessages.has("first_question")) {
@@ -201,7 +211,27 @@ const QuestionnaireManager = ({
       hasSeenIntro,
       introStep,
       hasStartedQuestionnaire,
+      hasAskedForTime,
+      userWantsToStart,
     })
+
+    // First, ask if they have a few minutes if we haven't asked yet
+    if (!hasAskedForTime) {
+      const timeQuestion = `Hey ${user?.user_name || "there"}, do you have a few minutes?`
+
+      if (!sentMessages.has("time_question")) {
+        sentMessages.add("time_question")
+        saveLastQuestion("time", "time_question", timeQuestion)
+        onQuestionReady(timeQuestion)
+        setHasAskedForTime(true)
+      }
+      return
+    }
+
+    // Only proceed if user has indicated they want to start
+    if (!userWantsToStart) {
+      return
+    }
 
     // Case 1: First-time user who needs to see the intro
     if (!hasSeenIntro && introStep < 4 && !hasStartedQuestionnaire) {
@@ -268,11 +298,19 @@ const QuestionnaireManager = ({
         }
       }, 500)
     }
-  }, [state.isActive, state.isCompleted, introStep, hasSeenIntro, hasStartedQuestionnaire])
+  }, [
+    state.isActive,
+    state.isCompleted,
+    introStep,
+    hasSeenIntro,
+    hasStartedQuestionnaire,
+    hasAskedForTime,
+    userWantsToStart,
+  ])
 
   // Monitor for domain/question changes to send next question
   useEffect(() => {
-    if (state.isActive && !state.isCompleted && hasStartedQuestionnaire) {
+    if (state.isActive && !state.isCompleted && hasStartedQuestionnaire && userWantsToStart) {
       // Only proceed if we're past the intro step
       if (introStep >= 4) {
         // Only send the next question if we're not at the first question of the first domain
@@ -282,7 +320,7 @@ const QuestionnaireManager = ({
         }
       }
     }
-  }, [state.currentDomainIndex, state.currentQuestionIndex, hasStartedQuestionnaire, introStep])
+  }, [state.currentDomainIndex, state.currentQuestionIndex, hasStartedQuestionnaire, introStep, userWantsToStart])
 
   const saveQuestionnaireState = async () => {
     try {
@@ -308,37 +346,28 @@ const QuestionnaireManager = ({
         // Clear sent messages tracking
         sentMessages.clear()
 
+        // Set state to active
+        setState({
+          ...initialQuestionnaireState,
+          isActive: true,
+        })
+
+        // Always start by asking if they have a few minutes
+        setHasAskedForTime(false)
+        setUserWantsToStart(false)
+
         if (introShown === "true") {
-          // Skip intro if already seen
-          console.log("User has seen intro before, skipping to questions")
+          // Skip intro if already seen, but still ask if they have time
+          console.log("User has seen intro before, will skip to questions after time confirmation")
           setHasSeenIntro(true)
           setIntroStep(4)
-          setHasStartedQuestionnaire(true)
-
-          // Reset state but keep it active
-          setState({
-            ...initialQuestionnaireState,
-            isActive: true,
-          })
-
-          // Send first question after a short delay
-          setTimeout(() => {
-            if (!sentMessages.has("first_question")) {
-              sendNextQuestion()
-            }
-          }, 800)
+          setHasStartedQuestionnaire(false)
         } else {
-          // Show intro for first-time users
-          console.log("First time user, showing intro")
+          // Show intro for first-time users after time confirmation
+          console.log("First time user, will show intro after time confirmation")
           setHasSeenIntro(false)
           setIntroStep(0)
           setHasStartedQuestionnaire(false)
-
-          // Reset state but keep it active
-          setState({
-            ...initialQuestionnaireState,
-            isActive: true,
-          })
         }
 
         // Reset the flag after a delay
@@ -348,10 +377,12 @@ const QuestionnaireManager = ({
       })
       .catch((error) => {
         console.error("Error checking intro status:", error)
-        // Default to showing intro if there's an error
+        // Default to showing intro if there's an error, but still ask for time
         setHasSeenIntro(false)
         setIntroStep(0)
         setHasStartedQuestionnaire(false)
+        setHasAskedForTime(false)
+        setUserWantsToStart(false)
         setState({
           ...initialQuestionnaireState,
           isActive: true,
@@ -463,6 +494,42 @@ const QuestionnaireManager = ({
 
   const handleUserResponse = (response: string) => {
     if (!state.isActive || state.isCompleted) return false
+
+    // Handle the "Do you have a few minutes?" question
+    if (hasAskedForTime && !userWantsToStart) {
+      // Check for positive responses
+      if (/yes|yeah|sure|ok|okay|go ahead|proceed|continue|start/i.test(response)) {
+        setUserWantsToStart(true)
+        return true
+      }
+
+      // Check for negative responses
+      if (/no|nope|not now|later|busy|can't|cannot|don't have time/i.test(response)) {
+        // Send a polite response and mark questionnaire as paused
+        const noTimeKey = "no_time_response"
+        if (!sentMessages.has(noTimeKey)) {
+          sentMessages.add(noTimeKey)
+          const noTimeMessage =
+            "No problem! We can continue this conversation whenever you have more time. Just let me know when you're ready."
+
+          // Save this as the last message
+          saveLastQuestion("pause", noTimeKey, noTimeMessage)
+
+          onQuestionReady(noTimeMessage)
+
+          // Mark as paused
+          setState((prevState) => ({
+            ...prevState,
+            isPaused: true,
+          }))
+        }
+        return true
+      }
+
+      // If response is unclear, assume they want to continue
+      setUserWantsToStart(true)
+      return true
+    }
 
     // Check if this is a response to the "continue or pause" question
     if (state.currentQuestionIndex >= QUESTIONNAIRE_DOMAINS[state.currentDomainIndex].questions.length) {
@@ -894,6 +961,8 @@ const QuestionnaireManager = ({
       setIntroStep(4)
       setHasStartedQuestionnaire(true)
       setHasSeenIntro(true) // Always mark intro as seen when resuming
+      setHasAskedForTime(true) // Skip the "Do you have a few minutes?" question
+      setUserWantsToStart(true) // Assume user wants to start since they're resuming
 
       // Set state with saved values - don't reset indices and unpause it
       setState({
@@ -901,9 +970,6 @@ const QuestionnaireManager = ({
         isPaused: false,
         isActive: true,
       })
-
-      // Add confirmation message
-      onQuestionReady("I've found where we left off. Let's continue.")
 
       // Load the last question sent if available
       const lastQuestionJson = await AsyncStorage.getItem(`last_question_${userId}`)

@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, type ReactNode, useState, useCallback } from "react"
+import { createContext, useContext, type ReactNode, useState, useCallback, useEffect } from "react"
 import { View, StyleSheet, TouchableOpacity } from "react-native"
 import FloatingButton from "@/components/FloatingButton"
 import AskDoula from "@/components/AskDoula"
@@ -11,6 +11,8 @@ interface FloatingContextType {
   updatePosition: (position: { x: number; y: number }) => void
   closeModal: () => void
   isModalVisible: boolean
+  showMessage: (message?: string) => void
+  hideMessage: () => void
 }
 
 const FloatingContext = createContext<FloatingContextType | undefined>(undefined)
@@ -25,16 +27,28 @@ export const useFloating = () => {
 
 interface FloatingProviderProps {
   children: ReactNode
+  autoShowMessage?: boolean
+  messageDelay?: number
+  initialMessage?: string
 }
 
-export const FloatingProvider: React.FC<FloatingProviderProps> = ({ children }) => {
+export const FloatingProvider: React.FC<FloatingProviderProps> = ({
+  children,
+  autoShowMessage = true,
+  messageDelay = 5000,
+  initialMessage = "Hey, do you have a minute?",
+}) => {
   const [buttonPosition, setButtonPosition] = useState({ x: 0, y: 0 })
   const [isModalVisible, setIsModalVisible] = useState(false)
+  const [showMessageBubble, setShowMessageBubble] = useState(false)
+  const [currentMessage, setCurrentMessage] = useState(initialMessage)
 
   // Function to open modal
   const handleButtonPress = useCallback(() => {
     console.log("Button pressed in context, opening modal")
     setIsModalVisible(true)
+    // Hide message when modal is opened
+    setShowMessageBubble(false)
   }, [])
 
   // Function to close modal
@@ -47,8 +61,45 @@ export const FloatingProvider: React.FC<FloatingProviderProps> = ({ children }) 
     setButtonPosition(position)
   }, [])
 
+  // Function to show message
+  const showMessage = useCallback((message?: string) => {
+    if (message) {
+      setCurrentMessage(message)
+    }
+    setShowMessageBubble(true)
+  }, [])
+
+  // Function to hide message
+  const hideMessage = useCallback(() => {
+    setShowMessageBubble(false)
+  }, [])
+
+  // Auto show message after delay if enabled
+  useEffect(() => {
+    let timer: NodeJS.Timeout
+
+    if (autoShowMessage) {
+      timer = setTimeout(() => {
+        showMessage()
+      }, messageDelay)
+    }
+
+    return () => {
+      if (timer) clearTimeout(timer)
+    }
+  }, [autoShowMessage, messageDelay, showMessage])
+
   return (
-    <FloatingContext.Provider value={{ handleButtonPress, updatePosition, closeModal, isModalVisible }}>
+    <FloatingContext.Provider
+      value={{
+        handleButtonPress,
+        updatePosition,
+        closeModal,
+        isModalVisible,
+        showMessage,
+        hideMessage,
+      }}
+    >
       {children}
 
       {/* Custom Modal Implementation - Always rendered, conditionally visible */}
@@ -63,8 +114,14 @@ export const FloatingProvider: React.FC<FloatingProviderProps> = ({ children }) 
         </View>
       )}
 
-      {/* The floating button - always visible on every screen */}
-      <FloatingButton onPress={handleButtonPress} onPositionChange={updatePosition} />
+      {/* The floating button with message bubble - always visible on every screen */}
+      <FloatingButton
+        onPress={handleButtonPress}
+        onPositionChange={updatePosition}
+        showMessage={showMessageBubble}
+        message={currentMessage}
+        onMessageDismiss={hideMessage}
+      />
     </FloatingContext.Provider>
   )
 }
@@ -93,7 +150,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "flex-end",
     alignItems: "center",
-    zIndex: 9992,marginBottom: 40,
+    zIndex: 9992,
+    marginBottom: 40,
     elevation: 9992,
   },
   modalContent: {
@@ -107,5 +165,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 9993,
-  }
+  },
 })

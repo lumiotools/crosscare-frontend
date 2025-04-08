@@ -110,24 +110,24 @@ const Home = () => {
     }
   }, [user?.user_id]);
   
-  // Updated useEffect to handle questionnaire navigation based on responses
-  useEffect(() => {
-    // Get questionResponses from either profile.user.questionResponses or profile.questionResponses
-    const questionResponses = profile?.questionResponses;
+  // // Updated useEffect to handle questionnaire navigation based on responses
+  // useEffect(() => {
+  //   // Get questionResponses from either profile.user.questionResponses or profile.questionResponses
+  //   const questionResponses = profile?.questionResponses;
     
-    // Check if profile is loaded
-    if (profile) {
-      // Check if there are any question responses
-      if (!questionResponses || questionResponses.length === 0) {
-        // No responses yet, navigate to AskDoula
-        console.log("No question responses found, redirecting to AskDoula");
-        router.push("/patient/askdoula");
-      } else {
-        console.log("Found question responses:", questionResponses.length);
-        // You can add additional logic here if needed
-      }
-    }
-  }, [profile, router]);
+  //   // Check if profile is loaded
+  //   if (profile) {
+  //     // Check if there are any question responses
+  //     if (!questionResponses || questionResponses.length === 0) {
+  //       // No responses yet, navigate to AskDoula
+  //       console.log("No question responses found, redirecting to AskDoula");
+  //       router.push("/patient/askdoula");
+  //     } else {
+  //       console.log("Found question responses:", questionResponses.length);
+  //       // You can add additional logic here if needed
+  //     }
+  //   }
+  // }, [profile, router]);
 
   // console.log("Auth providers:", user);
 
