@@ -27,11 +27,40 @@ const QuestionnaireManager = ({
   const [state, setState] = useState<QuestionnaireState>(initialQuestionnaireState)
   const [introStep, setIntroStep] = useState(0) // Track which intro message we're on
   const [hasStartedQuestionnaire, setHasStartedQuestionnaire] = useState(false)
+  const [hasAskedForTime, setHasAskedForTime] = useState(false) // Track if we've asked "Do you have a few minutes?"
+  const [userWantsToStart, setUserWantsToStart] = useState(false) // Track user's response to time question
   const user = useSelector((state: any) => state.user)
 
   // Use refs to track sent messages and prevent duplicates
   const sentMessages = useRef(new Set()).current
   const isStartingQuestionnaire = useRef(false)
+
+  // Add a new state variable to track if intro has been shown before
+  const [hasSeenIntro, setHasSeenIntro] = useState(false)
+
+  // Add a ref to store the last question sent
+  const lastQuestionSent = useRef({
+    domainId: "",
+    questionId: "",
+    questionText: "",
+  })
+
+  // Add a function to save the last question sent
+  const saveLastQuestion = async (domainId: string, questionId: string, questionText: string) => {
+    try {
+      const lastQuestion = {
+        domainId,
+        questionId,
+        questionText,
+      }
+
+      lastQuestionSent.current = lastQuestion
+      await AsyncStorage.setItem(`last_question_${userId}`, JSON.stringify(lastQuestion))
+      console.log("Saved last question:", lastQuestion)
+    } catch (error) {
+      console.error("Error saving last question:", error)
+    }
+  }
 
   // Load questionnaire state from AsyncStorage on component mount
   useEffect(() => {
@@ -43,9 +72,169 @@ const QuestionnaireManager = ({
     saveQuestionnaireState()
   }, [state])
 
-  // Handle the intro sequence
+  // Replace the checkIfIntroShown function with this improved version
+  const checkIfIntroShown = async () => {
+    try {
+      console.log("Checking if intro has been shown for user:", userId)
+      const introShown = await AsyncStorage.getItem(`intro_shown_${userId}`)
+      console.log("Intro shown value from AsyncStorage:", introShown)
+
+      if (introShown === "true") {
+        console.log("User has already seen intro, skipping to questions")
+        setHasSeenIntro(true)
+
+        // Skip intro by setting the step to 4
+        setIntroStep(4)
+
+        // Important: Mark questionnaire as started
+        setHasStartedQuestionnaire(true)
+
+        // Set the questionnaire to active state if it wasn't already
+        setState((prevState) => ({
+          ...prevState,
+          isActive: true,
+        }))
+
+        return true // Return true to indicate intro has been shown
+      }
+      return false // Return false to indicate intro has not been shown
+    } catch (error) {
+      console.error("Error checking if intro has been shown:", error)
+      return false
+    }
+  }
+
+  // Also update the loadQuestionnaireState function to ensure intro messages don't show again
+  const loadQuestionnaireState = async () => {
+    try {
+      console.log("Loading questionnaire state for user:", userId)
+
+      // First check if there's a paused questionnaire
+      const savedState = await AsyncStorage.getItem(`questionnaire_state_${userId}`)
+      if (savedState) {
+        const parsedState = JSON.parse(savedState)
+        // Convert string timestamps back to Date objects
+        parsedState.responses = parsedState.responses.map((response: any) => ({
+          ...response,
+          timestamp: new Date(response.timestamp),
+        }))
+
+        // Set the state with the saved values
+        setState(parsedState)
+
+        // If we're loading a paused state, skip the intro sequence
+        if (parsedState.isPaused) {
+          console.log("Found paused questionnaire, skipping intro")
+          setIntroStep(4) // Skip intro sequence
+          setHasStartedQuestionnaire(true)
+          setHasSeenIntro(true) // Mark intro as seen when resuming a paused questionnaire
+          setHasAskedForTime(true) // Skip the "Do you have a few minutes?" question
+          setUserWantsToStart(true) // Assume user wants to start since they've already started before
+
+          // CRITICAL: Also ensure the intro_shown flag is set in AsyncStorage
+          await AsyncStorage.setItem(`intro_shown_${userId}`, "true")
+
+          // Load the last question sent if available
+          const lastQuestionJson = await AsyncStorage.getItem(`last_question_${userId}`)
+          if (lastQuestionJson) {
+            lastQuestionSent.current = JSON.parse(lastQuestionJson)
+            console.log("Loaded last question:", lastQuestionSent.current)
+          }
+
+          // Return early - we've loaded a saved state
+          return
+        }
+      }
+
+      // If no saved state or not paused, check if intro has been shown
+      const introShown = await AsyncStorage.getItem(`intro_shown_${userId}`)
+      if (introShown === "true") {
+        console.log("User has already seen intro, skipping to questions")
+        setHasSeenIntro(true)
+        setIntroStep(4)
+        setHasStartedQuestionnaire(true)
+        setHasAskedForTime(true) // Skip the "Do you have a few minutes?" question
+        setUserWantsToStart(true) // Assume user wants to start since they've already started before
+
+        // Set the questionnaire to active state if it wasn't already
+        setState((prevState) => ({
+          ...prevState,
+          isActive: true,
+        }))
+      }
+    } catch (error) {
+      console.error("Error loading questionnaire state:", error)
+    }
+  }
+
+  // Replace the startQuestionnaireWithoutIntro function with this improved version
+  const startQuestionnaireWithoutIntro = () => {
+    console.log("Starting questionnaire without intro")
+
+    // Clear sent messages tracking
+    sentMessages.clear()
+
+    // Set state to active and skip intro
+    setState({
+      ...initialQuestionnaireState,
+      isActive: true,
+    })
+
+    // Skip intro steps
+    setIntroStep(4)
+
+    // Mark questionnaire as started
+    setHasStartedQuestionnaire(true)
+
+    // Mark intro as seen
+    setHasSeenIntro(true)
+
+    // Mark that we've asked for time and user wants to start
+    setHasAskedForTime(true)
+    setUserWantsToStart(true)
+
+    // Send the first question after a short delay to ensure state updates have propagated
+    setTimeout(() => {
+      if (!sentMessages.has("first_question")) {
+        console.log("Sending first question - no intro needed")
+        sendNextQuestion()
+      }
+    }, 800) // Increased delay for more reliability
+  }
+
+  // Replace the intro sequence useEffect with this improved version
   useEffect(() => {
-    if (state.isActive && !state.isCompleted && introStep < 4 && !hasStartedQuestionnaire) {
+    // Only run this effect if the questionnaire is active and not completed
+    if (!state.isActive || state.isCompleted) return
+
+    console.log("Intro sequence effect running with:", {
+      hasSeenIntro,
+      introStep,
+      hasStartedQuestionnaire,
+      hasAskedForTime,
+      userWantsToStart,
+    })
+
+    // First, ask if they have a few minutes if we haven't asked yet
+    if (!hasAskedForTime) {
+      const timeQuestion = `Hey ${user?.user_name || "there"}, do you have a few minutes?`
+
+      if (!sentMessages.has("time_question")) {
+        sentMessages.add("time_question")
+        saveLastQuestion("time", "time_question", timeQuestion)
+        onQuestionReady(timeQuestion)
+        setHasAskedForTime(true)
+      }
+      return
+    }
+
+    // Only proceed if user has indicated they want to start
+    if (!userWantsToStart) {
+      return
+    }
+
+    // Case 1: First-time user who needs to see the intro
+    if (!hasSeenIntro && introStep < 4 && !hasStartedQuestionnaire) {
       const introMessages = [
         // First message
         `Hello ${user?.user_name || "there"}, as your doula, I'm here to support you not just physically, but also emotionally and socially throughout your pregnancy and postpartum journey.`,
@@ -77,50 +266,61 @@ const QuestionnaireManager = ({
           setHasStartedQuestionnaire(true)
           setIntroStep(4) // Mark intro as complete
 
-          // Send the first question only if we haven't already
-          if (!sentMessages.has("first_question")) {
-            sendNextQuestion()
-          }
+          // Mark intro as shown in AsyncStorage - CRITICAL FIX
+          // Make sure this completes before moving on
+          AsyncStorage.setItem(`intro_shown_${userId}`, "true")
+            .then(() => {
+              console.log("Saved intro_shown flag to AsyncStorage")
+              setHasSeenIntro(true) // Update state to reflect the change
+
+              // Send the first question only if we haven't already
+              if (!sentMessages.has("first_question")) {
+                sendNextQuestion()
+              }
+            })
+            .catch((error) => console.error("Error saving intro shown status:", error))
         }, 1500)
 
         return () => clearTimeout(timer)
       }
     }
-  }, [state.isActive, introStep])
+    // Case 2: Returning user who has seen the intro
+    else if (hasSeenIntro && !hasStartedQuestionnaire) {
+      // If user has seen intro but questionnaire hasn't started yet, start it directly
+      console.log("User has seen intro, starting questionnaire directly")
+      setHasStartedQuestionnaire(true)
+
+      // Send the first question if not already sent
+      setTimeout(() => {
+        if (!sentMessages.has("first_question")) {
+          console.log("Sending first question for returning user")
+          sendNextQuestion()
+        }
+      }, 500)
+    }
+  }, [
+    state.isActive,
+    state.isCompleted,
+    introStep,
+    hasSeenIntro,
+    hasStartedQuestionnaire,
+    hasAskedForTime,
+    userWantsToStart,
+  ])
 
   // Monitor for domain/question changes to send next question
   useEffect(() => {
-    if (state.isActive && !state.isCompleted && introStep >= 4 && hasStartedQuestionnaire) {
-      // Only send the next question if we're not in the intro sequence
-      // and we've already started the questionnaire (prevents duplicate first question)
-      if (state.currentQuestionIndex > 0 || state.currentDomainIndex > 0) {
-        sendNextQuestion()
-      }
-    }
-  }, [state.currentDomainIndex, state.currentQuestionIndex])
-
-  const loadQuestionnaireState = async () => {
-    try {
-      const savedState = await AsyncStorage.getItem(`questionnaire_state_${userId}`)
-      if (savedState) {
-        const parsedState = JSON.parse(savedState)
-        // Convert string timestamps back to Date objects
-        parsedState.responses = parsedState.responses.map((response: any) => ({
-          ...response,
-          timestamp: new Date(response.timestamp),
-        }))
-        setState(parsedState)
-
-        // If we're loading a paused state, skip the intro sequence
-        if (parsedState.isPaused) {
-          setIntroStep(4) // Skip intro sequence
-          setHasStartedQuestionnaire(true)
+    if (state.isActive && !state.isCompleted && hasStartedQuestionnaire && userWantsToStart) {
+      // Only proceed if we're past the intro step
+      if (introStep >= 4) {
+        // Only send the next question if we're not at the first question of the first domain
+        // This prevents duplicate questions when first starting
+        if (state.currentQuestionIndex > 0 || state.currentDomainIndex > 0) {
+          sendNextQuestion()
         }
       }
-    } catch (error) {
-      console.error("Error loading questionnaire state:", error)
     }
-  }
+  }, [state.currentDomainIndex, state.currentQuestionIndex, hasStartedQuestionnaire, introStep, userWantsToStart])
 
   const saveQuestionnaireState = async () => {
     try {
@@ -130,25 +330,65 @@ const QuestionnaireManager = ({
     }
   }
 
+  // Replace the startQuestionnaire function with this improved version
   const startQuestionnaire = () => {
     // Prevent multiple starts
     if (isStartingQuestionnaire.current) return
     isStartingQuestionnaire.current = true
 
-    // Clear sent messages tracking
-    sentMessages.clear()
+    console.log("Starting questionnaire, checking intro status...")
 
-    setState({
-      ...initialQuestionnaireState,
-      isActive: true,
-    })
-    setIntroStep(0) // Start from the first intro message
-    setHasStartedQuestionnaire(false)
+    // Check if user has seen intro before deciding whether to show intro
+    AsyncStorage.getItem(`intro_shown_${userId}`)
+      .then((introShown) => {
+        console.log("Intro shown status:", introShown)
 
-    // Reset the flag after a delay
-    setTimeout(() => {
-      isStartingQuestionnaire.current = false
-    }, 2000)
+        // Clear sent messages tracking
+        sentMessages.clear()
+
+        // Set state to active
+        setState({
+          ...initialQuestionnaireState,
+          isActive: true,
+        })
+
+        // Always start by asking if they have a few minutes
+        setHasAskedForTime(false)
+        setUserWantsToStart(false)
+
+        if (introShown === "true") {
+          // Skip intro if already seen, but still ask if they have time
+          console.log("User has seen intro before, will skip to questions after time confirmation")
+          setHasSeenIntro(true)
+          setIntroStep(4)
+          setHasStartedQuestionnaire(false)
+        } else {
+          // Show intro for first-time users after time confirmation
+          console.log("First time user, will show intro after time confirmation")
+          setHasSeenIntro(false)
+          setIntroStep(0)
+          setHasStartedQuestionnaire(false)
+        }
+
+        // Reset the flag after a delay
+        setTimeout(() => {
+          isStartingQuestionnaire.current = false
+        }, 2000)
+      })
+      .catch((error) => {
+        console.error("Error checking intro status:", error)
+        // Default to showing intro if there's an error, but still ask for time
+        setHasSeenIntro(false)
+        setIntroStep(0)
+        setHasStartedQuestionnaire(false)
+        setHasAskedForTime(false)
+        setUserWantsToStart(false)
+        setState({
+          ...initialQuestionnaireState,
+          isActive: true,
+        })
+        isStartingQuestionnaire.current = false
+      })
   }
 
   const sendNextQuestion = () => {
@@ -156,6 +396,7 @@ const QuestionnaireManager = ({
     console.log("sendNextQuestion called", {
       introStep,
       hasStartedQuestionnaire,
+      hasSeenIntro,
       currentDomain: state.currentDomainIndex,
       currentQuestion: state.currentQuestionIndex,
     })
@@ -195,6 +436,11 @@ const QuestionnaireManager = ({
 
       // Format the question with a conversational tone
       const formattedQuestion = formatQuestionConversationally(currentDomain, currentQuestion)
+
+      // Save the last question sent
+      saveLastQuestion(currentDomain.id, currentQuestion.id, formattedQuestion)
+
+      // Send the question
       onQuestionReady(formattedQuestion)
 
       // Mark first question as sent
@@ -208,7 +454,21 @@ const QuestionnaireManager = ({
     const continueKey = `continue_${state.currentDomainIndex}`
     if (!sentMessages.has(continueKey)) {
       sentMessages.add(continueKey)
-      onQuestionReady("Would you like to keep going, or shall we pause and continue another time?")
+
+      // Get the next domain name for better context
+      const nextDomainIndex = state.currentDomainIndex + 1
+      let continueMessage = "Would you like to keep going, or shall we pause and continue another time?"
+
+      if (nextDomainIndex < QUESTIONNAIRE_DOMAINS.length) {
+        const nextDomain = QUESTIONNAIRE_DOMAINS[nextDomainIndex]
+        continueMessage = `Would you like to keep going to the next section about ${nextDomain.description.toLowerCase()}, or shall we pause and continue another time?`
+      }
+
+      // Save this as the last question
+      saveLastQuestion("continue", `continue_${state.currentDomainIndex}`, continueMessage)
+
+      // Send the message
+      onQuestionReady(continueMessage)
     }
   }
 
@@ -235,6 +495,42 @@ const QuestionnaireManager = ({
   const handleUserResponse = (response: string) => {
     if (!state.isActive || state.isCompleted) return false
 
+    // Handle the "Do you have a few minutes?" question
+    if (hasAskedForTime && !userWantsToStart) {
+      // Check for positive responses
+      if (/yes|yeah|sure|ok|okay|go ahead|proceed|continue|start/i.test(response)) {
+        setUserWantsToStart(true)
+        return true
+      }
+
+      // Check for negative responses
+      if (/no|nope|not now|later|busy|can't|cannot|don't have time/i.test(response)) {
+        // Send a polite response and mark questionnaire as paused
+        const noTimeKey = "no_time_response"
+        if (!sentMessages.has(noTimeKey)) {
+          sentMessages.add(noTimeKey)
+          const noTimeMessage =
+            "No problem! We can continue this conversation whenever you have more time. Just let me know when you're ready."
+
+          // Save this as the last message
+          saveLastQuestion("pause", noTimeKey, noTimeMessage)
+
+          onQuestionReady(noTimeMessage)
+
+          // Mark as paused
+          setState((prevState) => ({
+            ...prevState,
+            isPaused: true,
+          }))
+        }
+        return true
+      }
+
+      // If response is unclear, assume they want to continue
+      setUserWantsToStart(true)
+      return true
+    }
+
     // Check if this is a response to the "continue or pause" question
     if (state.currentQuestionIndex >= QUESTIONNAIRE_DOMAINS[state.currentDomainIndex].questions.length) {
       // If they want to continue
@@ -254,9 +550,13 @@ const QuestionnaireManager = ({
         const pauseKey = `pause_${state.currentDomainIndex}`
         if (!sentMessages.has(pauseKey)) {
           sentMessages.add(pauseKey)
-          onQuestionReady(
-            "I've saved our progress. We can continue this conversation whenever you're ready. Just let me know.",
-          )
+          const pauseMessage =
+            "I've saved our progress. We can continue this conversation whenever you're ready. Just let me know."
+
+          // Save this as the last message
+          saveLastQuestion("pause", pauseKey, pauseMessage)
+
+          onQuestionReady(pauseMessage)
         }
         return true
       }
@@ -271,7 +571,6 @@ const QuestionnaireManager = ({
 
     // Initialize flag with any existing flag from the question
     let flag = currentQuestion.flag || ""
-    // let // = false
 
     // Domain I: Housing & Environment
     if (currentDomain.id === "domain-1") {
@@ -281,13 +580,11 @@ const QuestionnaireManager = ({
         /friend|roommate|temporary|shelter|homeless|couch|staying with/i.test(response)
       ) {
         flag = "Housing instability / temporary housing"
-        // = true
       }
 
       // Question 2: Worried about losing housing
       else if (currentQuestion.id === "q1-2" && /yes|yeah|definitely|worried|concerned|might|could/i.test(response)) {
         flag = "Housing insecurity"
-        // = true
       }
 
       // Question 3: Utility companies
@@ -296,7 +593,6 @@ const QuestionnaireManager = ({
         /yes|yeah|they have|received notice|shut off|disconnect|threatened/i.test(response)
       ) {
         flag = "Utilities support needed"
-        // = true
       }
 
       // Question 4: Transportation issues
@@ -305,13 +601,11 @@ const QuestionnaireManager = ({
         /yes|yeah|sometimes|often|missed|hard|difficult|can't|cannot|no car|no bus/i.test(response)
       ) {
         flag = "Transportation barrier"
-        // = true
       }
 
       // Question 5: Feel safe at home
       else if (currentQuestion.id === "q1-5" && /no|not really|sometimes|not always|unsafe|scared/i.test(response)) {
         flag = "Home safety concern"
-        // = true
       }
 
       // Question 6: Neighborhood concerns
@@ -320,7 +614,6 @@ const QuestionnaireManager = ({
         /yes|yeah|not safe|dangerous|crime|violence|worried|concerned/i.test(response)
       ) {
         flag = "Neighborhood safety concern"
-        // = true
       }
     }
 
@@ -331,13 +624,11 @@ const QuestionnaireManager = ({
       // Question 3: Been hurt or threatened
       if (currentQuestion.id === "q2-3" && /yes|yeah|hit|hurt|threatened|abused|violence/i.test(response)) {
         flag = "Interpersonal violence"
-        // = true
       }
 
       // Question 4: Afraid of partner
       else if (currentQuestion.id === "q2-4" && /yes|yeah|sometimes|afraid|scared|fear/i.test(response)) {
         flag = "Urgent safety referral"
-        // = true
       }
 
       // Question 5: Financial abuse
@@ -346,7 +637,6 @@ const QuestionnaireManager = ({
         /yes|yeah|sometimes|took|stolen|withheld|controls|won't let me/i.test(response)
       ) {
         flag = "Financial abuse"
-        // = true
       }
     }
 
@@ -355,17 +645,14 @@ const QuestionnaireManager = ({
       // Question 1: Education level - no flag
       if (currentQuestion.id === "q3-1" && /school|college/i.test(response)) {
         flag = ""
-        // = true
       }
 
       // Question 2: Work status
-
       if (
         currentQuestion.id === "q3-2" &&
         /unemployed|not working|looking|laid off|fired|between jobs/i.test(response)
       ) {
         flag = "Employment support needed"
-        // = true
       }
 
       // Question 3: Affording basic needs
@@ -374,19 +661,16 @@ const QuestionnaireManager = ({
         /yes|yeah|hard|difficult|struggle|can't afford|cannot afford/i.test(response)
       ) {
         flag = "Financial strain"
-        // = true
       }
 
       // Question 4: Help finding job
       else if (currentQuestion.id === "q3-4" && /yes|yeah|would like|need help|looking/i.test(response)) {
         flag = "Referral to workforce navigator"
-        // = true
       }
 
       // Question 5: Help with school/training
       else if (currentQuestion.id === "q3-5" && /yes|yeah|interested|would like|need help/i.test(response)) {
         flag = "Education support"
-        // = true
       }
 
       // Question 6: Daycare needs
@@ -395,7 +679,6 @@ const QuestionnaireManager = ({
         /yes|yeah|need|better|affordable|quality|childcare|daycare/i.test(response)
       ) {
         flag = "Childcare need"
-        // = true
       }
     }
 
@@ -404,13 +687,11 @@ const QuestionnaireManager = ({
       // Question 1: Worried about running out of food
       if (currentQuestion.id === "q4-1" && /yes|yeah|worried|concerned|sometimes|often/i.test(response)) {
         flag = "Food insecurity"
-        // = true
       }
 
       // Question 2: Food not lasting
       else if (currentQuestion.id === "q4-2" && /yes|yeah|sometimes|often|ran out|not enough/i.test(response)) {
         flag = "Food insecurity"
-        // = true
       }
 
       // Question 3: Access to healthy food
@@ -419,7 +700,6 @@ const QuestionnaireManager = ({
         /no|not really|hard|difficult|expensive|can't afford|limited/i.test(response)
       ) {
         flag = "Healthy food access"
-        // = true
       }
 
       // Question 4: Exercise frequency
@@ -428,7 +708,6 @@ const QuestionnaireManager = ({
         /never|rarely|once|twice|not much|not often|don't exercise/i.test(response)
       ) {
         flag = "Physical activity support"
-        // = true
       }
     }
 
@@ -440,7 +719,6 @@ const QuestionnaireManager = ({
         /yes|yeah|mold|leak|pest|bug|rat|roach|mouse|heat|cooling|broken|unsafe/i.test(response)
       ) {
         flag = "Environmental hazard, refer to housing services"
-        // = true
       }
     }
 
@@ -454,7 +732,6 @@ const QuestionnaireManager = ({
         /yes|yeah|sometimes|often|need help|difficult|hard to understand/i.test(response)
       ) {
         flag = "Health literacy / translation support"
-        // = true
       }
     }
 
@@ -518,10 +795,6 @@ const QuestionnaireManager = ({
     }))
   }
 
-  // Fix for the duplicate "thank you" message issue
-  // In the completeQuestionnaire function, we need to ensure the thank you message
-  // is only sent once from here, and not from the parent component
-
   const completeQuestionnaire = async () => {
     // Mark questionnaire as completed first
     setState((prevState) => ({
@@ -542,9 +815,13 @@ const QuestionnaireManager = ({
       const thankYouKey = "thank_you_message"
       if (!sentMessages.has(thankYouKey)) {
         sentMessages.add(thankYouKey)
-        onQuestionReady(
-          "Thank you for sharing this information with me. Understanding these aspects of your life helps me provide better support and connect you with resources that can address any challenges you're facing. Remember, you're not alone, and there are organizations ready to assist you.",
-        )
+        const thankYouMessage =
+          "Thank you for sharing this information with me. Understanding these aspects of your life helps me provide better support and connect you with resources that can address any challenges you're facing. Remember, you're not alone, and there are organizations ready to assist you."
+
+        // Save as last message
+        saveLastQuestion("complete", thankYouKey, thankYouMessage)
+
+        onQuestionReady(thankYouMessage)
       }
     } catch (error: any) {
       console.error("Error submitting questionnaire responses:", error.message)
@@ -553,9 +830,13 @@ const QuestionnaireManager = ({
       const thankYouKey = "thank_you_message"
       if (!sentMessages.has(thankYouKey)) {
         sentMessages.add(thankYouKey)
-        onQuestionReady(
-          "Thank you for sharing this information with me. Understanding these aspects of your life helps me provide better support and connect you with resources that can address any challenges you're facing. Remember, you're not alone, and there are organizations ready to assist you.",
-        )
+        const thankYouMessage =
+          "Thank you for sharing this information with me. Understanding these aspects of your life helps me provide better support and connect you with resources that can address any challenges you're facing. Remember, you're not alone, and there are organizations ready to assist you."
+
+        // Save as last message
+        saveLastQuestion("complete", thankYouKey, thankYouMessage)
+
+        onQuestionReady(thankYouMessage)
       }
     }
 
@@ -563,7 +844,6 @@ const QuestionnaireManager = ({
     onQuestionnaireComplete()
   }
 
-  // Fix the typo in the function name
   const submitResponsesToBackend = async () => {
     try {
       // Format the responses for the API
@@ -613,32 +893,31 @@ const QuestionnaireManager = ({
     }
   }
 
-  // Replace the checkForPausedQuestionnaire method with this improved version
-const checkForPausedQuestionnaire = async () => {
-  try {
-    // Get the saved state
-    const savedStateJson = await AsyncStorage.getItem(`questionnaire_state_${userId}`);
-    if (!savedStateJson) {
-      return false;
+  const checkForPausedQuestionnaire = async () => {
+    try {
+      // Get the saved state
+      const savedStateJson = await AsyncStorage.getItem(`questionnaire_state_${userId}`)
+      if (!savedStateJson) {
+        return false
+      }
+
+      const savedState = JSON.parse(savedStateJson)
+
+      // Check if it's marked as paused
+      if (savedState.isPaused) {
+        console.log("Found paused questionnaire state:", {
+          domainIndex: savedState.currentDomainIndex,
+          questionIndex: savedState.currentQuestionIndex,
+        })
+        return true
+      }
+
+      return false
+    } catch (error) {
+      console.error("Error checking for paused questionnaire:", error)
+      return false
     }
-    
-    const savedState = JSON.parse(savedStateJson);
-    
-    // Check if it's marked as paused
-    if (savedState.isPaused) {
-      console.log("Found paused questionnaire state:", {
-        domainIndex: savedState.currentDomainIndex,
-        questionIndex: savedState.currentQuestionIndex
-      });
-      return true;
-    }
-    
-    return false;
-  } catch (error) {
-    console.error("Error checking for paused questionnaire:", error);
-    return false;
   }
-}
 
   // Add a new method to check if questionnaire is completed
   const isQuestionnaireCompleted = async () => {
@@ -651,75 +930,111 @@ const checkForPausedQuestionnaire = async () => {
     }
   }
 
-  // Improved resumeQuestionnaire function to properly resume from where the user left off
-  // Replace the entire resumeQuestionnaire function with this improved version:
+  // Replace the entire resumeQuestionnaire function with this improved version
   const resumeQuestionnaire = async () => {
-    console.log("Resuming questionnaire");
-  
+    console.log("Resuming questionnaire")
+
     try {
       // Clear sent messages tracking to avoid duplicate messages
-      sentMessages.clear();
-  
+      sentMessages.clear()
+
       // Load the saved state from AsyncStorage
-      const savedStateJson = await AsyncStorage.getItem(`questionnaire_state_${userId}`);
+      const savedStateJson = await AsyncStorage.getItem(`questionnaire_state_${userId}`)
       if (!savedStateJson) {
-        console.error("No saved state found for resuming");
-        return;
+        console.error("No saved state found for resuming")
+        return
       }
-  
-      const savedState = JSON.parse(savedStateJson);
-      console.log("Loaded saved state:", savedState);
-  
+
+      const savedState = JSON.parse(savedStateJson)
+      console.log("Loaded saved state for resuming:", savedState)
+
       // Convert string timestamps back to Date objects
       savedState.responses = savedState.responses.map((response: any) => ({
         ...response,
         timestamp: new Date(response.timestamp),
-      }));
-  
+      }))
+
+      // CRITICAL: Mark intro as seen in AsyncStorage to prevent intro from showing again
+      await AsyncStorage.setItem(`intro_shown_${userId}`, "true")
+
       // Skip intro sequence - critical for resuming correctly
-      setIntroStep(4);
-      setHasStartedQuestionnaire(true);
-      
-      // Set state with saved values - don't reset indices
+      setIntroStep(4)
+      setHasStartedQuestionnaire(true)
+      setHasSeenIntro(true) // Always mark intro as seen when resuming
+      setHasAskedForTime(true) // Skip the "Do you have a few minutes?" question
+      setUserWantsToStart(true) // Assume user wants to start since they're resuming
+
+      // Set state with saved values - don't reset indices and unpause it
       setState({
         ...savedState,
         isPaused: false,
-        isActive: true
-      });
-  
-      // Add confirmation message
-      onQuestionReady("I've found where we left off. Let's continue.");
-      
+        isActive: true,
+      })
+
+      // Load the last question sent if available
+      const lastQuestionJson = await AsyncStorage.getItem(`last_question_${userId}`)
+      let lastQuestion = null
+
+      if (lastQuestionJson) {
+        lastQuestion = JSON.parse(lastQuestionJson)
+        console.log("Loaded last question for resuming:", lastQuestion)
+      }
+
       // Wait before continuing to ensure the message is seen
       setTimeout(() => {
         // Check if we were at the end of a domain asking to continue or pause
         if (savedState.currentQuestionIndex >= QUESTIONNAIRE_DOMAINS[savedState.currentDomainIndex].questions.length) {
-          console.log("Resuming at domain continuation point");
-          const continueKey = `continue_${savedState.currentDomainIndex}`;
-          sentMessages.add(continueKey);
-          onQuestionReady("Would you like to keep going to the next section, or shall we pause again?");
+          console.log("Resuming at domain continuation point")
+          const continueKey = `continue_${savedState.currentDomainIndex}`
+          sentMessages.add(continueKey)
+
+          // Get the next domain name for better context
+          const nextDomainIndex = savedState.currentDomainIndex + 1
+          let continueMessage = "Would you like to keep going to the next section, or shall we pause again?"
+
+          if (nextDomainIndex < QUESTIONNAIRE_DOMAINS.length) {
+            const nextDomain = QUESTIONNAIRE_DOMAINS[nextDomainIndex]
+            continueMessage = `Would you like to keep going to the next section about ${nextDomain.description.toLowerCase()}, or shall we pause again?`
+          }
+
+          // If we have the exact last question, use that instead
+          if (lastQuestion && lastQuestion.domainId === "continue") {
+            continueMessage = lastQuestion.questionText
+          }
+
+          onQuestionReady(continueMessage)
         } else {
           // Otherwise, send the current question where they left off
-          console.log("Resuming at specific question");
-          const currentDomain = QUESTIONNAIRE_DOMAINS[savedState.currentDomainIndex];
-          const currentQuestion = currentDomain.questions[savedState.currentQuestionIndex];
-          
+          console.log("Resuming at specific question")
+          const currentDomain = QUESTIONNAIRE_DOMAINS[savedState.currentDomainIndex]
+          const currentQuestion = currentDomain.questions[savedState.currentQuestionIndex]
+
           if (currentQuestion) {
             // Mark the question as sent to prevent duplicates
-            const questionKey = `question_${currentDomain.id}_${currentQuestion.id}`;
-            sentMessages.add(questionKey);
-            
-            // Send the question with appropriate formatting
-            onQuestionReady(formatQuestionConversationally(currentDomain, currentQuestion));
+            const questionKey = `question_${currentDomain.id}_${currentQuestion.id}`
+            sentMessages.add(questionKey)
+
+            // If we have the exact last question, use that instead
+            if (
+              lastQuestion &&
+              lastQuestion.domainId === currentDomain.id &&
+              lastQuestion.questionId === currentQuestion.id
+            ) {
+              onQuestionReady(lastQuestion.questionText)
+            } else {
+              // Otherwise format and send the question
+              const formattedQuestion = formatQuestionConversationally(currentDomain, currentQuestion)
+              onQuestionReady(formattedQuestion)
+            }
           }
         }
-      }, 1500);
+      }, 1500)
     } catch (error) {
-      console.error("Error resuming questionnaire:", error);
+      console.error("Error resuming questionnaire:", error)
     }
   }
 
-  // Add this helper function to find the last answered question and continue from there
+  // Helper function to find the last answered question and continue from there
   const findLastAnsweredQuestionAndContinue = (parsedState: QuestionnaireState) => {
     try {
       if (parsedState.responses.length > 0) {
@@ -783,6 +1098,19 @@ const checkForPausedQuestionnaire = async () => {
     }
   }
 
+  // Add this function to manually reset the intro shown status (for testing)
+  const resetIntroStatus = async () => {
+    try {
+      await AsyncStorage.removeItem(`intro_shown_${userId}`)
+      await AsyncStorage.removeItem(`last_question_${userId}`)
+      console.log("Reset intro status for user:", userId)
+      setHasSeenIntro(false)
+    } catch (error) {
+      console.error("Error resetting intro status:", error)
+    }
+  }
+
+  // Update the return object to include the reset function
   return {
     startQuestionnaire,
     handleUserResponse,
@@ -793,10 +1121,10 @@ const checkForPausedQuestionnaire = async () => {
     currentQuestionIndex: state.currentQuestionIndex,
     responses: state.responses,
     checkForPausedQuestionnaire,
-    isQuestionnaireCompleted, // Export the new method
+    isQuestionnaireCompleted,
     resumeQuestionnaire,
+    resetIntroStatus, // Add this for testing
   }
 }
 
 export default QuestionnaireManager
-

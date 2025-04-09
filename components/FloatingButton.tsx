@@ -11,14 +11,28 @@ import {
   StyleSheet,
   Image,
   TouchableWithoutFeedback,
+  TouchableOpacity,
+  Easing,
 } from "react-native"
+// import { X } from "lucide-react"
 
 interface FloatingButtonProps {
   onPress?: () => void
   onPositionChange?: (position: { x: number; y: number }) => void
+  showMessage?: boolean
+  message?: string
+  onMessageDismiss?: () => void
+  autoShowInterval?: number
 }
 
-const FloatingButton: React.FC<FloatingButtonProps> = ({ onPress, onPositionChange }) => {
+const FloatingButton: React.FC<FloatingButtonProps> = ({
+  onPress,
+  onPositionChange,
+  showMessage = false,
+  message = "Hey, do you have a minute?",
+  onMessageDismiss,
+  autoShowInterval = 60000, // Default to 1 minute (60000ms)
+}) => {
   // Get screen dimensions
   const { width, height } = Dimensions.get("window")
 
@@ -31,6 +45,108 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({ onPress, onPositionChan
   const touchStartTime = useRef(0)
   // Track if image loaded successfully
   const [imageLoaded, setImageLoaded] = useState(true)
+
+  // Enhanced animations for message bubble
+  const messageOpacity = useRef(new Animated.Value(0)).current
+  const messageScale = useRef(new Animated.Value(0.8)).current
+  const messageTranslateY = useRef(new Animated.Value(-20)).current
+  const messageBounce = useRef(new Animated.Value(0)).current
+  const buttonPulse = useRef(new Animated.Value(1)).current
+
+  // Track if message is visible
+  const [isMessageVisible, setIsMessageVisible] = useState(false)
+
+  // Auto-show message every minute
+  useEffect(() => {
+    const showMessageWithAnimation = () => {
+      if (onMessageDismiss) {
+        onMessageDismiss() // This will trigger the show animation through the showMessage prop
+      }
+    }
+
+    // Set up interval to show message every minute
+    const intervalId = setInterval(showMessageWithAnimation, autoShowInterval)
+
+    // Clean up interval on unmount
+    return () => clearInterval(intervalId)
+  }, [autoShowInterval, onMessageDismiss])
+
+  // Show/hide message based on prop with enhanced animations
+  useEffect(() => {
+    if (showMessage && !isMessageVisible) {
+      setIsMessageVisible(true)
+
+      // Pulse animation for the button to draw attention
+      Animated.sequence([
+        Animated.timing(buttonPulse, {
+          toValue: 1.2,
+          duration: 200,
+          useNativeDriver: true,
+          easing: Easing.out(Easing.cubic),
+        }),
+        Animated.timing(buttonPulse, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.cubic),
+        }),
+      ]).start()
+
+      // Sequence of animations for the message bubble
+      Animated.sequence([
+        // First appear with scale and fade
+        Animated.parallel([
+          Animated.timing(messageOpacity, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+            easing: Easing.out(Easing.cubic),
+          }),
+          Animated.timing(messageScale, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+            easing: Easing.out(Easing.back(1.5)),
+          }),
+          Animated.timing(messageTranslateY, {
+            toValue: 0,
+            duration: 400,
+            useNativeDriver: true,
+            easing: Easing.out(Easing.cubic),
+          }),
+        ]),
+        // Then add a subtle bounce effect
+        Animated.timing(messageBounce, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+          easing: Easing.elastic(1.2),
+        }),
+      ]).start()
+    } else if (!showMessage && isMessageVisible) {
+      // Hide animation
+      Animated.parallel([
+        Animated.timing(messageOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(messageScale, {
+          toValue: 0.8,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(messageTranslateY, {
+          toValue: -20,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setIsMessageVisible(false)
+        messageBounce.setValue(0) // Reset bounce for next time
+      })
+    }
+  }, [showMessage])
 
   // Update position when screen dimensions change
   useEffect(() => {
@@ -95,6 +211,17 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({ onPress, onPositionChan
     if (onPress) {
       onPress()
     }
+  }
+
+  const handleMessageDismiss = () => {
+    if (onMessageDismiss) {
+      onMessageDismiss()
+    }
+  }
+
+  const handleMessagePress = () => {
+    handleMessageDismiss()
+    handlePress()
   }
 
   const panResponder = useRef(
@@ -173,22 +300,59 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({ onPress, onPositionChan
     }),
   ).current
 
+  // Determine if button is on the right side of the screen
+  const isOnRightSide = pan.x._value > width / 2
+
+  // Calculate bounce effect for message
+  const bounceInterpolation = messageBounce.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 5, 0],
+  })
+
   return (
     <Animated.View style={[styles.container, pan.getLayout()]} {...panResponder.panHandlers}>
-      <TouchableWithoutFeedback onPress={handlePress}>
-        <View style={styles.button}>
-          {imageLoaded ? (
-            <Image
-              source={require("../assets/images/doulaImg.png")}
-              style={styles.image}
-              resizeMode="contain"
-              onError={() => setImageLoaded(false)}
-            />
-          ) : (
-            <Text style={styles.fallbackText}>D</Text>
-          )}
-        </View>
-      </TouchableWithoutFeedback>
+      {/* Message bubble - positioned based on which side of screen the button is on */}
+      {isMessageVisible && (
+        <Animated.View
+          style={[
+            styles.messageBubbleContainer,
+            isOnRightSide ? styles.messageBubbleLeft : styles.messageBubbleRight,
+            {
+              opacity: messageOpacity,
+              transform: [
+                { translateY: messageTranslateY },
+                { scale: messageScale },
+                { translateY: bounceInterpolation }, // Add bounce effect
+              ],
+            },
+          ]}
+        >
+          {/* <TouchableOpacity style={styles.closeButton} onPress={handleMessageDismiss}>
+            <X size={16} color="#666" />
+          </TouchableOpacity> */}
+          <TouchableOpacity onPress={handleMessagePress}>
+            <Text style={styles.messageText}>{message}</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
+
+      {/* Floating button with pulse animation */}
+      <Animated.View style={{ transform: [{ scale: buttonPulse }] }}>
+        <TouchableWithoutFeedback onPress={handlePress}>
+          <View style={styles.button}>
+            {imageLoaded ? (
+              <Image
+                source={require("../assets/images/doulaImg.png")}
+                style={styles.image}
+                resizeMode="contain"
+                onError={() => setImageLoaded(false)}
+              />
+            ) : (
+              <Text style={styles.fallbackText}>D</Text>
+            )}
+          </View>
+        </TouchableWithoutFeedback>
+      </Animated.View>
     </Animated.View>
   )
 }
@@ -198,6 +362,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     zIndex: 999,
     elevation: 5,
+    flexDirection: "row",
+    alignItems: "center",
   },
   button: {
     width: 50,
@@ -223,7 +389,44 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "bold",
   },
+  messageBubbleContainer: {
+    position: "absolute",
+    backgroundColor: "#FFFFFF",
+    borderTopEndRadius: 10,
+    borderTopLeftRadius: 10,
+    borderBottomLeftRadius: 10,
+    borderColor: "#F76CCF",
+    paddingVertical: 12,
+    borderWidth: 1.5,
+    paddingHorizontal: 12,
+    paddingRight: 24, // Extra space for close button
+    maxWidth: 220,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  messageBubbleLeft: {
+    right: 50, // Position to the left of the button
+    top: -50,
+  },
+  messageBubbleRight: {
+    left: 60, // Position to the right of the button
+    top: 0,
+  },
+  messageText: {
+    fontSize: 14,
+    fontFamily: "Inter400",
+    color: "#3F3F3F",
+  },
+  closeButton: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    zIndex: 1,
+    padding: 4,
+  },
 })
 
 export default FloatingButton
-
