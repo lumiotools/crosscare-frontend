@@ -29,6 +29,31 @@ import { useSelector } from "react-redux";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFitbit } from "@/zustandStore/useFitbitStore";
 import { Alert } from "react-native";
+import * as Notifications from "expo-notifications";
+// Notifications.setNotificationHandler({
+//   handleNotification: async () => ({
+//     shouldShowAlert: true,
+//     shouldPlaySound: true,
+//     shouldSetBadge: true,
+//   }),
+// });
+
+// // Request permissions (call this when your app starts)
+// export async function requestNotificationPermissions() {
+//   const { status } = await Notifications.requestPermissionsAsync();
+//   return status === "granted";
+// }
+
+// Interface definitions
+// interface StepGoalAchievementInput {
+//   steps: number;
+//   stepsGoal: number;
+//   date?: string;
+// }
+
+// interface StepGoalAchievementResult {
+//   notificationId: string | null;
+// }
 
 const { width } = Dimensions.get("window");
 const BAR_WIDTH = 20;
@@ -153,6 +178,7 @@ const step = () => {
 
   useEffect(() => {
     const checkInitialConnection = async () => {
+      
       try {
         // Wait for the hook's connection check to complete
         await new Promise((resolve) => setTimeout(resolve, 500));
@@ -170,15 +196,15 @@ const step = () => {
     if (isConnected) {
       // Disconnect from Fitbit
       await disconnect();
-      Alert.alert('Disconnected', 'Successfully disconnected from Fitbit');
+      Alert.alert("Disconnected", "Successfully disconnected from Fitbit");
     } else {
       // Connect to Fitbit
       const success = await connect();
       if (success) {
-        Alert.alert('Success', 'Connected to Fitbit');
+        Alert.alert("Success", "Connected to Fitbit");
         getStepStatus(); // Refresh data with Fitbit data
       } else {
-        Alert.alert('Error', 'Failed to connect to Fitbit');
+        Alert.alert("Error", "Failed to connect to Fitbit");
       }
     }
   };
@@ -189,32 +215,35 @@ const step = () => {
       const today = new Date();
       let startDate = new Date();
 
-    // const data = await getStepStatus(today);
+      // const data = await getStepStatus(today);
 
-      
-      if (timeRange === 'today') {
+      if (timeRange === "today") {
         // Just today
-      } else if (timeRange === 'week') {
+      } else if (timeRange === "week") {
         startDate.setDate(today.getDate() - 7);
-      } else if (timeRange === 'month') {
+      } else if (timeRange === "month") {
         startDate.setMonth(today.getMonth() - 1);
-      } else if (timeRange === 'lastMonth') {
+      } else if (timeRange === "lastMonth") {
         startDate.setMonth(today.getMonth() - 2);
         const endDate = new Date();
         endDate.setMonth(today.getMonth() - 1);
         today.setTime(endDate.getTime());
       }
-      
+
       // Format dates for Fitbit API (yyyy-MM-dd)
-      const startDateStr = startDate.toISOString().split('T')[0];
-      const endDateStr = today.toISOString().split('T')[0];
-      
+      const startDateStr = startDate.toISOString().split("T")[0];
+      const endDateStr = today.toISOString().split("T")[0];
+
       // Get data for date range
-      const data = await getDataForRange('activities/steps', startDateStr, endDateStr);
+      const data = await getDataForRange(
+        "activities/steps",
+        startDateStr,
+        endDateStr
+      );
       console.log(data);
-      
+
       if (!data) {
-        throw new Error('Failed to fetch Fitbit data');
+        throw new Error("Failed to fetch Fitbit data");
       }
 
       const todaySteps = getTodayStepsFromFitbit(data);
@@ -222,25 +251,116 @@ const step = () => {
       if (todaySteps !== null) {
         await sendStepsToBackend(todaySteps);
       }
-      
+
       return processFitbitStepData(data);
     } catch (error) {
-      console.error('Error fetching Fitbit step data:', error);
+      console.error("Error fetching Fitbit step data:", error);
       return null;
     }
   };
 
-
+  // const checkStepGoalAchievement = async (
+  //   stepData: StepGoalAchievementInput
+  // ): Promise<StepGoalAchievementResult> => {
+  //   // Extract steps and stepsGoal from the data
+  //   const { steps, stepsGoal, date } = stepData;
+  //   const today = date || new Date().toISOString().split("T")[0];
+  
+  //   console.log(
+  //     `Checking goal achievement: ${steps}/${stepsGoal} steps on ${today}`
+  //   );
+  
+  //   // Only proceed if we have valid numbers and the goal is set
+  //   if (!stepsGoal || stepsGoal <= 0 || !steps) {
+  //     console.log("No valid step goal or steps data");
+  //     return { notificationId: null };
+  //   }
+  
+  //   // Calculate percentage achieved
+  //   const percentage = Math.round((steps / stepsGoal) * 100);
+    
+  //   // Check if steps walked exceeds or equals the goal
+  //   if (steps >= stepsGoal) {
+  //     try {
+  //       const exceededBy = steps - stepsGoal;
+        
+  //       // Create a more dynamic message based on exact percentage achievement
+  //       let message = "";
+  //       let title = "🎉 Step Goal Achieved!";
+        
+  //       // More granular percentage-based messages
+  //       if (percentage === 100) {
+  //         message = `Perfect! You've hit your step goal of ${stepsGoal} steps exactly!`;
+  //       } 
+  //       else if (percentage > 100 && percentage < 110) {
+  //         message = `Great job! You've reached your step goal and walked an extra ${exceededBy} steps!`;
+  //       }
+  //       else if (percentage >= 110 && percentage < 125) {
+  //         message = `Impressive! You've exceeded your step goal by ${exceededBy} steps (${percentage}% of your goal)!`;
+  //       }
+  //       else if (percentage >= 125 && percentage < 150) {
+  //         message = `Excellent! You're on fire today with ${steps} steps - that's ${percentage}% of your goal!`;
+  //       }
+  //       else if (percentage >= 150 && percentage < 200) {
+  //         title = "🔥 Step Goal Crushed!";
+  //         message = `Amazing! You've crushed your step goal by ${exceededBy} steps (${percentage}% of your goal)!`;
+  //       }
+  //       else if (percentage >= 200) {
+  //         title = "🚀 Step Goal Demolished!";
+  //         message = `Incredible! You've more than doubled your step goal with ${steps} steps (${percentage}% of your goal)! That's outstanding!`;
+  //       }
+  
+  //       // Schedule an immediate notification - ALWAYS send it, no check for previous notifications
+  //       const notificationId = await Notifications.scheduleNotificationAsync({
+  //         content: {
+  //           title: title,
+  //           body: message,
+  //           data: {
+  //             type: "steps",
+  //             screen: "/patient/steps",
+  //             achievement: "step_goal",
+  //             steps,
+  //             stepsGoal,
+  //             date: today,
+  //             percentage: percentage
+  //           },
+  //           sound: true,
+  //         },
+  //         trigger: null, // null means the notification fires immediately
+  //       });
+  
+  //       console.log(
+  //         `Step goal achievement notification sent with ID: ${notificationId}`
+  //       );
+  //       return { notificationId };
+  //     } catch (error) {
+  //       console.error(
+  //         "Error sending step goal achievement notification:",
+  //         error
+  //       );
+  //     }
+  //   } else {
+  //     // For steps less than goal, calculate progress percentage
+  //     console.log(
+  //       `Progress: ${steps}/${stepsGoal} steps (${percentage}%)`
+  //     );
+      
+  //     // Optional: You could also add progress notifications at certain milestones
+  //     // For example, at 25%, 50%, 75%, 90% of the goal
+  //   }
+  
+  //   return { notificationId: null };
+  // };
   const getTodayStepsFromFitbit = (fitbitData: any) => {
-    if (!fitbitData || !fitbitData['activities-steps']) {
+    if (!fitbitData || !fitbitData["activities-steps"]) {
       return null;
     }
-    
-    const today = new Date().toISOString().split('T')[0];
-    const todayData = fitbitData['activities-steps'].find(
+
+    const today = new Date().toISOString().split("T")[0];
+    const todayData = fitbitData["activities-steps"].find(
       (item: any) => item.dateTime === today
     );
-    
+
     return todayData ? parseInt(todayData.value) : null;
   };
 
@@ -248,42 +368,42 @@ const step = () => {
     try {
       const userId = user?.user_id;
       const apiUrl = `https://crosscare-backends.onrender.com/api/user/activity/${userId}/steps`;
-      
+
       console.log(`Sending ${steps} steps to backend API: ${apiUrl}`);
-      
+
       const response = await fetch(apiUrl, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ steps: steps, }),
+        body: JSON.stringify({ steps: steps }),
       });
-      
+
       if (!response.ok) {
         throw new Error(`API request failed with status ${response.status}`);
       }
-      
+
       const responseData = await response.json();
-      console.log('Backend API response:', responseData);
-      
+      console.log("Backend API response:", responseData);
+
       return responseData;
     } catch (error) {
-      console.error('Error sending steps to backend:', error);
+      console.error("Error sending steps to backend:", error);
       return null;
     }
   };
 
   useEffect(() => {
     if (isConnected) {
-      console.log('Setting up 1-minute refresh interval for Fitbit data');
+      console.log("Setting up 1-minute refresh interval for Fitbit data");
       // Set up interval to refresh data every 1 minute when connected to Fitbit
       const refreshInterval = setInterval(() => {
-        console.log('Refreshing Fitbit data...');
+        console.log("Refreshing Fitbit data...");
         getStepStatus();
-      }, 60000); // 1 minute (60000 milliseconds)
-      
+      }, 30000); // 1 minute (60000 milliseconds)
+
       return () => {
-        console.log('Clearing Fitbit refresh interval');
+        console.log("Clearing Fitbit refresh interval");
         clearInterval(refreshInterval);
       };
     }
@@ -291,22 +411,22 @@ const step = () => {
 
   // Process Fitbit step data
   const processFitbitStepData = (fitbitData: any) => {
-    if (!fitbitData || !fitbitData['activities-steps']) {
+    if (!fitbitData || !fitbitData["activities-steps"]) {
       return [];
     }
-    
-    const stepData = fitbitData['activities-steps'];
+
+    const stepData = fitbitData["activities-steps"];
     const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"];
-    
+
     // Map Fitbit data to app format
     return stepData.map((item: any) => {
       const date = new Date(item.dateTime);
       const dayIndex = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
       const dayAbbr = fixedWeekdays[dayIndex];
-      
+
       // Get the step count or default to 0
       const steps = parseInt(item.value) || 0;
-      
+
       return {
         id: `fitbit-${item.dateTime}`,
         day: dayAbbr,
@@ -585,7 +705,7 @@ const step = () => {
         const fitbitData = await fetchFitbitStepData();
 
         // console.log(fitbitData);
-        
+
         // if (fitbitData && fitbitData.length > 0) {
         //   // Get today's steps for the current count
         //   const today = new Date().toISOString().split('T')[0];
@@ -593,10 +713,10 @@ const step = () => {
         //   if (todayData) {
         //     setStepsWalked(todayData.steps);
         //   }
-          
+
         //   // Set step data from Fitbit
         //   setStepData(fitbitData);
-          
+
         //   // Process data for current time range
         //   const filteredData = processDataForTimeRange(fitbitData, timeRange);
         //   setFilteredData(filteredData);
@@ -692,6 +812,29 @@ const step = () => {
           stepMap.delete("latest"); // Remove the temporary entry
         }
 
+        // if (data && data.length > 0) {
+        //   // After you've processed the data and set stepsWalked and stepGoal
+        //   // Get the most recent entry (first item in the array)
+        //   const latestEntry = data[0];
+          
+        //   // Check if goal is achieved for the latest entry
+        //   if (latestEntry.steps > 0 && latestEntry.stepsGoal > 0) {
+        //     checkStepGoalAchievement({
+        //       steps: latestEntry.steps,
+        //       stepsGoal: latestEntry.stepsGoal,
+        //       date: latestEntry.date
+        //     })
+        //       .then(result => {
+        //         if (result.notificationId) {
+        //           console.log(`Step goal achievement notification sent: ${result.notificationId}`);
+        //         }
+        //       })
+        //       .catch(error => {
+        //         console.error("Error checking step goal achievement:", error);
+        //       });
+        //   }
+        // }
+
         // Convert map to array
         const processedData = Array.from(stepMap.values());
         setStepData(processedData);
@@ -762,6 +905,23 @@ const step = () => {
     if (!isNaN(parsedSteps) && parsedSteps > 0) {
       setStepGoal(parsedSteps);
       setModalVisible(false);
+
+      // if (stepsWalked > 0) {
+      //   const today = new Date().toISOString().split('T')[0];
+      //   checkStepGoalAchievement({
+      //     steps: stepsWalked,
+      //     stepsGoal: parsedSteps,
+      //     date: today
+      //   })
+      //     .then(result => {
+      //       if (result.notificationId) {
+      //         console.log(`Step goal achievement notification sent after goal update: ${result.notificationId}`);
+      //       }
+      //     })
+      //     .catch(error => {
+      //       console.error("Error checking step goal achievement:", error);
+      //     });
+      // }
     }
   };
 
@@ -1570,7 +1730,7 @@ const styles = StyleSheet.create({
     width: 160,
     overflow: "hidden",
     shadowColor: "#000",
-    marginTop:-25,
+    marginTop: -25,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
