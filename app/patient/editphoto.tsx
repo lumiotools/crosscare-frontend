@@ -14,13 +14,23 @@ import {
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker"; // import expo-image-picker
 import { Camera } from "expo-camera";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useSelector } from "react-redux";
 
 export default function editphoto() {
-  const [title, setTitle] = useState("");
-  const [imageUri, setImageUri] = useState<string | null>(null); // To store the selected image URI
+  const user = useSelector((state: any) => state.user); // Assuming you have a Redux store set up
+  const params = useLocalSearchParams();
+
+  // Parse the params.item (which is likely a string)
+  const item = typeof params.item === "string" ? JSON.parse(params.item) : null;
+
+  console.log("Parsed Note Data:", item);
+
+  const [title, setTitle] = useState(item.title || ""); // Initialize title with the passed data
+  const [imageUri, setImageUri] = useState<string | null>(item?.imageSource || null); // To store the selected image URI
   const [hasPermission, setHasPermission] = useState<boolean | null>(null); // For camera permission
+  const [saved, setSaved] = useState(false);
 
   // Request permission to use the camera and image picker
   useEffect(() => {
@@ -38,21 +48,63 @@ export default function editphoto() {
     requestPermissions();
   }, []);
 
-  const handleSave = () => {
-    console.log("Entry Created:", { title, imageUri });
-  };
+  const handleSave = async () => {
+      const formData = new FormData();
+  
+      // Add title to the FormData
+      formData.append("title", title);
+  
+      // Check if imageUri exists, and append the image to FormData
+      formData.append('imageUrl', {
+        uri: imageUri,
+        type: 'image/jpeg', // or the appropriate MIME type
+        name: 'upload.jpg'
+      });
+  
+      try {
+        const response = await fetch(
+          `http://10.0.2.2:8000/api/user/activity/${user.user_id}/journal/${item.id}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "multipart/form-data", // Set correct content type for form data
+            },
+            body: formData,
+          }
+        );
+  
+        if (!response.ok) {
+          throw new Error(`Failed to save note: ${response.statusText}`);
+        }
+  
+        const data = await response.json();
+        console.log("Note saved successfully:", data);
+        if (data.success) {
+          setSaved(true);
+        }
+      } catch (error: any) {
+        console.error("Error saving note:", error.message);
+        alert("Failed to save the note. Please try again.");
+      }
+    };
 
   const handleCancel = () => {
-    setTitle("");
-    setImageUri(null); // Reset image on cancel
+   // Reset image on cancel
     router.back();
     console.log("Cancelled Entry");
   };
 
+  useEffect(() => {
+    if (saved) {
+      // If the note was saved successfully, navigate back
+      router.back(); // Or use any other method to reload the page or navigate
+    }
+  }, [saved]);
+
   // Function to pick an image from the gallery
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'], // Updated usage
+      mediaTypes: ["images"], // Updated usage
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
@@ -65,15 +117,15 @@ export default function editphoto() {
   };
 
   // Function to take a photo with the camera
-//   const takePhoto = async () => {
-//     if (!hasPermission) {
-//       Alert.alert("Permission required", "Camera permission is needed");
-//       return;
-//     }
+  //   const takePhoto = async () => {
+  //     if (!hasPermission) {
+  //       Alert.alert("Permission required", "Camera permission is needed");
+  //       return;
+  //     }
 
-//     const photo = await Camera.takePictureAsync();
-//     setImageUri(photo.uri);
-//   };
+  //     const photo = await Camera.takePictureAsync();
+  //     setImageUri(photo.uri);
+  //   };
 
   return (
     <SafeAreaView style={styles.container}>

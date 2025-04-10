@@ -29,7 +29,7 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({
   showMessage = false,
   message = "Hey, do you have a minute?",
   onMessageDismiss,
-  autoShowInterval = 60000, // Default to 1 minute (60000ms)
+  autoShowInterval = 20000, // Default to 1 minute (60000ms)
 }) => {
   // Get screen dimensions
   const { width, height } = Dimensions.get("window")

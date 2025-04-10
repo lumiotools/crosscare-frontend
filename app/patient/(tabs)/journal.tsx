@@ -26,6 +26,17 @@ interface NoteItem {
   date: string;
 }
 
+interface Photo {
+  title: string;
+  items: Images[];
+}
+
+interface Images {
+  id: string;
+  imageUrl: string;
+  date: string;
+  title: string;
+}
 interface Section {
   title: string;
   items: NoteItem[];
@@ -42,6 +53,7 @@ export default function Journal() {
   const [activeTab, setActiveTab] = useState<"Notes" | "Photos">("Notes");
   const [notesSearchQuery, setNotesSearchQuery] = useState("");
   const [photosSearchQuery, setPhotosSearchQuery] = useState("");
+  const [photos, setPhotos] = useState<Photo[]>([]); // State to hold photos data
   const [contentSections, setContentSections] = useState<Section[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,22 +64,39 @@ export default function Journal() {
   const user = useSelector((state: RootState) => state.user);
 
   // Filter notes based on search query
-  const filteredSections = notesSearchQuery.trim() === ""
-    ? contentSections
-    : contentSections
-        .map((section) => ({
-          title: section.title,
-          items: section.items.filter(
-            (item) =>
-              item.title
-                .toLowerCase()
-                .includes(notesSearchQuery.toLowerCase()) ||
-              item.description
-                .toLowerCase()
-                .includes(notesSearchQuery.toLowerCase())
-          ),
-        }))
-        .filter((section) => section.items.length > 0);
+  const filteredSections =
+    notesSearchQuery.trim() === ""
+      ? contentSections
+      : contentSections
+          .map((section) => ({
+            title: section.title,
+            items: section.items.filter(
+              (item) =>
+                item.title
+                  .toLowerCase()
+                  .includes(notesSearchQuery.toLowerCase()) ||
+                item.description
+                  .toLowerCase()
+                  .includes(notesSearchQuery.toLowerCase())
+            ),
+          }))
+          .filter((section) => section.items.length > 0);
+
+  const filterPhotos = (photosSearchQuery: string) => {
+    if (photosSearchQuery.trim() === "") return photos; // If search is empty, show all photos
+    return photos
+      .map((section) => ({
+        title: section.title,
+        items: section.items.filter(
+          (item) =>
+            item.title
+              .toLowerCase()
+              .includes(photosSearchQuery.toLowerCase()) ||
+            item.date.toLowerCase().includes(photosSearchQuery.toLowerCase())
+        ),
+      }))
+      .filter((section) => section.items.length > 0);
+  };
 
   // API call to fetch notes
   const getNotes = async () => {
@@ -79,7 +108,7 @@ export default function Journal() {
       setError(null);
 
       const response = await fetch(
-        `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/notes`,
+        `http://10.0.2.2:8000/api/user/activity/${user.user_id}/notes`,
         {
           method: "GET",
           headers: {
@@ -99,7 +128,47 @@ export default function Journal() {
       }
     } catch (err: any) {
       console.error("Error fetching notes:", err);
-      if (err.name === 'AbortError') {
+      if (err.name === "AbortError") {
+        setError("Request timed out - please try again");
+      } else {
+        setError("Network error - please check your connection");
+      }
+    } finally {
+      setLoading(false);
+      clearTimeout(timeoutId);
+    }
+  };
+
+  const getImages = async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch(
+        `http://10.0.2.2:8000/api/user/activity/${user.user_id}/journal`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          signal: controller.signal,
+        }
+      );
+
+      const data = await response.json();
+      console.log("Fetched images:", data.data);
+
+      if (data.success) {
+        setPhotos(data.data); // Save photos data separately
+      } else {
+        setError(data.message || "Failed to fetch photos");
+      }
+    } catch (err: any) {
+      console.error("Error fetching notes:", err);
+      if (err.name === "AbortError") {
         setError("Request timed out - please try again");
       } else {
         setError("Network error - please check your connection");
@@ -114,18 +183,21 @@ export default function Journal() {
   useFocusEffect(
     useCallback(() => {
       getNotes();
+      getImages();
     }, [])
   );
 
   // Handle manual refresh
   const handleRefresh = () => {
     getNotes();
+    getImages();
   };
 
   // Handle pull-to-refresh
   const onRefresh = async () => {
     setRefreshing(true);
     await getNotes();
+    await getImages();
     setRefreshing(false);
   };
 
@@ -187,23 +259,25 @@ export default function Journal() {
 
   // Render photos section
   const renderPhotosSection = () => {
+    const filteredPhotos = filterPhotos(photosSearchQuery); // Define filteredPhotos
     return (
       <View style={styles.sectionsContainer}>
-        <View>
-          <Text style={styles.sectionTitle}>Today</Text>
-          <ContentCard1
-            title="Vacation Photo"
-            imageSource={{ uri: "https://via.placeholder.com/100" }}
-          />
-        </View>
-
-        <View>
-          <Text style={styles.sectionTitle}>Previously</Text>
-          <ContentCard1
-            title="Family Reunion"
-            imageSource={{ uri: "https://via.placeholder.com/100" }}
-          />
-        </View>
+         {filteredPhotos.map((section, sectionIndex) => (
+          <View key={sectionIndex}>
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+            {section.items.length && (
+              section.items.map((photo, index) => (
+                <ContentCard1
+                  key={index}
+                  id={photo.id}
+                  title={photo.title}
+                  imageSource={{ uri: photo.imageUrl }}
+                  date={photo.date}
+                />
+              ))
+            )}
+          </View>
+        ))}
       </View>
     );
   };
