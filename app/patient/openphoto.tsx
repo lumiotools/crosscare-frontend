@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import {
   StyleSheet,
   View,
@@ -9,11 +9,59 @@ import {
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { Appbar } from "react-native-paper";
-import { router } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import Pen from "@/assets/images/Svg/Pen";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useSelector } from "react-redux";
 
 const openphoto = () => {
+  const params = useLocalSearchParams();
+    const user = useSelector((state:any)=>state.user);
+    const [details, setDetails] = React.useState([]);
+    // const item = details;
+
+  
+    // Parse the params.item (which is likely a string)
+    const item = typeof params.item === "string" ? JSON.parse(params.item) : null;
+  
+    console.log("Parsed Note Data:", item);
+
+    const [datePart, timePart] = item?.date.split(", ");
+    
+    const formatDate = (dateString: string) => {
+  // Split the date into day, month, and year (expected format: dd/mm/yyyy)
+  const [day, month, year] = dateString.split("/");
+
+  // Create a new Date object using the correct format: yyyy-mm-dd
+  const formattedDate = `${year}-${month}-${day}`;
+  const date = new Date(formattedDate);
+
+  // Check if the date is valid
+  if (isNaN(date.getTime())) {
+    console.error("Invalid date:", formattedDate);
+    return "Invalid Date";
+  }
+
+  // Get the day, month, and year
+  const dayOfMonth = date.getDate();
+  const monthName = date.toLocaleString("default", { month: "short" }); // Get abbreviated month name (e.g., "Apr")
+  const fullYear = date.getFullYear();
+
+  // Adding the suffix to the day
+  const suffix = (dayOfMonth: number): string => {
+    if (dayOfMonth > 3 && dayOfMonth < 21) return "th"; // For dates like 4th, 5th, etc. till 20th
+    switch (dayOfMonth % 10) {
+      case 1: return "st";
+      case 2: return "nd";
+      case 3: return "rd";
+      default: return "th";
+    }
+  };
+
+  return `${dayOfMonth}${suffix(dayOfMonth)} ${monthName}, ${fullYear}`;
+};
+
+    
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
@@ -34,8 +82,8 @@ const openphoto = () => {
 
       {/* Image Section */}
       <View style={styles.imageContainer}>
-        <View style={styles.image} />
-        <Text style={styles.title}>This is the title of your photo</Text>
+        <Image source={{ uri: item.imageSource.uri }} style={styles.image} resizeMode="cover" />
+        <Text style={styles.title}>{item.title}</Text>
         <View style={styles.detailsContainer}>
           <View
             style={{
@@ -45,7 +93,7 @@ const openphoto = () => {
             }}
           >
             <Text style={styles.text1}>Taken on </Text>
-            <Text style={styles.text}>28th Feb, 2025</Text>
+            <Text style={styles.text}>{formatDate(datePart)}</Text>
           </View>
           <View
             style={{
@@ -55,7 +103,7 @@ const openphoto = () => {
             }}
           >
             <Text style={styles.text1}>At</Text>
-            <Text style={styles.text}> 10:00 AM</Text>
+            <Text style={styles.text}> {timePart}</Text>
           </View>
         </View>
       </View>
@@ -63,7 +111,19 @@ const openphoto = () => {
       {/* Title and Description */}
 
       {/* Edit Icon */}
-      <TouchableOpacity onPress={()=>router.push('/patient/editphoto')} style={styles.editIcon}>
+      <TouchableOpacity onPress={() =>
+              router.push({
+                pathname: "/patient/editphoto",
+                params: {
+                  item: JSON.stringify({
+                    id: item.id,
+                    title: item.title,
+                    imageSource: item.imageSource.uri,
+                    date: item.date,
+                  }),
+                },
+              })
+            } style={styles.editIcon}>
         <Pen/>
       </TouchableOpacity>
     </SafeAreaView>
