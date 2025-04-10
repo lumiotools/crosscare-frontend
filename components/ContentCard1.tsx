@@ -31,7 +31,7 @@ const ContentCard1: React.FC<ContentCard1Props> = ({ id, title, imageSource, dat
       }
     >
       <View style={styles.cardContent}>
-        <Text style={styles.cardTitle}>{title}</Text>
+        <Text style={styles.cardTitle} numberOfLines={1}>{title}</Text>
         {/* Make sure imageSource is properly formatted */}
         <Image source={imageSource} style={styles.cardImage} />
       </View>
@@ -51,6 +51,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 16,
+    maxWidth:"70%",
     fontFamily: "Inter700",
     color: "#434343",
     // marginBottom: 4,
