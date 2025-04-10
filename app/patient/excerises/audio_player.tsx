@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useRef, useEffect } from "react"
 import { StyleSheet, Text, View, TouchableOpacity, Animated, StatusBar, Dimensions } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
@@ -13,12 +11,12 @@ const { width, height } = Dimensions.get("window")
 const AudioPlayerScreen = () => {
   const router = useRouter()
   const params = useLocalSearchParams()
-  console.log("AudioPlayerScreen params:", params)
 
   // Get audio details from params
   const title = (params.title as string) || "Audio Track"
   const duration = (params.duration as string) || "0:00"
   const audioUrl = params.url as string
+  const description = (params.description as string) || ""
 
   // Parse gradient colors from params or use default blue gradient
   let gradientColors: string[] = ["#1A237E", "#006064"]
@@ -27,7 +25,6 @@ const AudioPlayerScreen = () => {
       const parsedColors = JSON.parse(params.gradientColors as string)
       if (Array.isArray(parsedColors) && parsedColors.length >= 2) {
         gradientColors = parsedColors
-        console.log("Using gradient colors from params:", gradientColors)
       }
     }
   } catch (error) {
@@ -171,7 +168,7 @@ const AudioPlayerScreen = () => {
       })
 
       // Use the URL from params or fallback to a default URL
-      const url = audioUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+      const url = audioUrl 
       const secureUrl = ensureHttps(url)
       console.log("Loading audio track:", title, "URL:", secureUrl)
 
@@ -329,10 +326,15 @@ const AudioPlayerScreen = () => {
           <Ionicons name="close" size={28} color="white" />
         </TouchableOpacity>
 
-        {/* Title */}
+        {/* Title and Description */}
         <Animated.View style={[styles.titleContainer, { opacity: fadeAnim }]}>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.duration}>{duration}</Text>
+          
+          {/* Added description from Contentful */}
+          {description ? (
+            <Text style={styles.description}>{description}</Text>
+          ) : null}
 
           {/* Show error if any */}
           {error && <Text style={styles.errorText}>{error}</Text>}
@@ -404,6 +406,15 @@ const styles = StyleSheet.create({
     fontFamily: "DMSans400",
     color: "rgba(255, 255, 255, 0.8)",
     marginBottom: 16,
+  },
+  description: {
+    fontSize: 16,
+    fontFamily: "DMSans400",
+    color: "rgba(255, 255, 255, 0.9)",
+    textAlign: "center",
+    marginTop: 16,
+    marginHorizontal: 20,
+    lineHeight: 22,
   },
   errorText: {
     color: "#FF8A80",

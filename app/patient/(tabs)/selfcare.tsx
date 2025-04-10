@@ -4,318 +4,212 @@ import {
   View,
   TouchableOpacity,
   ScrollView,
-  ListRenderItemInfo,
+  Image,
+  Dimensions,
+  ActivityIndicator
 } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import { useSelfCareStore } from "@/zustandStore/contentfulStores/selfCareStore";
 import { Ionicons } from "@expo/vector-icons";
-import SelfCareCard from "@/components/SelfCareCard";
-import { FlatList } from "react-native";
-import { ActivityIndicator } from "react-native";
-
-// Define the content type
-type ContentType = "EXERCISES" | "AUDIOS" | "STORIES";
-
-type Category = {
-  id: string;
-  title: string;
-  iconType: "heart" | "landscape" | "none" | "moon" | "cloud" | "sun" | "feather";
-  count: number;
-  contentType: ContentType;
-  gradientColors: [string, string, ...string[]];
-};
-
-// Define the data for the cards
-// const cardData: {
-//   id: string;
-//   title: string;
-//   iconType: "heart" | "landscape" | "none" | "moon" | "cloud" | "sun" | "feather";
-//   count: number;
-//   contentType: ContentType;
-//   gradientColors: [string, string, ...string[]];
-// }[] = [
-//   {
-//     id: "favorites",
-//     title: "My Favorites",
-//     iconType: "heart",
-//     count: 0,
-//     contentType: "EXERCISES",
-//     gradientColors: ["#4A6FE1", "#2C3E8C"],
-//   },
-//   {
-//     id: "recent",
-//     title: "Recently Used",
-//     iconType: "landscape",
-//     count: 1,
-//     contentType: "EXERCISES",
-//     gradientColors: ["#4A6FE1", "#00BCD4"],
-//   },
-//   // First screenshot cards
-//   {
-//     id: "1",
-//     title: "Cope with Nightmares",
-//     iconType: "cloud",
-//     count: 5,
-//     contentType: "EXERCISES",
-//     gradientColors: ["#3949AB", "#5C6BC0", "#7986CB"],
-//   },
-//   {
-//     id: "2",
-//     title: "For Deep Sleep",
-//     iconType: "moon",
-//     count: 8,
-//     contentType: "EXERCISES",
-//     gradientColors: ["#303F9F", "#3F51B5", "#5C6BC0"],
-//   },
-//   {
-//     id: "3",
-//     title: "Sleep Habit Pack",
-//     iconType: "cloud",
-//     count: 8,
-//     contentType: "EXERCISES",
-//     gradientColors: ["#4527A0", "#00796B", "#009688"],
-//   },
-//   {
-//     id: "4",
-//     title: "For Fresh Mornings",
-//     iconType: "sun",
-//     count: 5,
-//     contentType: "EXERCISES",
-//     gradientColors: ["#00796B", "#009688", "#00ACC1"],
-//   },
-//   // Second screenshot cards
-//   {
-//     id: "5",
-//     title: "Remote Wellness Pack",
-//     iconType: "cloud",
-//     count: 7,
-//     contentType: "EXERCISES",
-//     gradientColors: ["#3949AB", "#1976D2", "#0288D1"],
-//   },
-//   {
-//     id: "6",
-//     title: "Calm your Mind",
-//     iconType: "feather",
-//     count: 10,
-//     contentType: "EXERCISES",
-//     gradientColors: ["#4527A0", "#512DA8", "#5E35B1"],
-//   },
-//   {
-//     id: "7",
-//     title: "Sleep Sounds",
-//     iconType: "cloud",
-//     count: 18,
-//     contentType: "AUDIOS",
-//     gradientColors: ["#00796B", "#0097A7", "#0288D1"],
-//   },
-//   {
-//     id: "8",
-//     title: "Sleep Stories",
-//     iconType: "cloud",
-//     count: 33,
-//     contentType: "STORIES",
-//     gradientColors: ["#00796B", "#00838F", "#006064"],
-//   },
-//   {
-//     id: "9",
-//     title: "Essential Wellness Pack",
-//     iconType: "cloud",
-//     count: 12,
-//     contentType: "EXERCISES",
-//     gradientColors: ["#3949AB", "#303F9F", "#1A237E"],
-//   },
-//   {
-//     id: "10",
-//     title: "Put Your Mind to Ease",
-//     iconType: "feather",
-//     count: 8,
-//     contentType: "EXERCISES",
-//     gradientColors: ["#303F9F", "#283593", "#1A237E"],
-//   },
-// ];
 
 const SelfCare = () => {
+  const router = useRouter();
+  const { routines, isLoading, error, fetchRoutines, downloadAudio, setCurrentRoutine } = useSelfCareStore();
+  
 
-  const [categories, setCategories] = useState<Category[]>([]);
-
-  const [isLoading, setIsLoading] = useState(true); // State to manage loading status
   useEffect(() => {
-    const fetchCategories = async () => {
-      setIsLoading(true); // Set loading to true before fetching data
-  
-      try {
-        const response = await fetch("https://crosscare-backends.onrender.com/api/categories", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-  
-        // const text = await response.text(); // Get the response as text
-  
-        // console.log("Raw response text:", text); // Log the raw response
-  
-        // Check if response is JSON
-        try {
-          const data = await response.json(); // Try parsing as JSON
-        const flattenedCategories = data.flat(); // Flatten the response array
-        setCategories(flattenedCategories); // Set the flattened data to state
-        console.log("Fetched categories:", flattenedCategories); // Set the fetched data to state
-        } catch (e) {
-          console.error("Error parsing JSON:", e);
-        }
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-      } finally {
-        setIsLoading(false); // Set loading to false after data is fetched
-      }
-    };
-  
-    fetchCategories(); // Call the function to fetch categories
+    fetchRoutines();
   }, []);
-  
-  
-  // Create pairs of cards for rendering in rows
-  const cardPairs = categories.reduce((result, card, index) => {
-    // If index is even, create a new pair
-    if (index % 2 === 0) {
-      result.push([card]);
-    } else {
-      // If index is odd, add to the last pair
-      result[result.length - 1].push(card);
-    }
-    return result;
-  }, [] as Category[][]);
 
-  const renderItem = ({ item }: ListRenderItemInfo<Category>) => (
-    <SelfCareCard
-      id={item.id}
-      title={item.title}
-      iconType={item.iconType}
-      count={item.count}
-      contentType={item.contentType}
-      gradientColors={item.gradientColors}
-    />
-  )// Log the pairs of cards
+  const handleRoutinePress = async (routineId: string) => {
+    const routine = routines.find(r => r.id === routineId);
+    if (!routine) return;
+    
+    setCurrentRoutine(routine);
+    
+    try {
+      // Pre-download the audio if possible
+      const audioPath = await downloadAudio(routineId);
+      
+      // Navigate to audio player with all required data
+      router.push({
+        pathname: "/patient/excerises/audio_player",
+        params: {
+          title: routine.title,
+          duration: routine.duration || "5 min", // Fallback duration if not set
+          url: audioPath || routine.audioUrl, // Use local path if available, otherwise remote URL
+          gradientColors: JSON.stringify(routine.gradientColors || ["#7B96FF", "#0039C6"]),
+          description: routine.description,
+          id: routine.id
+        }
+      });
+    } catch (err) {
+      console.error("Error navigating to audio player:", err);
+    }
+  };
+
+  const renderRoutineCard = (routine) => {
+    return (
+      <TouchableOpacity
+        key={routine.id}
+        style={styles.routineCard}
+        onPress={() => handleRoutinePress(routine.id)}
+        activeOpacity={0.8}
+      >
+        <Image
+          source={{ uri: routine.routineImage }}
+          style={styles.routineImage}
+          resizeMode="cover"
+        />
+        <LinearGradient
+          colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.7)']}
+          style={styles.overlay}
+        >
+          <View style={styles.cardContent}>
+            <Text style={styles.routineTitle}>{routine.title} &gt;</Text>
+            <Text style={styles.routineDescription} numberOfLines={2}>
+              {routine.description}
+            </Text>
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Self Care</Text>
-        {/* <TouchableOpacity>
-          <Ionicons name="ellipsis-vertical" size={18} color="#434343" />
-        </TouchableOpacity> */}
-      </View>
-
-      <FlatList
-        data={categories}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        columnWrapperStyle={styles.columnWrapper}
+      <ScrollView 
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-        ListHeaderComponent={
-          <View style={styles.premiumSection}>
-            <Text style={styles.premiumTitle}>Unlock full library</Text>
-            <Text style={styles.premiumSubtitle}>150+ therapeutic exercises to improve sleep and more</Text>
-            <TouchableOpacity style={styles.premiumButton}>
-              <Text style={styles.premiumButtonText}>UNLOCK PREMIUM</Text>
+        contentContainerStyle={styles.scrollContent}
+      >
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#4A6FE1" />
+            <Text style={styles.loadingText}>Loading routines...</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle-outline" size={24} color="#d32f2f" />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity 
+              style={styles.retryButton}
+              onPress={fetchRoutines}
+            >
+              <Text style={styles.retryButtonText}>Retry</Text>
             </TouchableOpacity>
           </View>
-        }
-        ListEmptyComponent={
-          isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#4A6FE1" />
-              <Text style={styles.loadingText}>Loading exercises...</Text>
-            </View>
-          ) : (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="folder-open-outline" size={64} color="#ccc" />
-              <Text style={styles.emptyText}>No categories found</Text>
-            </View>
-          )
-        }
-      />
+        ) : (
+          <>
+            {routines.map(routine => renderRoutineCard(routine))}
+            
+            {routines.length === 0 && (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="folder-open-outline" size={64} color="#ccc" />
+                <Text style={styles.emptyText}>No routines found</Text>
+              </View>
+            )}
+          </>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 };
 
-export default SelfCare;
+const { width } = Dimensions.get("window");
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "white",
+    backgroundColor: "black",
   },
-  listContent: {
-    paddingBottom: 20,
-  },
-  columnWrapper: {
-    justifyContent: "space-between",
+  scrollContent: {
+    paddingVertical: 20,
     paddingHorizontal: 16,
-    marginBottom: 15,
   },
-  header: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  headerTitle: {
-    color: "black",
-    textAlign:'center',
-    fontSize: 16,
-    fontFamily: "OpenSans700",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  premiumSection: {
-    paddingHorizontal: 16,
-    paddingVertical: 30,
-  },
-  premiumTitle: {
-    fontSize: 24,
-    fontFamily: "DMSans600",
-  },
-  premiumSubtitle: {
-    fontSize: 18,
-    fontFamily: "DMSans400",
-    marginTop: 10,
-    marginBottom: 30,
-  },
-  premiumButton: {
-    backgroundColor: "#f06292",
-    borderRadius: 30,
-    paddingVertical: 14,
-    alignItems: "center",
-    width: "80%",
-    alignSelf: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  premiumButtonText: {
-    color: "white",
-    fontSize: 18,
-    fontFamily: "DMSans600",
-  },
-  cardsContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  cardRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  routineCard: {
+    width: "100%",
+    height: 220,
+    borderRadius: 16,
+    overflow: "hidden",
     marginBottom: 20,
   },
-  emptyCard: {
-    width: "48%", // Same width as a card
+  routineImage: {
+    width: "100%",
+    height: "100%",
+  },
+  overlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: "100%",
+    justifyContent: "flex-end",
+  },
+  cardContent: {
+    padding: 16,
+  },
+  routineTitle: {
+    color: "white",
+    fontSize: 24,
+    fontFamily: "DMSans600",
+    marginBottom: 8,
+  },
+  routineDescription: {
+    color: "white",
+    fontSize: 16,
+    fontFamily: "DMSans400",
+    opacity: 0.9,
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    fontFamily: "DMSans400",
+    color: "white",
+  },
+  errorContainer: {
+    paddingVertical: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  errorText: {
+    marginTop: 8,
+    marginBottom: 16,
+    fontSize: 16,
+    fontFamily: "DMSans400",
+    color: "#ff6b6b",
+    textAlign: "center",
+  },
+  retryButton: {
+    backgroundColor: "#4A6FE1",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontFamily: "DMSans500",
+  },
+  emptyContainer: {
+    paddingVertical: 60,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyText: {
+    marginTop: 12,
+    fontSize: 16,
+    fontFamily: "DMSans400",
+    color: "#ccc",
+    textAlign: "center",
   },
 });
+
+export default SelfCare;
