@@ -1,5 +1,3 @@
-"use client"
-
 import type React from "react"
 import { createContext, useContext, type ReactNode, useState, useCallback, useEffect } from "react"
 import { View, StyleSheet, TouchableOpacity } from "react-native"
