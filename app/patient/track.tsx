@@ -25,7 +25,7 @@ interface Section {
 
 interface FruitData {
   name: string
-  imageUrl: string
+  imageUrl: string | React.ReactNode
   weight: string
   length: string
 }
@@ -170,12 +170,12 @@ export default function track() {
         >
           <View style={styles.statsContainer}>
             <View style={styles.statBox}>
-              <Text style={styles.statValue}>1g</Text>
+              <Text style={styles.statValue}>{babyData.weight}</Text>
               <Text style={styles.statLabel}>weight</Text>
             </View>
 
             <View style={styles.statBox1}>
-              <Text style={styles.statValue}>1.6 cm</Text>
+              <Text style={styles.statValue}>{babyData.length}</Text>
               <Text style={styles.statLabel}>length</Text>
             </View>
           </View>

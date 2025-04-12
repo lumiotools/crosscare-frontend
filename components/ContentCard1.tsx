@@ -12,7 +12,7 @@ interface ContentCard1Props {
 }
 
 const ContentCard1: React.FC<ContentCard1Props> = ({ id, title, imageSource, date }) => {
-  console.log("Rendering title:", title); // Add this for debugging
+  // console.log("Rendering title:", title); // Add this for debugging
   return (
     <TouchableOpacity
       style={styles.card}

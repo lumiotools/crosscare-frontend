@@ -24,7 +24,7 @@ const openphoto = () => {
   // Parse the params.item (which is likely a string)
   const item = typeof params.item === "string" ? JSON.parse(params.item) : null;
   
-  console.log("Parsed Note Data:", item);
+  // console.log("Parsed Note Data:", item);
 
   // Safely get date parts - only try to split if createdAt exists
   const datePart = item1?.createdAt ? item1.createdAt.split(", ")[0] : null;
@@ -88,7 +88,7 @@ const openphoto = () => {
       }
       
       const data = await response.json();
-      console.log("Fetched details:", data.data);
+      // console.log("Fetched details:", data.data);
       setDetails(data.data);
     } catch (error) {
       console.error("Error fetching details:", error);
