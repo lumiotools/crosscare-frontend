@@ -71,7 +71,7 @@ export default function track() {
   const sections = [
     {
       id: 1,
-      title: `${selectedWeek || "8"} weeks and 3 days`,
+      title: `${selectedWeek} weeks and 1 days`,
       backgroundColor: "#6ED7E9",
     },
     {

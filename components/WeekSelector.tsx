@@ -78,7 +78,7 @@ const WeekSelector: React.FC<WeekSelectorProps> = ({
       length: "0.1cm",
     },
     "3": {
-      name: "Lnetil seed",
+      name: "Lentil seed",
       imageUrl: <LentilIcon width={44} height={44}/>,
       weight: "<1g",
       length: "0.1cm",

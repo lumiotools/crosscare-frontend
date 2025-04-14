@@ -3,6 +3,7 @@ import { createContext, useContext, type ReactNode, useState, useCallback, useEf
 import { View, StyleSheet, TouchableOpacity } from "react-native"
 import FloatingButton from "@/components/FloatingButton"
 import AskDoula from "@/components/AskDoula"
+import { usePathname } from "expo-router"
 
 interface FloatingContextType {
   handleButtonPress: () => void
@@ -12,6 +13,8 @@ interface FloatingContextType {
   showMessage: (message?: string) => void
   hideMessage: () => void
 }
+
+const EXCLUDED_ROUTES = ["/login", "/signup", "/forget-password"]
 
 const FloatingContext = createContext<FloatingContextType | undefined>(undefined)
 
@@ -40,6 +43,10 @@ export const FloatingProvider: React.FC<FloatingProviderProps> = ({
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [showMessageBubble, setShowMessageBubble] = useState(false)
   const [currentMessage, setCurrentMessage] = useState(initialMessage)
+
+  const pathname = usePathname()
+
+  const shouldShowButton = !EXCLUDED_ROUTES.some((route) => pathname?.includes(route))
 
   // Function to open modal
   const handleButtonPress = useCallback(() => {
@@ -76,7 +83,7 @@ export const FloatingProvider: React.FC<FloatingProviderProps> = ({
   useEffect(() => {
     let timer: NodeJS.Timeout
 
-    if (autoShowMessage) {
+    if (autoShowMessage && shouldShowButton) {
       timer = setTimeout(() => {
         showMessage()
       }, messageDelay)
@@ -85,7 +92,7 @@ export const FloatingProvider: React.FC<FloatingProviderProps> = ({
     return () => {
       if (timer) clearTimeout(timer)
     }
-  }, [autoShowMessage, messageDelay, showMessage])
+  }, [autoShowMessage, messageDelay, showMessage, shouldShowButton])
 
   return (
     <FloatingContext.Provider
@@ -113,13 +120,15 @@ export const FloatingProvider: React.FC<FloatingProviderProps> = ({
       )}
 
       {/* The floating button with message bubble - always visible on every screen */}
-      <FloatingButton
-        onPress={handleButtonPress}
-        onPositionChange={updatePosition}
-        showMessage={showMessageBubble}
-        message={currentMessage}
-        onMessageDismiss={hideMessage}
-      />
+      {shouldShowButton && (
+        <FloatingButton
+          onPress={handleButtonPress}
+          onPositionChange={updatePosition}
+          showMessage={showMessageBubble}
+          message={currentMessage}
+          onMessageDismiss={hideMessage}
+        />
+      )}
     </FloatingContext.Provider>
   )
 }
