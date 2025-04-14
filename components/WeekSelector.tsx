@@ -56,7 +56,7 @@ interface FruitData {
 // Update the WeekSelector component to handle undefined initialWeek
 const WeekSelector: React.FC<WeekSelectorProps> = ({
   onWeekChange,
-  initialWeek = "8", // Provide a default value of "8"
+  initialWeek = "1", // Provide a default value of "8"
 }) => {
   const [selectedWeek, setSelectedWeek] = useState(initialWeek || "8")
   const scrollViewRef = useRef<ScrollView>(null)

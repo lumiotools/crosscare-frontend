@@ -1,3 +1,4 @@
+import { useSearchParams } from "expo-router/build/hooks"
 import type React from "react"
 import { useRef, useEffect, useState } from "react"
 import {
@@ -12,6 +13,7 @@ import {
   TouchableOpacity,
   Easing,
 } from "react-native"
+import { useSelector } from "react-redux"
 // import { X } from "lucide-react"
 
 interface FloatingButtonProps {
@@ -29,7 +31,7 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({
   showMessage = false,
   message = "Hey, do you have a minute?",
   onMessageDismiss,
-  autoShowInterval = 20000, // Default to 1 minute (60000ms)
+  autoShowInterval = 15000, // Default to 1 minute (60000ms)
 }) => {
   // Get screen dimensions
   const { width, height } = Dimensions.get("window")
@@ -428,3 +430,29 @@ const styles = StyleSheet.create({
 })
 
 export default FloatingButton
+
+
+// interface FloatingButtonWrapperProps {
+//   onPress?: () => void
+//   onPositionChange?: (position: { x: number; y: number }) => void
+//   showMessage?: boolean
+//   message?: string
+//   onMessageDismiss?: () => void
+//   autoShowInterval?: number
+// }
+
+// const FloatingButtonWrapper: React.FC<FloatingButtonWrapperProps> = (props) => {
+//   // Get authentication state from your auth context/hook
+//   const token = useSelector((state: any) => state.user.token)
+//   const isAuthenticated = !!token // Check if token exists
+
+//   // Only render the FloatingButton if the user is authenticated
+//   if (!isAuthenticated) {
+//     return null
+//   }
+
+//   // If authenticated, render the FloatingButton with all the props
+//   return <FloatingButton {...props} />
+// }
+
+// export default FloatingButtonWrapper
