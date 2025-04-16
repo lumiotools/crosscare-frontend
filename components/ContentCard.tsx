@@ -28,7 +28,7 @@ const ContentCard: React.FC<ContentCardProps> = ({ id, title, description, date 
     >
       <View style={styles.cardContent1}>
         <Text style={styles.cardTitle1}>{title}</Text>
-        <Text style={styles.cardDescription}>{description}</Text>
+        <Text style={styles.cardDescription} numberOfLines={1}>{description}</Text>
       </View>
     </TouchableOpacity>
   );

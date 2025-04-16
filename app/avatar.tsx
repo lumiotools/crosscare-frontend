@@ -1,4 +1,4 @@
-//
+"use client"
 
 import { useState, useRef, useEffect } from "react"
 import {
@@ -19,7 +19,7 @@ import { Button } from "@rneui/themed"
 import ColorPicker from "@/constants/color-picker"
 import { LinearGradient } from "expo-linear-gradient"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { MaterialIcons, Ionicons, Feather, FontAwesome5 } from "@expo/vector-icons"
+import { MaterialIcons, Ionicons, Feather } from "@expo/vector-icons"
 import { BlurView } from "expo-blur"
 import * as Haptics from "expo-haptics"
 import * as Speech from "expo-speech"
@@ -27,7 +27,7 @@ import * as Speech from "expo-speech"
 // Define the AvatarProps type
 type AvatarProps = {
   size?: number
-  sex?: "female" | "male"
+  sex?: "female" // Only allow female
   eyesType?: "Round" | "Eyeshadow" | "Eyes" | "Smiling"
   backgroundType?: "Circle" | "Square" | "Rounded"
   backgroundColor?: string
@@ -35,24 +35,12 @@ type AvatarProps = {
   earType?: "Round" | "WithEarLobe"
   earRingType?: "None" | "Stud" | "Hoop"
   mouthType?: "Nervous" | "Pucker" | "Frown" | "Sad" | "Smirk" | "Smile" | "Suprised" | "Laughing"
-  hairType?:
-    | "Fonze"
-    | "MrT"
-    | "Doug"
-    | "Danny"
-    | "Full"
-    | "Turban"
-    | "Pixie"
-    | "Bald"
-    | "LongHair"
-    | "Curly"
-    | "BobCut"
-    | "Bun"
+  hairType?: "Pixie" | "Bald" | "LongHair" | "Curly" | "BobCut" | "Bun"
   hairColor?: string
   noseType?: "Round" | "Pointed" | "Curved"
   eyeBrowsType?: "Up" | "Down" | "EyeLashesUp" | "EyeLashesDown"
   glassesType?: "None" | "Round" | "Square"
-  facialHairType?: "None" | "Stubble" | "Beard"
+  facialHairType?: "None"
   shirtType?: "Collared" | "Crew" | "Open" | "Blouse" | "Dress"
   shirtColor?: string
   collarColor?: string
@@ -120,7 +108,6 @@ const translations = {
     back: "Back",
     speak: "Speak",
     gender: "Gender",
-    male: "Male",
     female: "Female",
     accessoryType: "Accessory Type",
     speakingText: "Hello! I'm your custom avatar. How do I look?",
@@ -165,7 +152,6 @@ const translations = {
     back: "Atrás",
     speak: "Hablar",
     gender: "Género",
-    male: "Masculino",
     female: "Femenino",
     accessoryType: "Tipo de Accesorio",
     speakingText: "¡Hola! Soy tu avatar personalizado. ¿Cómo me veo?",
@@ -176,10 +162,9 @@ const translations = {
   // Add more languages as needed
 }
 
-// Voice options
+// Voice options - only female voices
 const voiceTypes = {
   female: ["Soft Female", "Cheerful Female", "Professional Female", "Mature Female", "Young Female", "Elegant Female"],
-  male: ["Default Male", "Deep Male", "Robotic Male", "Serious Male", "Energetic Male", "Calm Male"],
 }
 
 // Theme colors
@@ -198,20 +183,25 @@ const THEME = {
   gradientStart: "#4f46e5", // Indigo 600
   gradientEnd: "#7c3aed", // Violet 600
   female: "#d946ef", // Pink
-  male: "#3b82f6", // Blue
 }
 
-// Female-specific hair types
+// Skin tone options with more diversity
+const skinToneOptions = [
+  { color: "#FFDBB4", name: "Light" },
+  { color: "#EDB98A", name: "Medium Light" },
+  { color: "#D08B5B", name: "Medium" },
+  { color: "#AE5D29", name: "Medium Dark" },
+  { color: "#614335", name: "Dark" },
+  { color: "#F8D25C", name: "Warm" },
+]
+
+// Female-specific hair types - expanded list
 const femaleHairTypes = ["LongHair", "Curly", "BobCut", "Bun", "Pixie"]
-// Male-specific hair types
-const maleHairTypes = ["Fonze", "MrT", "Doug", "Danny", "Full", "Turban", "Bald"]
 // Shared hair types
 const sharedHairTypes = ["Pixie", "Bald"]
 
-// Female-specific shirt types
-const femaleShirtTypes = ["Blouse", "Dress", "Crew"]
-// Male-specific shirt types
-const maleShirtTypes = ["Collared", "Crew", "Open"]
+// Female-specific shirt types - expanded list
+const femaleShirtTypes = ["Blouse", "Dress", "Crew", "Collared", "Open"]
 
 // Accessory types
 const accessoryTypes = ["None", "Earrings", "Necklace", "Scarf"]
@@ -219,7 +209,7 @@ const accessoryTypes = ["None", "Earrings", "Necklace", "Scarf"]
 export default function AvatarCustomizer() {
   const [avatar, setAvatar] = useState<AvatarProps>({
     size: 200,
-    sex: "female",
+    sex: "female", // Always female
     eyesType: "Round",
     backgroundType: "Circle",
     backgroundColor: "#FFAD08",
@@ -233,7 +223,7 @@ export default function AvatarCustomizer() {
     eyeBrowsType: "Up",
     glassesType: "None",
     facialHairType: "None",
-    shirtType: "Blouse",
+    shirtType: "Dress", // Default to Dress
     shirtColor: "#FF69B4",
     collarColor: "#FFFFFF",
     accessoryType: "None",
@@ -314,44 +304,9 @@ export default function AvatarCustomizer() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     }
 
-    // Handle special cases for gender-specific options
+    // Always keep sex as female
     if (key === "sex") {
-      const newGender = value as "male" | "female"
-      const updatedAvatar: Partial<AvatarProps> = { sex: newGender }
-
-      // Update hair type based on gender
-      if (newGender === "female") {
-        if (
-          !femaleHairTypes.includes(avatar.hairType as string) &&
-          !sharedHairTypes.includes(avatar.hairType as string)
-        ) {
-          updatedAvatar.hairType = "LongHair"
-        }
-        if (!femaleShirtTypes.includes(avatar.shirtType as string)) {
-          updatedAvatar.shirtType = "Blouse"
-        }
-        updatedAvatar.facialHairType = "None"
-
-        // Set female voice
-        setVoiceType("Soft Female")
-        setVoicePitch(1.2)
-      } else {
-        if (
-          !maleHairTypes.includes(avatar.hairType as string) &&
-          !sharedHairTypes.includes(avatar.hairType as string)
-        ) {
-          updatedAvatar.hairType = "Full"
-        }
-        if (!maleShirtTypes.includes(avatar.shirtType as string)) {
-          updatedAvatar.shirtType = "Crew"
-        }
-
-        // Set male voice
-        setVoiceType("Default Male")
-        setVoicePitch(0.9)
-      }
-
-      setAvatar((prev) => ({ ...prev, ...updatedAvatar }))
+      return // Do nothing, we don't allow changing gender
     } else {
       setAvatar((prev) => ({ ...prev, [key]: value }))
     }
@@ -362,25 +317,18 @@ export default function AvatarCustomizer() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
     }
 
-    const gender = Math.random() > 0.5 ? "male" : "female"
     const eyesTypes = ["Round", "Eyeshadow", "Eyes", "Smiling"]
     const mouthTypes = ["Nervous", "Pucker", "Frown", "Sad", "Smirk", "Smile", "Suprised", "Laughing"]
-    const skinColors = ["#FFDBB4", "#EDB98A", "#D08B5B", "#AE5D29", "#614335", "#F8D25C"]
+    const skinColors = skinToneOptions.map((option) => option.color)
     const hairColors = ["#000000", "#4A312C", "#8D4A43", "#D2691E", "#B87333", "#F4C2C2", "#FFDB58"]
     const shirtColors = ["#3C4F5C", "#1E90FF", "#FF6347", "#32CD32", "#9370DB", "#FF69B4"]
     const backgroundColors = ["#FFAD08", "#EDD75A", "#73B06F", "#0C8F8F", "#405059", "#CD5554"]
 
-    // Choose hair type based on gender
-    const hairType =
-      gender === "female"
-        ? femaleHairTypes[Math.floor(Math.random() * femaleHairTypes.length)]
-        : maleHairTypes[Math.floor(Math.random() * maleHairTypes.length)]
+    // Choose hair type from female options
+    const hairType = femaleHairTypes[Math.floor(Math.random() * femaleHairTypes.length)]
 
-    // Choose shirt type based on gender
-    const shirtType =
-      gender === "female"
-        ? femaleShirtTypes[Math.floor(Math.random() * femaleShirtTypes.length)]
-        : maleShirtTypes[Math.floor(Math.random() * maleShirtTypes.length)]
+    // Choose shirt type from female options
+    const shirtType = femaleShirtTypes[Math.floor(Math.random() * femaleShirtTypes.length)]
 
     // Choose accessory
     const accessoryType =
@@ -388,7 +336,7 @@ export default function AvatarCustomizer() {
 
     setAvatar({
       ...avatar,
-      sex: gender as "male" | "female",
+      sex: "female", // Always female
       eyesType: eyesTypes[Math.floor(Math.random() * eyesTypes.length)] as any,
       mouthType: mouthTypes[Math.floor(Math.random() * mouthTypes.length)] as any,
       hairType: hairType as any,
@@ -397,18 +345,13 @@ export default function AvatarCustomizer() {
       shirtColor: shirtColors[Math.floor(Math.random() * shirtColors.length)],
       backgroundColor: backgroundColors[Math.floor(Math.random() * backgroundColors.length)],
       shirtType: shirtType as any,
-      facialHairType: gender === "male" && Math.random() > 0.5 ? "Beard" : "None",
       accessoryType: accessoryType as any,
+      facialHairType: "None", // No facial hair for female
     })
 
-    // Set voice type based on gender
-    if (gender === "female") {
-      setVoiceType(voiceTypes.female[Math.floor(Math.random() * voiceTypes.female.length)])
-      setVoicePitch(1 + Math.random() * 0.5) // Higher pitch for female
-    } else {
-      setVoiceType(voiceTypes.male[Math.floor(Math.random() * voiceTypes.male.length)])
-      setVoicePitch(0.7 + Math.random() * 0.5) // Lower pitch for male
-    }
+    // Set female voice type
+    setVoiceType(voiceTypes.female[Math.floor(Math.random() * voiceTypes.female.length)])
+    setVoicePitch(1 + Math.random() * 0.5) // Higher pitch for female
   }
 
   const toggleFullPreview = () => {
@@ -490,43 +433,26 @@ export default function AvatarCustomizer() {
     </View>
   )
 
-  const renderGenderSelector = () => (
-    <View style={styles.genderContainer}>
-      <Text style={styles.label}>{t.gender}</Text>
-      <View style={styles.genderOptions}>
-        <TouchableOpacity
-          style={[
-            styles.genderOption,
-            avatar.sex === "female" && styles.selectedGenderOption,
-            avatar.sex === "female" && { borderColor: THEME.female, backgroundColor: "rgba(217, 70, 239, 0.1)" },
-          ]}
-          onPress={() => updateAvatar("sex", "female")}
-        >
-          <FontAwesome5
-            name="female"
-            size={24}
-            color={avatar.sex === "female" ? THEME.female : THEME.textLight}
-            style={styles.genderIcon}
-          />
-          <Text style={[styles.genderText, avatar.sex === "female" && { color: THEME.female }]}>{t.female}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.genderOption,
-            avatar.sex === "male" && styles.selectedGenderOption,
-            avatar.sex === "male" && { borderColor: THEME.male, backgroundColor: "rgba(59, 130, 246, 0.1)" },
-          ]}
-          onPress={() => updateAvatar("sex", "male")}
-        >
-          <FontAwesome5
-            name="male"
-            size={24}
-            color={avatar.sex === "male" ? THEME.male : THEME.textLight}
-            style={styles.genderIcon}
-          />
-          <Text style={[styles.genderText, avatar.sex === "male" && { color: THEME.male }]}>{t.male}</Text>
-        </TouchableOpacity>
+  // Custom skin tone picker with predefined options
+  const renderSkinTonePicker = () => (
+    <View style={styles.skinToneContainer}>
+      <Text style={styles.label}>{t.skinTone}</Text>
+      <View style={styles.skinToneOptions}>
+        {skinToneOptions.map((option) => (
+          <TouchableOpacity
+            key={option.color}
+            style={[
+              styles.skinToneOption,
+              { backgroundColor: option.color },
+              avatar.skinColor === option.color && styles.selectedSkinToneOption,
+            ]}
+            onPress={() => updateAvatar("skinColor", option.color)}
+          >
+            {avatar.skinColor === option.color && (
+              <Ionicons name="checkmark" size={18} color="white" style={styles.skinToneCheck} />
+            )}
+          </TouchableOpacity>
+        ))}
       </View>
     </View>
   )
@@ -590,7 +516,7 @@ export default function AvatarCustomizer() {
     <View style={styles.voiceOptionsContainer}>
       <Text style={styles.label}>{t.voiceType}</Text>
       <View style={styles.voiceTypeContainer}>
-        {(avatar.sex === "female" ? voiceTypes.female : voiceTypes.male).map((type) => (
+        {voiceTypes.female.map((type) => (
           <TouchableOpacity
             key={type}
             style={[styles.voiceTypeOption, voiceType === type && styles.selectedVoiceTypeOption]}
@@ -723,37 +649,15 @@ export default function AvatarCustomizer() {
       case "face":
         return (
           <View>
-            {renderGenderSelector()}
-            {renderColorPicker(t.skinTone, "skinColor")}
-            {renderPicker(t.noseType, "noseType", ["Round", "Pointed", "Curved"])}
-            {renderPicker(t.mouthType, "mouthType", [
-              "Nervous",
-              "Pucker",
-              "Frown",
-              "Sad",
-              "Smirk",
-              "Smile",
-              "Suprised",
-              "Laughing",
-            ])}
-            {renderPicker(t.eyesType, "eyesType", ["Round", "Eyeshadow", "Eyes", "Smiling"])}
-            {renderPicker(t.eyebrowsType, "eyeBrowsType", ["Up", "Down", "EyeLashesUp", "EyeLashesDown"])}
-            {renderPicker(t.earType, "earType", ["Round", "WithEarLobe"])}
-            {renderPicker(t.earRingType, "earRingType", ["None", "Stud", "Hoop"])}
+            {/* Only show skin tone in the face section */}
+            {renderSkinTonePicker()}
           </View>
         )
       case "hair":
         return (
           <View>
-            {renderPicker(
-              t.hairType,
-              "hairType",
-              avatar.sex === "female"
-                ? [...femaleHairTypes, ...sharedHairTypes]
-                : [...maleHairTypes, ...sharedHairTypes],
-            )}
+            {renderPicker(t.hairType, "hairType", [...femaleHairTypes, ...sharedHairTypes])}
             {renderColorPicker(t.hairColor, "hairColor")}
-            {avatar.sex === "male" && renderPicker(t.facialHair, "facialHairType", ["None", "Stubble", "Beard"])}
           </View>
         )
       case "accessories":
@@ -761,12 +665,13 @@ export default function AvatarCustomizer() {
           <View>
             {renderPicker(t.glassesType, "glassesType", ["None", "Round", "Square"])}
             {renderPicker(t.accessoryType, "accessoryType", accessoryTypes)}
+            {renderPicker(t.earRingType, "earRingType", ["None", "Stud", "Hoop"])}
           </View>
         )
       case "clothes":
         return (
           <View>
-            {renderPicker(t.shirtType, "shirtType", avatar.sex === "female" ? femaleShirtTypes : maleShirtTypes)}
+            {renderPicker(t.shirtType, "shirtType", femaleShirtTypes)}
             {renderColorPicker(t.shirtColor, "shirtColor")}
             {renderColorPicker(t.collarColor, "collarColor")}
           </View>
@@ -819,10 +724,7 @@ export default function AvatarCustomizer() {
         <View style={styles.fullPreviewContent}>
           <View style={styles.fullPreviewAvatarContainer}>
             <LinearGradient
-              colors={[
-                avatar.sex === "female" ? "#d946ef" : "#3b82f6",
-                avatar.sex === "female" ? "#8b5cf6" : "#4f46e5",
-              ]}
+              colors={["#d946ef", "#8b5cf6"]} // Female gradient colors
               style={styles.fullPreviewGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -933,7 +835,7 @@ export default function AvatarCustomizer() {
       <StatusBar barStyle="light-content" />
 
       <LinearGradient
-        colors={[avatar.sex === "female" ? "#d946ef" : "#3b82f6", avatar.sex === "female" ? "#8b5cf6" : "#4f46e5"]}
+        colors={["#d946ef", "#8b5cf6"]} // Always female gradient colors
         style={styles.headerGradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -1264,6 +1166,43 @@ const styles = StyleSheet.create({
   colorPickerContainer: {
     marginBottom: 20,
   },
+  skinToneContainer: {
+    marginBottom: 20,
+  },
+  skinToneOptions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+  skinToneOption: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: "transparent",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  selectedSkinToneOption: {
+    borderColor: THEME.primary,
+    shadowColor: THEME.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  skinToneCheck: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+  },
   genderContainer: {
     marginBottom: 20,
   },
@@ -1585,4 +1524,3 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.primary,
   },
 })
-

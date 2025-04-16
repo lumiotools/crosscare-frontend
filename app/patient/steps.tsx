@@ -280,7 +280,7 @@ const step = () => {
       const refreshInterval = setInterval(() => {
         console.log('Refreshing Fitbit data...');
         getStepStatus();
-      }, 60000); // 1 minute (60000 milliseconds)
+      }, 10000); // 1 minute (60000 milliseconds)
       
       return () => {
         console.log('Clearing Fitbit refresh interval');

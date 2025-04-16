@@ -24,7 +24,7 @@ const userSlice = createSlice({
       state.loading = action.payload;
     },
     setUser: (state, action) => {
-      console.log("Dispatching setUser:", action.payload);
+      // console.log("Dispatching setUser:", action.payload);
       state.user_id = action.payload.user_id;
       state.user_email = action.payload.user_email;
       state.user_name = action.payload.user_name;

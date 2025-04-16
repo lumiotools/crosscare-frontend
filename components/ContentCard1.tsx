@@ -52,14 +52,14 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     maxWidth:"70%",
-    fontFamily: "Inter700",
+    fontFamily: "Inter600",
     color: "#434343",
     // marginBottom: 4,
   },
   card: {
     backgroundColor: "#fff",
     // padding: 16,
-    // paddingVertical: 20,
+    paddingVertical: 5,
     // marginBottom: 16,
 
     borderRadius: 8,
@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 12,
-    marginRight: 12,
+    // marginRight: 12,
   },
 });
 export default ContentCard1;

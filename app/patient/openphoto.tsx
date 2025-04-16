@@ -24,11 +24,77 @@ const openphoto = () => {
   // Parse the params.item (which is likely a string)
   const item = typeof params.item === "string" ? JSON.parse(params.item) : null;
   
-  // console.log("Parsed Note Data:", item);
+  console.log("Parsed Note Data:", item);
 
   // Safely get date parts - only try to split if createdAt exists
   const datePart = item1?.createdAt ? item1.createdAt.split(", ")[0] : null;
   const timePart = item1?.createdAt ? item1.createdAt.split(", ")[1] : null;
+
+
+  function parseDateTime(dateTimeString: string): Date {
+    if (!dateTimeString) return new Date();
+
+    try {
+      // Split into date and time parts
+      const [datePart, timePart] = dateTimeString.split(", ");
+
+      // Split date into day, month, year
+      const [day, month, year] = datePart.split("/");
+
+      // Parse time part
+      let hours = 0;
+      let minutes = 0;
+
+      if (timePart) {
+        const isPM = timePart.toLowerCase().includes("pm");
+        const timeComponents = timePart.replace(/\s?[AP]M$/i, "").split(":");
+
+        hours = parseInt(timeComponents[0], 10);
+        if (isPM && hours < 12) hours += 12;
+        if (!isPM && hours === 12) hours = 0;
+
+        minutes = parseInt(timeComponents[1], 10);
+      }
+
+      // Create date in UTC
+      const date = new Date(Date.UTC(
+        parseInt(year, 10),
+        parseInt(month, 10) - 1, // Month is 0-indexed in JavaScript
+        parseInt(day, 10),
+        hours,
+        minutes
+      ));
+
+      return date;
+    } catch (error) {
+      console.error("Error parsing date:", error, dateTimeString);
+      return new Date();
+    }
+  }
+
+  function formatDateTimeForDisplay(dateTimeString: string): {
+    formattedDate: string
+    formattedTime: string
+  } {
+    const date = parseDateTime(dateTimeString)
+  
+    // Format date as "DD/MM/YYYY"
+    const day = date.getDate().toString().padStart(2, "0")
+    const month = (date.getMonth() + 1).toString().padStart(2, "0")
+    const year = date.getFullYear()
+    const formattedDate = `${day}/${month}/${year}`
+  
+    // Format time as "h:mm A"
+    let hours = date.getHours()
+    const ampm = hours >= 12 ? "PM" : "AM"
+    hours = hours % 12
+    hours = hours ? hours : 12 // Convert 0 to 12
+    const minutes = date.getMinutes().toString().padStart(2, "0")
+    const formattedTime = `${hours}:${minutes} ${ampm}`
+  
+    return { formattedDate, formattedTime }
+  }
+  
   
   const formatDate = (dateString: string) => {
     if (!dateString) return "Unknown Date";
@@ -65,6 +131,9 @@ const openphoto = () => {
     return `${dayOfMonth}${suffix(dayOfMonth)} ${monthName}, ${fullYear}`;
   };
 
+  const times = item1?.createdAt ? formatDateTimeForDisplay(item1.createdAt).formattedTime : "Unknown Time"
+
+
   const getdetails = async () => {
     if (!item?.id || !user?.user_id) {
       setLoading(false);
@@ -88,7 +157,7 @@ const openphoto = () => {
       }
       
       const data = await response.json();
-      // console.log("Fetched details:", data.data);
+      console.log("Fetched details:", data.data);
       setDetails(data.data);
     } catch (error) {
       console.error("Error fetching details:", error);
@@ -166,7 +235,7 @@ const openphoto = () => {
                 }}
               >
                 <Text style={styles.text1}>At</Text>
-                <Text style={styles.text}> {timePart || "Unknown Time"}</Text>
+                <Text style={styles.text}> {times}</Text>
               </View>
             </View>
           </View>

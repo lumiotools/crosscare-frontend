@@ -40,12 +40,29 @@ export default function track() {
     weight: "1g",
     length: "1.6cm",
   })
+
+  const pregnancyStartDate = new Date();  // You can use a fixed date if needed, for now using the current date
+
   // Calculate weeks remaining
-  const calculateWeeksRemaining = () => {
-    const currentWeek = Number.parseInt(selectedWeek ?? "0")
-    const weeksRemaining = 40 - currentWeek
-    return `${weeksRemaining} weeks and ${weeksRemaining > 0 ? "4 days" : "0 days"} left`
+  const calculateWeeksRemaining = (week: number) => {
+    const weeksRemaining = 40 - week
+    return `${weeksRemaining} weeks`
   }
+
+
+  const calculateDueDate = (selectedWeek: number) => {
+    const startDate = new Date(pregnancyStartDate); // Use the fixed start date
+    const dueDate = new Date(startDate.setDate(startDate.getDate() + (40 - selectedWeek) * 7));
+  
+    const day = dueDate.getDate().toString().padStart(2, '0');
+    const month = dueDate.toLocaleString('default', { month: 'short' });
+    const year = dueDate.getFullYear();
+  
+    const dueDateString = `${day}-${month}-${year}`;
+    return dueDateString;
+  };
+  
+  
 
   const handleWeekChange = (week: string, fruitData: FruitData) => {
     // Only update if the week actually changed
@@ -217,10 +234,10 @@ export default function track() {
                       }}
                     >
                       <Text style={styles.dueDate}>
-                        Date of labor 07-Jul-2024
+                        Date of labor {calculateDueDate(Number(selectedWeek ?? "0"))}
                       </Text>
                       <Text style={styles.timeLeft}>
-                      {calculateWeeksRemaining()}
+                      {calculateWeeksRemaining(Number.parseInt(selectedWeek ?? "0"))}
                       </Text>
                     </View>
                   </View>
