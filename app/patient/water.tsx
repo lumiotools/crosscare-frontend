@@ -213,7 +213,7 @@ export default function water() {
       console.log("Refreshed water data:", data);
       
       // Process the data - ensure all fields are properly formatted
-      const processedData = data.map((item: any) => {
+      const processedData = data.waterData.map((item: any) => {
         const formattedDate = formatDate(item.date);
         
         // Check if the value is small (likely glasses) or large (likely milliliters)
@@ -290,10 +290,11 @@ export default function water() {
       }
       
       const data = await response.json();
+      console.log(data);
       
       // Find today's data
       const today = new Date().toISOString().split('T')[0];
-      const todayData = data.find((item: any) => formatDate(item.date) === today);
+      const todayData = data.waterData.find((item: any) => formatDate(item.date) === today);
       
       if (todayData) {
         // Check if today's API data is different from local state

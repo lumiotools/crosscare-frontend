@@ -32,7 +32,7 @@ const QuestionnaireManager = ({
   const [hasAskedForTime, setHasAskedForTime] = useState(false); // Track if we've asked "Do you have a few minutes?"
   const [userWantsToStart, setUserWantsToStart] = useState(false); // Track user's response to time question
   const user = useSelector((state: any) => state.user);
-
+  console.log(user);
   // Use refs to track sent messages and prevent duplicates
   const sentMessages = useRef(new Set()).current;
   const isStartingQuestionnaire = useRef(false);
@@ -110,6 +110,94 @@ const QuestionnaireManager = ({
     } catch (error) {
       console.error("Error checking if intro has been shown:", error);
       return false;
+    }
+  };
+
+  // Map domain IDs to badge numbers for the API
+  const domainToBadgeMap = {
+    "domain-1": "MAMA_MILESTONE_I",
+    "domain-2": "MAMA_MILESTONE_II",
+    "domain-3": "MAMA_MILESTONE_III",
+    "domain-4": "MAMA_MILESTONE_IV",
+    "domain-5": "MAMA_MILESTONE_V",
+    "domain-6": "MAMA_MILESTONE_VI",
+  };
+
+  const awardMilestoneBadgeForDomain = async (
+    userId: string,
+    domainId: keyof typeof domainToBadgeMap
+  ) => {
+    try {
+      console.log(
+        `Awarding Milestone badge for domain ${domainId} to user ${userId}`
+      );
+  
+      // Check if userId is valid
+      if (!userId || userId.trim() === "") {
+        console.error(
+          "Invalid userId provided to awardMilestoneBadgeForDomain"
+        );
+        return;
+      }
+  
+      // Get badge type from mapping
+      const badgeType = domainToBadgeMap[domainId];
+      if (!badgeType) {
+        console.error(`No badge mapping found for domain: ${domainId}`);
+        return;
+      }
+  
+      // Get appropriate badge title based on domain number
+      const domainNumber = domainId.split("-")[1];
+      const romanNumerals = ["I", "II", "III", "IV", "V", "VI"];
+      const badgeTitle = `Mama Milestone ${
+        romanNumerals[parseInt(domainNumber) - 1]
+      }`;
+      const badgeDescription = `On completing each domain of the Doula questionnaire Domain ${
+        romanNumerals[parseInt(domainNumber) - 1]
+      }`;
+  
+      // Prepare the data payload
+      const payload = {
+        badgeType: badgeType,
+        title: badgeTitle,
+        description: badgeDescription,
+      };
+  
+      console.log(`Badge award payload:`, payload);
+  
+      // Make API call using fetch instead of axios
+      const response = await fetch(
+        `https://crosscare-backends.onrender.com/api/user/${userId}/badges/award`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+  
+      // Check if the response is ok
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Server responded with ${response.status}: ${JSON.stringify(errorData)}`);
+      }
+  
+      // Parse the JSON response
+      const data = await response.json();
+      console.log(`Badge award response:`, data);
+      return data;
+    } catch (error: any) {
+      console.error("Error awarding milestone badge:", error);
+      if (error.response) {
+        // For consistency with prior error handling, though fetch doesn't have this exact structure
+        console.error("Error status:", error.status);
+        console.error("Error data:", error.message);
+      } else {
+        console.error("Fetch error:", error.message);
+      }
+      return null;
     }
   };
 
@@ -930,12 +1018,41 @@ const QuestionnaireManager = ({
   };
 
   const moveToNextDomain = () => {
+    const completedDomainId = QUESTIONNAIRE_DOMAINS[state.currentDomainIndex]
+      .id as keyof typeof domainToBadgeMap;
     // Check if we're at the last domain
     if (state.currentDomainIndex >= QUESTIONNAIRE_DOMAINS.length - 1) {
+      awardMilestoneBadgeForDomain(userId, completedDomainId)
+        .then((result) => {
+          console.log(
+            `Badge award result for domain ${completedDomainId}:`,
+            result
+          );
+        })
+        .catch((err) => {
+          console.error(
+            `Error awarding badge for domain ${completedDomainId}:`,
+            err
+          );
+        });
       // All domains completed
       completeQuestionnaire();
       return;
     }
+
+    awardMilestoneBadgeForDomain(userId, completedDomainId)
+      .then((result) => {
+        console.log(
+          `Badge award result for domain ${completedDomainId}:`,
+          result
+        );
+      })
+      .catch((err) => {
+        console.error(
+          `Error awarding badge for domain ${completedDomainId}:`,
+          err
+        );
+      });
 
     // Move to the first question of the next domain
     setState((prevState) => ({
@@ -952,6 +1069,27 @@ const QuestionnaireManager = ({
       isActive: false,
       isCompleted: true,
     }));
+
+    // Make sure the badge for the last domain is awarded (defensive)
+    // if (state.currentDomainIndex < QUESTIONNAIRE_DOMAINS.length) {
+    //   const completedDomainId =
+    //     QUESTIONNAIRE_DOMAINS[state.currentDomainIndex].id;
+    //   try {
+    //     const badgeResult = await awardMilestoneBadgeForDomain(
+    //       userId,
+    //       completedDomainId as keyof typeof domainToBadgeMap
+    //     );
+    //     console.log(
+    //       `Final badge award result for domain ${completedDomainId}:`,
+    //       badgeResult
+    //     );
+    //   } catch (err) {
+    //     console.error(
+    //       `Error awarding final badge for domain ${completedDomainId}:`,
+    //       err
+    //     );
+    //   }
+    // }
 
     // Submit all responses to the backend
     try {

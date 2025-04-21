@@ -106,7 +106,7 @@ export const useStepsStore = create<StepsState>()(
             const data = await response.json()
             // console.log("API step data:", data)
 
-            if (data && Array.isArray(data) && data.length > 0) {
+            if (data.stepsData && Array.isArray(data.stepsData) && data.stepsData.length > 0) {
               // Process the step data from the API
               const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"]
               const fullWeekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
@@ -117,7 +117,7 @@ export const useStepsStore = create<StepsState>()(
               let latestDate = new Date(0) // Start with epoch time
 
               // Process all data regardless of time range
-              data.forEach((entry: any) => {
+              data.stepsData.forEach((entry: any) => {
                 if (!entry || !entry.date) {
                   console.warn("Invalid entry in step data:", entry)
                   return // Skip invalid entries
@@ -406,7 +406,7 @@ export const useStepsStore = create<StepsState>()(
                 day: dayAbbr,
                 steps: Number.parseInt(item.value),
                 date: item.dateTime,
-                stepsGoal: get().stepGoal || 10000, // Use current goal or default
+                stepsGoal: get().stepGoal || 0, // Use current goal or default
                 source: "fitbit",
               }
             })

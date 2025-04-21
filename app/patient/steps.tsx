@@ -629,9 +629,9 @@ const step = () => {
       }
 
       const data = await response.json();
-      console.log("API step data:", data);
+      console.log("API step data:", data.stepsData);
 
-      if (data && data.length > 0) {
+      if (data.stepsData && data.stepsData.length > 0) {
         // Process the step data from the API
         const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"];
         const fullWeekdays = [
@@ -648,7 +648,7 @@ const step = () => {
         const stepMap = new Map();
 
         // Process all data regardless of time range
-        data.forEach((entry: StepDataItem) => {
+        data.stepsData.forEach((entry: StepDataItem) => {
           const entryDate = new Date(entry.date);
           const fullDay =
             entry.day || entryDate.toLocaleString("en-US", { weekday: "long" });

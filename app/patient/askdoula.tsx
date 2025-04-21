@@ -487,22 +487,26 @@ export default function askdoula() {
 
         // Make the API call
         const response = await axios.get(apiUrl);
+        const apiData = response.data.activities 
+
+
 
         // Process the data if we got a response
         if (
-          response.data &&
-          Array.isArray(response.data) &&
-          response.data.length > 0
+          apiData &&
+          Array.isArray(apiData) &&
+          apiData.length > 0
         ) {
           console.log(
             "API data found. First record:",
-            JSON.stringify(response.data[0], null, 2)
+            JSON.stringify(apiData[0], null, 2)
           );
 
           // Sort by date (newest first)
-          const sortedRecords = [...response.data].sort(
+          const sortedRecords = [...apiData].sort(
             (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
           );
+
 
           // Get the most recent record
           const latestRecord = sortedRecords[0];
