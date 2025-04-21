@@ -13,6 +13,7 @@ import {
   Animated,
   Modal,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import {
   Ionicons,
@@ -1106,7 +1107,7 @@ const step = () => {
               source={require("../../assets/images/applehealth.png")}
               style={{ width: 24, height: 24 }}
             />
-            <Text style={styles.connectText}>Health App</Text>
+            <Text style={styles.connectText}>{Platform.OS === 'ios' ? 'Health App' : 'Samsung Health'}</Text>
             <TouchableOpacity>
               <Text style={styles.connectButton}>CONNECT</Text>
             </TouchableOpacity>
@@ -1313,7 +1314,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   headerTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: "DMSans600",
   },
   menuButton: {

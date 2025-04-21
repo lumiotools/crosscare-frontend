@@ -2220,7 +2220,7 @@ export default function askdoula() {
     return (
       <View style={styles.messageRow}>
         <Image
-          source={require("../../assets/images/doulaImg.png")}
+          source={{uri : user?.avatar_url}}
           style={styles.doulaAvatar}
         />
         <View style={styles.typingIndicator}>

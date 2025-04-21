@@ -359,6 +359,7 @@ export const useStepsStore = create<StepsState>()(
 
             if (timeRange === "today") {
               // Just today
+              startDate.setDate(today.getDate() - 1)
             } else if (timeRange === "week") {
               startDate.setDate(today.getDate() - 7)
             } else if (timeRange === "month") {
@@ -521,7 +522,7 @@ export const useStepsWithAutoRefresh = (userId: string) => {
 
       // If Fitbit is connected, fetch initial Fitbit data
       if (isFitbitConnected) {
-        fetchFitbitStepData(userId, "week")
+        fetchFitbitStepData(userId, "today")
       }
 
       // Clean up on unmount
