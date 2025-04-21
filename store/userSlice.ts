@@ -6,6 +6,7 @@ const initialState = {
   user_id: "",
   user_email: "",
   user_name: "",
+  avatar_url:"",
   user_photo: "",
 };
 
@@ -30,12 +31,14 @@ const userSlice = createSlice({
       state.user_name = action.payload.user_name;
       state.user_photo = action.payload.user_photo;
       state.token = action.payload.token;  // 🔥 Ensure token is stored
+      state.avatar_url = action.payload.avatar_url;
     },
     removeUser: (state) => {
       state.user_id = "";
       state.user_email = "";
       state.user_name = "";
       state.user_photo = "";
+      state.avatar_url ="";
       state.token = null;
     },
   },

@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useSearchParams } from "expo-router/build/hooks"
 import type React from "react"
 import { useRef, useEffect, useState } from "react"
@@ -14,6 +15,11 @@ import {
   Easing,
 } from "react-native"
 import { useSelector } from "react-redux"
+
+// Define the AvatarData interface
+interface AvatarData {
+  imageUri: string;
+}
 // import { X } from "lucide-react"
 
 interface FloatingButtonProps {
@@ -37,14 +43,13 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({
   const { width, height } = Dimensions.get("window")
 
   // Initialize position (bottom right corner)
-  const pan = useRef(new Animated.ValueXY({ x: width - 70, y: height / 2 })).current
+  const pan = useRef(new Animated.ValueXY({ x: width - 70, y: height / 1.2 })).current
 
   // Track if we're currently dragging to differentiate between drag and tap
   const isDragging = useRef(false)
   // Track the start time of touch to differentiate between tap and drag
   const touchStartTime = useRef(0)
   // Track if image loaded successfully
-  const [imageLoaded, setImageLoaded] = useState(true)
 
   // Enhanced animations for message bubble
   const messageOpacity = useRef(new Animated.Value(0)).current
@@ -55,6 +60,42 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({
 
   // Track if message is visible
   const [isMessageVisible, setIsMessageVisible] = useState(false)
+
+  const [imageLoaded, setImageLoaded] = useState(true)
+  // State for avatar image from AsyncStorage
+  const [avatarImage, setAvatarImage] = useState<string | null>(null)
+  // Loading state for avatar image
+  const [isLoadingAvatar, setIsLoadingAvatar] = useState(true)
+
+  useEffect(() => {
+    const fetchAvatarImage = async () => {
+      try {
+        setIsLoadingAvatar(true)
+        const avatarDataString = await AsyncStorage.getItem('userAvatar')
+        
+        if (avatarDataString) {
+          const avatarData: AvatarData = JSON.parse(avatarDataString)
+          console.log("Retrieved avatar data:", avatarData)
+          
+          if (avatarData.imageUri) {
+            setAvatarImage(avatarData.imageUri)
+            setImageLoaded(true)
+          }
+        }
+      } catch (error) {
+        console.error("Error retrieving avatar image:", error)
+        setImageLoaded(false)
+      } finally {
+        setIsLoadingAvatar(false)
+      }
+    }
+
+    fetchAvatarImage()
+  }, [])
+
+  const user = useSelector((state:any)=>state.user);
+  console.log("UER", user);
+
 
   // Auto-show message every minute
   useEffect(() => {
@@ -309,6 +350,35 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({
     outputRange: [0, 5, 0],
   })
 
+  const renderButtonContent = () => {
+    if (isLoadingAvatar) {
+      return <Text style={styles.fallbackText}>D</Text>;
+    }
+    
+    if (avatarImage) {
+      return (
+        <Image
+          source={{ uri: user.avatar_url }}
+          style={styles.image}
+          resizeMode="cover"
+          onError={() => setImageLoaded(false)}
+        />
+      );
+    }
+    
+    // Fallback to default image if no avatar or error loading
+    return imageLoaded ? (
+      <Image
+        source={{ uri: user.avatar_url }}
+        style={styles.image}
+        resizeMode="cover"
+        onError={() => setImageLoaded(false)}
+      />
+    ) : (
+      <Text style={styles.fallbackText}>D</Text>
+    );
+  };
+
   return (
     <Animated.View style={[styles.container, pan.getLayout()]} {...panResponder.panHandlers}>
       {/* Message bubble - positioned based on which side of screen the button is on */}
@@ -339,7 +409,7 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({
       {/* Floating button with pulse animation */}
       <Animated.View style={{ transform: [{ scale: buttonPulse }] }}>
         <TouchableWithoutFeedback onPress={handlePress}>
-          <View style={styles.button}>
+          {/* <View style={styles.button}>
             {imageLoaded ? (
               <Image
                 source={require("../assets/images/doulaImg.png")}
@@ -350,6 +420,9 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({
             ) : (
               <Text style={styles.fallbackText}>D</Text>
             )}
+          </View> */}
+          <View style={styles.button}>
+            {renderButtonContent()}
           </View>
         </TouchableWithoutFeedback>
       </Animated.View>
@@ -369,19 +442,19 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    backgroundColor: "#FA9DDF",
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
     borderWidth: 2,
-    borderColor: "#FDE8F8",
-    shadowOffset: { width: 0, height: 2 },
+    borderColor: "#FDD1F0",
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 3,
+    shadowRadius: 5,
     overflow: "hidden", // Ensure image stays within the circular button
   },
   image: {
-    width: "100%",
+    width: "100%",    
     height: "100%",
   },
   fallbackText: {
@@ -395,7 +468,7 @@ const styles = StyleSheet.create({
     borderTopEndRadius: 10,
     borderTopLeftRadius: 10,
     borderBottomLeftRadius: 10,
-    borderColor: "#F76CCF",
+    borderColor: "#F76CCF4D",
     paddingVertical: 12,
     borderWidth: 1.5,
     paddingHorizontal: 12,

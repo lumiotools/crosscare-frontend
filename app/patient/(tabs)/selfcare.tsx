@@ -70,9 +70,9 @@ const SelfCare = () => {
         >
           <View style={styles.cardContent}>
             <Text style={styles.routineTitle}>{routine.title} &gt;</Text>
-            <Text style={styles.routineDescription} numberOfLines={2}>
+            {/* <Text style={styles.routineDescription} numberOfLines={2}>
               {routine.description}
-            </Text>
+            </Text> */}
           </View>
         </LinearGradient>
       </TouchableOpacity>
@@ -155,7 +155,6 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 24,
     fontFamily: "DMSans600",
-    marginBottom: 8,
   },
   routineDescription: {
     color: "white",

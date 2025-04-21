@@ -20,7 +20,8 @@ import { TextInput } from "react-native";
 import * as Notifications from "expo-notifications";
 import { requestNotificationPermissions } from "../../../utils/NotificationManager";
 import { router } from "expo-router";
-import { setUser } from "@/store/userSlice";
+import { removeToken, setToken, setUser } from "@/store/userSlice";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const ProfileField = ({
   label,
@@ -496,11 +497,26 @@ const Profile = () => {
     setIsEditingAge(false);
   };
 
+  const logout = async()=>{
+    await AsyncStorage.removeItem('userToken');
+    await AsyncStorage.removeItem('user');
+    setToken(null);
+    setUser(null);
+    dispatch(removeToken());
+    router.replace('/login');
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={"white"} />
       <View style={styles.header}>
+        <View style={{
+          width:20,
+        }}/>
         <Text style={styles.headerTitle}>Profile</Text>
+        <TouchableOpacity onPress={logout}>
+          <Ionicons name="log-out" size={20} color="black" />
+        </TouchableOpacity>
       </View>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
@@ -571,7 +587,9 @@ const Profile = () => {
             <Text style={styles.avatarText}>Customize your Avatar</Text>
             <View style={styles.avatarRight}>
               <Image
-                source={require("../../../assets/images/doulaImg.png")}
+                source={{
+                  uri: user?.avatar_url
+                }}
                 style={styles.avatarImage}
               />
               <Ionicons name="chevron-forward" size={20} color="#E162BC" />
@@ -608,7 +626,9 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingVertical: 15,
-    alignItems: "center",
+    justifyContent:'space-between',
+    flexDirection: 'row',
+    alignItems:'center',
   },
   headerTitle: {
     fontSize: 18,
@@ -682,7 +702,7 @@ const styles = StyleSheet.create({
   avatarImage: {
     width: 32,
     height: 32,
-    borderRadius: 15,
+    borderRadius: 25,
   },
   ageInputContainer: {
     flexDirection: "row",
