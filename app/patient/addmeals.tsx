@@ -7,11 +7,21 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StatusBar,
+  Platform,
+  UIManager,
+  Animated,
+  Easing,
 } from "react-native";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AntDesign, Feather, Ionicons } from "@expo/vector-icons";
-import { useRouter, useLocalSearchParams, router } from 'expo-router';
+import { useRouter, useLocalSearchParams, router } from "expo-router";
+
+// Enable LayoutAnimation for Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 
 // Define types for the API response
 interface FoodNutrient {
@@ -30,6 +40,7 @@ interface FoodItem {
   servingSize?: number;
   servingSizeUnit?: string;
   foodNutrients: FoodNutrient[];
+  foodCategory?: string; // Add foodCategory field
 }
 
 interface FoodApiResponse {
@@ -50,6 +61,11 @@ const addmeals = () => {
   const [error, setError] = useState<string | null>(null);
   const [displayData, setDisplayData] = useState<any[]>([]);
   const [isSearchMode, setIsSearchMode] = useState(false);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const animatedValues = useRef<{ [key: number]: Animated.Value }>({});
+  const animatedHeights = useRef<{ [key: number]: Animated.Value }>({});
+  const detailsHeights = useRef<{ [key: number]: number }>({});
+
 
   // Initial API call to get some default foods
   useEffect(() => {
@@ -85,6 +101,7 @@ const addmeals = () => {
       }
 
       const data = await response.json();
+      console.log(data.foods);
 
       if (data && Array.isArray(data.foods)) {
         const processedResults = processSearchResults(data.foods);
@@ -127,6 +144,8 @@ const addmeals = () => {
             food.servingSize || getDefaultServingSize(food.description),
           servingSizeUnit:
             food.servingSizeUnit || getDefaultServingUnit(food.description),
+            category: food.foodCategory || "Unknown",
+            expanded: false,
         });
       }
     });
@@ -214,6 +233,26 @@ const addmeals = () => {
     return 0;
   };
 
+  const getMacronutrient = (foodItem: any, target: string) => {
+    if (foodItem.foodNutrients) {
+      const nutrient = foodItem.foodNutrients.find(
+        (n: FoodNutrient) =>
+          (n.nutrientName &&
+            n.nutrientName.toLowerCase().includes(target.toLowerCase())) ||
+          (n.nutrient &&
+            n.nutrient.name &&
+            n.nutrient.name.toLowerCase().includes(target.toLowerCase()))
+      );
+      return nutrient ? Math.round(nutrient.value) : 0;
+    }
+    return 0;
+  };
+
+  const getProtein = (foodItem: any) => getMacronutrient(foodItem, "protein");
+  const getCarbs = (foodItem: any) =>
+    getMacronutrient(foodItem, "carbohydrate");
+  const getFat = (foodItem: any) => getMacronutrient(foodItem, "total lipid");
+
   const toggleSelection = (item: any) => {
     const newSelected = new Set(selectedItems);
     if (selectedItems.has(item.fdcId)) {
@@ -244,15 +283,74 @@ const addmeals = () => {
     }
   };
 
+  const getAnimatedValue = (id: number) => {
+    if (!animatedValues.current[id]) {
+      animatedValues.current[id] = new Animated.Value(expandedId === id ? 1 : 0);
+    }
+    return animatedValues.current[id];
+  };
+
+  const toggleExpanded = (id: number) => {
+    // Initialize animation value if it doesn't exist
+    if (!animatedValues.current[id]) {
+      animatedValues.current[id] = new Animated.Value(0);
+    }
+    
+    // Toggle expanded state
+    const isExpanding = expandedId !== id;
+    setExpandedId(isExpanding ? id : null);
+    
+    // Animate to expanded or collapsed state
+    Animated.timing(animatedValues.current[id], {
+      toValue: isExpanding ? 1 : 0,
+      duration: 300,
+      easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+      useNativeDriver: false, // Set to false for height animations
+    }).start();
+  };
+
   // Update the renderFoodItem to use the new toggleSelection
   const renderFoodItem = ({ item }: { item: any }) => {
     const calories = getCalories(item);
     const isSelected = selectedItems.has(item.fdcId);
+    const isExpanded = expandedId === item.fdcId;
+    
+    const protein = getProtein(item);
+    const carbs = getCarbs(item);
+    const fat = getFat(item);
+
+    const animValue = getAnimatedValue(item.fdcId);
+    
+    // Calculate animations
+    const slideIn = animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [-20, 0],
+    });
+    
+    const fadeIn = animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 1],
+    });
+    
+    const rotateArrow = animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['0deg', '90deg'],
+    });
+
+    const maxHeight = animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 150], // Adjust this value based on your content
+    });
 
     return (
+      <View style={styles.foodItemContainer}>
       <TouchableOpacity
-        onPress={() => toggleSelection(item)}
-        style={styles.foodItem}
+        onPress={() => toggleExpanded(item.fdcId)}
+        style={[
+          styles.foodItem, 
+          isExpanded && styles.expandedFoodItem
+        ]}
+        activeOpacity={0.7}
       >
         <View style={styles.foodInfo}>
           <Text style={styles.foodName}>{item.name || item.description}</Text>
@@ -260,6 +358,7 @@ const addmeals = () => {
             {item.servingSize} {item.servingSizeUnit}
           </Text>
         </View>
+
         <View style={styles.rightContent}>
           <Text style={styles.calories}>{calories} Cal</Text>
           <TouchableOpacity
@@ -286,6 +385,112 @@ const addmeals = () => {
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
+      
+      <Animated.View 
+          style={[
+            styles.expandedDetailsContainer,
+            {
+              maxHeight,
+              opacity: fadeIn,
+            }
+          ]}
+        >
+          <Animated.View 
+            style={[
+              styles.expandedDetails,
+              {
+                transform: [{ translateX: slideIn }]
+              }
+            ]}
+          >
+            <View style={styles.macroRow}>
+              <Animated.View 
+                style={[
+                  styles.macroItem, 
+                  { 
+                    opacity: animValue.interpolate({
+                      inputRange: [0, 0.7, 1],
+                      outputRange: [0, 0.5, 1]
+                    }),
+                    transform: [{ 
+                      translateY: animValue.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [10, 0]
+                      }) 
+                    }]
+                  }
+                ]}
+              >
+                <Text style={styles.macroLabel}>Protein</Text>
+                <Text style={styles.macroValue}>{protein}g</Text>
+              </Animated.View>
+              
+              <Animated.View 
+                style={[
+                  styles.macroItem, 
+                  { 
+                    opacity: animValue.interpolate({
+                      inputRange: [0, 0.8, 1],
+                      outputRange: [0, 0.5, 1]
+                    }),
+                    transform: [{ 
+                      translateY: animValue.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [10, 0]
+                      }) 
+                    }]
+                  }
+                ]}
+              >
+                <Text style={styles.macroLabel}>Carbs</Text>
+                <Text style={styles.macroValue}>{carbs}g</Text>
+              </Animated.View>
+              
+              <Animated.View 
+                style={[
+                  styles.macroItem, 
+                  { 
+                    opacity: animValue.interpolate({
+                      inputRange: [0, 0.9, 1],
+                      outputRange: [0, 0.5, 1]
+                    }),
+                    transform: [{ 
+                      translateY: animValue.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [10, 0]
+                      }) 
+                    }]
+                  }
+                ]}
+              >
+                <Text style={styles.macroLabel}>Fat</Text>
+                <Text style={styles.macroValue}>{fat}g</Text>
+              </Animated.View>
+            </View>
+            
+            <Animated.View 
+              style={[
+                styles.categoryContainer,
+                {
+                  opacity: animValue.interpolate({
+                    inputRange: [0, 0.8, 1],
+                    outputRange: [0, 0.5, 1]
+                  }),
+                  transform: [{ 
+                    translateX: animValue.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [15, 0]
+                    }) 
+                  }]
+                }
+              ]}
+            >
+              <Text style={styles.categoryLabel}>Category:</Text>
+              <Text style={styles.categoryValue}>{item.category}</Text>
+            </Animated.View>
+          </Animated.View>
+        </Animated.View>
+    </View>
     );
   };
 
@@ -322,7 +527,7 @@ const addmeals = () => {
               }
             }}
           />
-          <TouchableOpacity onPress={()=>router.push('/patient/upccode')}>
+          <TouchableOpacity onPress={() => router.push("/patient/upccode")}>
             <AntDesign name="qrcode" size={18} />
           </TouchableOpacity>
         </View>
@@ -415,6 +620,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
   },
+  expandedFoodItem: {
+    backgroundColor: '#FAFAFA',
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    borderBottomWidth: 0,
+  },
   foodInfo: {
     flex: 1,
   },
@@ -439,8 +650,64 @@ const styles = StyleSheet.create({
     color: "#434343",
     marginRight: 6,
   },
+  expandedDetails: {
+    backgroundColor: "#F9F9F9",
+    padding: 12,
+    borderRadius: 8,
+    marginTop:10,
+    marginBottom: 10,
+  },
+  macroRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  categoryContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+    paddingHorizontal: 4,
+  },
+  categoryLabel: {
+    fontSize: 12,
+    fontFamily: "Inter500",
+    color: "#7B7B7B",
+    marginRight: 4,
+  },
+  categoryValue: {
+    fontSize: 12,
+    fontFamily: "Inter400",
+    color: "#434343",
+  },
+  macroItem: {
+    flex: 1,
+    alignItems: "center",
+    padding: 8,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 6,
+    marginHorizontal: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
+    elevation: 1,
+  },
+  macroLabel: {
+    fontSize: 12,
+    fontFamily: "Inter400",
+    color: "#7B7B7B",
+    marginBottom: 2,
+  },
+  macroValue: {
+    fontSize: 14,
+    fontFamily: "Inter600",
+    color: "#434343",
+  },
   addButton: {
     padding: 4,
+  },
+  expandedDetailsContainer: {
+    overflow: 'hidden',
   },
   errorContainer: {
     padding: 20,

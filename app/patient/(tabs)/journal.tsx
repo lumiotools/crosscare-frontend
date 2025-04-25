@@ -262,11 +262,11 @@ export default function Journal() {
     const filteredPhotos = filterPhotos(photosSearchQuery); // Define filteredPhotos
     return (
       <View style={styles.sectionsContainer}>
-         {filteredPhotos.map((section, sectionIndex) => (
-          <View key={sectionIndex}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-            {section.items.length && (
-              section.items.map((photo, index) => (
+        {filteredPhotos.map((section, sectionIndex) => (
+          section.items.length > 0 && (
+            <View key={sectionIndex}>
+              <Text style={styles.sectionTitle}>{section.title}</Text>
+              {section.items.map((photo, index) => (
                 <ContentCard1
                   key={index}
                   id={photo.id}
@@ -274,14 +274,14 @@ export default function Journal() {
                   imageSource={{ uri: photo.imageUrl }}
                   date={photo.date}
                 />
-              ))
-            )}
-          </View>
+              ))}
+            </View>
+          )
         ))}
       </View>
     );
   };
-
+  
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />

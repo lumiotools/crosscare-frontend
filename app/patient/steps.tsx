@@ -629,7 +629,7 @@ const step = () => {
       }
 
       const data = await response.json();
-      console.log("API step data:", data.stepsData);
+      console.log("API step data:", data);
 
       if (data.stepsData && data.stepsData.length > 0) {
         // Process the step data from the API

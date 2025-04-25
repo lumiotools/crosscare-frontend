@@ -10,6 +10,7 @@ import {
   Animated,
   Modal,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,6 +21,17 @@ import ViewShot from "react-native-view-shot";
 import { useDispatch, useSelector } from "react-redux";
 import { setUser } from "@/store/userSlice";
 import { LinearGradient } from "expo-linear-gradient";
+
+// Contentful configuration
+const SPACE_ID = 'ar5yaphmi182';
+const ACCESS_TOKEN = '9g_w7hnzte5Uwu_-6ZhwMb8WCeF-9c7lQyJUoTYbip4';
+const CONTENT_PREVIEW_TOKEN = 'UVZsv9lhp8bF19ZCGpMYApn323EnTRQqgiNhT9iGaSE';
+const HAIRSTYLE_CONTENT_TYPE = 'hairStyle';
+const OUTFIT_CONTENT_TYPE = 'outfit';
+const CACHE_KEY_HAIRSTYLES = 'avatarHairstyles';
+const CACHE_KEY_OUTFITS = 'avatarOutfits';
+const CACHE_EXPIRY_MS = 0;
+
 
 // Define TypeScript interfaces
 interface Hairstyle {
@@ -37,40 +49,75 @@ interface Outfit {
 }
 
 interface Badge {
-  id: string
-  patientId: string
-  badgeId: string
-  awardedAt: string
+  id: string;
+  patientId: string;
+  badgeId: string;
+  awardedAt: string;
   badge: {
-    type: string
-    title: string
-    description: string
-    createdAt: string
-  }
+    type: string;
+    title: string;
+    description: string;
+    createdAt: string;
+  };
 }
 
 interface UnlockResult {
-  hairstyles: number[]
-  outfits: number[]
+  hairstyles: number[];
+  outfits: number[];
 }
 
 // List of regular badge types
 const REGULAR_BADGE_TYPES = [
   "HYDRATED_QUEEN",
   "SNAPSHOT",
-  "MAMA_MILESTONE_I",
-  "MAMA_MILESTONE_II",
-  "MAMA_MILESTONE_III",
-  "MAMA_MILESTONE_IV",
-  "MAMA_MILESTONE_V",
-  "MAMA_MILESTONE_VI",
+  "TRIVIA_QUEEN",
   "HEART_SCRIBE",
   "RESTED_DIVA",
   "EXPLORER",
-]
+];
 
 // List of streak badge types
-const STREAK_BADGE_TYPES = ["WATER_WIZARD", "SLEEP_WIZARD", "HEALTH_QUEEN", "ON_THE_MOVE", "HOT_MAMA"]
+const STREAK_BADGE_TYPES = [
+  "HEALTH_QUEEN",
+  "ON_THE_MOVE",
+  "HOT_MAMA",
+  "SLEEP_WIZARD_I",
+  "SLEEP_WIZARD_II",
+  "SLEEP_WIZARD_III",
+  "SLEEP_WIZARD_IV",
+  "SLEEP_WIZARD_V",
+  "SLEEP_WIZARD_VI",
+  "SLEEP_WIZARD_VII",
+  "SLEEP_WIZARD_VIII",
+  "SLEEP_WIZARD_IX",
+  "WATER_WIZARD_I",
+  "WATER_WIZARD_II",
+  "WATER_WIZARD_III",
+  "WATER_WIZARD_IV",
+  "WATER_WIZARD_V",
+  "WATER_WIZARD_VI",
+  "WATER_WIZARD_VII",
+  "WATER_WIZARD_VIII",
+  "WATER_WIZARD_IX",
+  "HEALTH_QUEEN_I",
+  "HEALTH_QUEEN_II",
+  "HEALTH_QUEEN_III",
+  "HEALTH_QUEEN_IV",
+  "HEALTH_QUEEN_V",
+  "HEALTH_QUEEN_VI",
+  "HEALTH_QUEEN_VII",
+  "HEALTH_QUEEN_VIII",
+  "HEALTH_QUEEN_IX",
+  "ON_THE_MOVE_I",
+  "ON_THE_MOVE_II",
+  "ON_THE_MOVE_III",
+  "ON_THE_MOVE_IV",
+  "ON_THE_MOVE_V",
+  "ON_THE_MOVE_VI",
+  "ON_THE_MOVE_VII",
+  "ON_THE_MOVE_VIII",
+  "ON_THE_MOVE_IX",
+];
 
 // Mock data for hairstyles
 const hairstyles: Hairstyle[] = [
@@ -464,11 +511,16 @@ export default function AvatarSelectionScreen() {
   const token = useSelector((state: any) => state.user.token);
   const user = useSelector((state: any) => state.user);
   const dispatch = useDispatch();
-  const [badgeData, setBadgeData] = useState<Badge[]>([])
-  const [earnedBadges, setEarnedBadges] = useState<string[]>([])
-  const [unlockResult, setUnlockResult] = useState<UnlockResult | null>(null)
-  const [localHairstyles, setLocalHairstyles] = useState<Hairstyle[]>(hairstyles)
-  const [localOutfits, setLocalOutfits] = useState<Outfit[]>(outfits)
+  const [badgeData, setBadgeData] = useState<Badge[]>([]);
+  const [earnedBadges, setEarnedBadges] = useState<string[]>([]);
+  const [unlockResult, setUnlockResult] = useState<UnlockResult | null>(null);
+  const [localHairstyles, setLocalHairstyles] =
+    useState<Hairstyle[]>(hairstyles);
+  const [localOutfits, setLocalOutfits] = useState<Outfit[]>(outfits);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hairstylesLoaded, setHairstylesLoaded] = useState(false);
+  const [outfitsLoaded, setOutfitsLoaded] = useState(false);
+  const [avatarLoaded, setAvatarLoaded] = useState(false);
 
   // Reference for ViewShot
   const viewShotRef = useRef(null);
@@ -482,8 +534,48 @@ export default function AvatarSelectionScreen() {
   const previewOpacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    fetchBadges()
-  }, [])
+    // Start loading process
+    setIsLoading(true);
+
+    // Simulate loading hairstyles (takes 1-2 seconds)
+    const hairstylesTimer = setTimeout(() => {
+      setHairstylesLoaded(true);
+      console.log("Hairstyles loaded");
+    }, 1500);
+
+    // Simulate loading outfits (takes 1.5-2.5 seconds)
+    const outfitsTimer = setTimeout(() => {
+      setOutfitsLoaded(true);
+      console.log("Outfits loaded");
+    }, 2000);
+
+    // Simulate loading avatar (takes 2-3 seconds)
+    const avatarTimer = setTimeout(() => {
+      setAvatarLoaded(true);
+      console.log("Avatar loaded");
+    }, 1000);
+
+    // When all assets are loaded, set loading to false
+    const checkLoadingStatus = setInterval(() => {
+      if (hairstylesLoaded && outfitsLoaded && avatarLoaded) {
+        setIsLoading(false);
+        clearInterval(checkLoadingStatus);
+        console.log("All assets loaded");
+      }
+    }, 300);
+
+    // Cleanup timers
+    return () => {
+      clearTimeout(hairstylesTimer);
+      clearTimeout(outfitsTimer);
+      clearTimeout(avatarTimer);
+      clearInterval(checkLoadingStatus);
+    };
+  }, []);
+
+  useEffect(() => {
+    fetchBadges();
+  }, []);
 
   // Effect to handle tab changes and update locked status
   useEffect(() => {
@@ -501,150 +593,175 @@ export default function AvatarSelectionScreen() {
 
   const fetchBadges = async () => {
     if (!token || !user?.user_id) {
-      console.log("User not authenticated, cannot fetch badges")
-      return
+      console.log("User not authenticated, cannot fetch badges");
+      return;
     }
 
     try {
-      const response = await fetch(`https://crosscare-backends.onrender.com/api/user/${user.user_id}`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      })
+      const response = await fetch(
+        `https://crosscare-backends.onrender.com/api/user/${user.user_id}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch badges: ${response.status}`)
+        throw new Error(`Failed to fetch badges: ${response.status}`);
       }
 
-      const data = await response.json()
-      console.log(data)
+      const data = await response.json();
+      console.log(data);
       if (data && Array.isArray(data)) {
-        setBadgeData(data)
+        setBadgeData(data);
 
         // Extract badge names from the data
-        const badgeNames = data.map((badge) => badge.badge.title)
-        setEarnedBadges(badgeNames)
+        const badgeNames = data.map((badge) => badge.badge.title);
+        setEarnedBadges(badgeNames);
 
         const unlockableItems = calculateUnlockableItems(data);
-        if (unlockableItems.hairstyles.length > 0 || unlockableItems.outfits.length > 0) {
-          setUnlockResult(unlockableItems)
+        if (
+          unlockableItems.hairstyles.length > 0 ||
+          unlockableItems.outfits.length > 0
+        ) {
+          setUnlockResult(unlockableItems);
           // Update the local arrays with unlocked items
-          updateUnlockedItems(unlockableItems)
+          updateUnlockedItems(unlockableItems);
         }
-
       }
     } catch (error) {
-      console.error("Error fetching badges:", error)
+      console.error("Error fetching badges:", error);
     }
-  }
+  };
 
   const calculateUnlockableItems = (badges: Badge[]): UnlockResult => {
     // Count regular badges and streak badges
     const regularBadges = badges.filter((badge) => {
       // Check if the badge title is in our list of regular badge names
-      return REGULAR_BADGE_TYPES.includes(badge.badge.type)
-    })
+      return REGULAR_BADGE_TYPES.includes(badge.badge.type);
+    });
 
-    const streakBadges = badges.filter((badge) => STREAK_BADGE_TYPES.includes(badge.badge.type))
+    const streakBadges = badges.filter((badge) =>
+      STREAK_BADGE_TYPES.includes(badge.badge.type)
+    );
 
     console.log(
       "Regular badges:",
       regularBadges.length,
-      regularBadges.map((b) => b.badge.type),
-    )
+      regularBadges.map((b) => b.badge.type)
+    );
     console.log(
       "Streak badges:",
       streakBadges.length,
-      streakBadges.map((b) => b.badge.type),
-    )
+      streakBadges.map((b) => b.badge.type)
+    );
 
     // Calculate unlockable items based on rules:
     // - 1 hair & 1 outfit for every 3 regular badges
     // - 1 hair OR 1 outfit for every streak badge
 
-    const regularUnlockPairs = Math.floor(regularBadges.length / 3)
-    console.log("Regular unlock pairs:", regularUnlockPairs)
+    const regularUnlockPairs = Math.floor(regularBadges.length / 3);
+    console.log("Regular unlock pairs:", regularUnlockPairs);
+
+    const streakUnlocks = streakBadges.length;
+    console.log("Streak unlocks:", streakUnlocks);
 
     // For streak badges, alternate between hair and outfit
-    let streakHairs = 0
-    let streakOutfits = 0
+    let regularHairs = 0;
+    let regularOutfits = 0;
 
-    for (let i = 0; i < streakBadges.length; i++) {
+    for (let i = 0; i < regularUnlockPairs; i++) {
+      // Alternate between hair and outfit, starting with hair
       if (i % 2 === 0) {
-        streakHairs++
+        regularHairs++;
       } else {
-        streakOutfits++
+        regularOutfits++;
       }
     }
 
-    console.log("Streak hairs:", streakHairs, "Streak outfits:", streakOutfits)
+    // For streak badges: alternate between hair and outfit
+    let streakHairs = 0;
+    let streakOutfits = 0;
+
+    for (let i = 0; i < streakUnlocks; i++) {
+      // Alternate between hair and outfit, starting with hair
+      if (i % 2 === 0) {
+        streakHairs++;
+      } else {
+        streakOutfits++;
+      }
+    }
+
+    console.log("Streak hairs:", streakHairs, "Streak outfits:", streakOutfits);
 
     // Calculate how many items should be unlocked in total
-    const totalHairsToUnlock = regularUnlockPairs + streakHairs
-    const totalOutfitsToUnlock = regularUnlockPairs + streakOutfits
+    const totalHairsToUnlock = regularUnlockPairs + streakHairs;
+    const totalOutfitsToUnlock = regularUnlockPairs + streakOutfits;
 
-    console.log("Total hairs to unlock:", totalHairsToUnlock, "Total outfits to unlock:", totalOutfitsToUnlock)
+    console.log(
+      "Total hairs to unlock:",
+      totalHairsToUnlock,
+      "Total outfits to unlock:",
+      totalOutfitsToUnlock
+    );
 
     // Define specific IDs to unlock based on the counts
     // Start from ID 6 since IDs 1-5 are already unlocked by default
-    const hairstyleIdsToUnlock = []
+    const hairstyleIdsToUnlock = [];
     for (let i = 0; i < totalHairsToUnlock; i++) {
-      // Start from ID 6 and go up
-      const idToUnlock = 6 + i
+      const idToUnlock = 6 + i;
       if (idToUnlock <= 10) {
-        // Make sure we don't exceed the available IDs
-        hairstyleIdsToUnlock.push(idToUnlock)
+        hairstyleIdsToUnlock.push(idToUnlock);
       }
     }
 
-    const outfitIdsToUnlock = []
+    const outfitIdsToUnlock = [];
     for (let i = 0; i < totalOutfitsToUnlock; i++) {
-      // Start from ID 6 and go up
-      const idToUnlock = 6 + i
+      const idToUnlock = 6 + i;
       if (idToUnlock <= 10) {
-        // Make sure we don't exceed the available IDs
-        outfitIdsToUnlock.push(idToUnlock)
+        outfitIdsToUnlock.push(idToUnlock);
       }
     }
 
-    console.log("Hairstyles to unlock:", hairstyleIdsToUnlock)
-    console.log("Outfits to unlock:", outfitIdsToUnlock)
+    console.log("Hairstyles to unlock:", hairstyleIdsToUnlock);
+    console.log("Outfits to unlock:", outfitIdsToUnlock);
 
     return {
       hairstyles: hairstyleIdsToUnlock,
       outfits: outfitIdsToUnlock,
-    }
-  }
+    };
+  };
 
   const updateUnlockedItems = (unlockableItems: UnlockResult) => {
     // Update hairstyles
     if (unlockableItems.hairstyles.length > 0) {
-      const updatedHairstyles = [...localHairstyles]
+      const updatedHairstyles = [...localHairstyles];
       unlockableItems.hairstyles.forEach((id) => {
-        const index = updatedHairstyles.findIndex((h) => h.id === id)
+        const index = updatedHairstyles.findIndex((h) => h.id === id);
         if (index !== -1) {
-          updatedHairstyles[index].locked = false
-          updatedHairstyles[index].grayScale = false
+          updatedHairstyles[index].locked = false;
+          updatedHairstyles[index].grayScale = false;
         }
-      })
-      setLocalHairstyles(updatedHairstyles)
+      });
+      setLocalHairstyles(updatedHairstyles);
     }
 
     // Update outfits
     if (unlockableItems.outfits.length > 0) {
-      const updatedOutfits = [...localOutfits]
+      const updatedOutfits = [...localOutfits];
       unlockableItems.outfits.forEach((id) => {
-        const index = updatedOutfits.findIndex((o) => o.id === id)
+        const index = updatedOutfits.findIndex((o) => o.id === id);
         if (index !== -1) {
-          updatedOutfits[index].locked = false
-          updatedOutfits[index].grayScale = false
+          updatedOutfits[index].locked = false;
+          updatedOutfits[index].grayScale = false;
         }
-      })
-      setLocalOutfits(updatedOutfits)
+      });
+      setLocalOutfits(updatedOutfits);
     }
-  }
+  };
 
   // Run animation when hairstyle or outfit changes
   useEffect(() => {
@@ -704,13 +821,13 @@ export default function AvatarSelectionScreen() {
   const handleHairstyleSelect = (hairstyleId: number): void => {
     // Always update the preview hairstyle
     setPreviewHairstyle(hairstyleId);
-    
+
     // Check if the selected hairstyle is locked
     const isLocked = localHairstyles.find((h) => h.id === hairstyleId)?.locked;
-    
+
     // Update locked state
     setLockedHairstyleSelected(!!isLocked);
-    
+
     // Only update the selected hairstyle if it's not locked
     if (hairstyleId !== selectedHairstyle && !isLocked) {
       setSelectedHairstyle(hairstyleId);
@@ -720,13 +837,13 @@ export default function AvatarSelectionScreen() {
   const handleOutfitSelect = (outfitId: number): void => {
     // Always update the preview outfit
     setPreviewOutfit(outfitId);
-    
+
     // Check if the selected outfit is locked
     const isLocked = localOutfits.find((o) => o.id === outfitId)?.locked;
-    
+
     // Update locked state
     setLockedOutfitSelected(!!isLocked);
-    
+
     // Only update the selected outfit if it's not locked
     if (outfitId !== selectedOutfit && !isLocked) {
       setSelectedOutfit(outfitId);
@@ -891,9 +1008,18 @@ export default function AvatarSelectionScreen() {
   };
 
   const isAnySelectedItemLocked = () => {
-    const isHairstyleLocked = localHairstyles.find((h) => h.id === previewHairstyle)?.locked;
-    const isOutfitLocked = localOutfits.find((o) => o.id === previewOutfit)?.locked;
-    return isHairstyleLocked || isOutfitLocked || lockedHairstyleSelected || lockedOutfitSelected;
+    const isHairstyleLocked = localHairstyles.find(
+      (h) => h.id === previewHairstyle
+    )?.locked;
+    const isOutfitLocked = localOutfits.find(
+      (o) => o.id === previewOutfit
+    )?.locked;
+    return (
+      isHairstyleLocked ||
+      isOutfitLocked ||
+      lockedHairstyleSelected ||
+      lockedOutfitSelected
+    );
   };
 
   // Function to check if an item should be displayed as locked in the grid
@@ -902,16 +1028,48 @@ export default function AvatarSelectionScreen() {
     if (isHairstyle && lockedOutfitSelected) {
       return true;
     }
-    
+
     // If it's an outfit and a locked hairstyle is selected
     if (!isHairstyle && lockedHairstyleSelected) {
       return true;
     }
-    
+
     // Otherwise, check the item's own locked status
-    return isHairstyle 
-      ? localHairstyles.find(h => h.id === itemId)?.locked 
-      : localOutfits.find(o => o.id === itemId)?.locked;
+    return isHairstyle
+      ? localHairstyles.find((h) => h.id === itemId)?.locked
+      : localOutfits.find((o) => o.id === itemId)?.locked;
+  };
+
+  const renderHairstyleLoadingSkeleton = () => {
+    return (
+      <View style={styles.optionsGrid}>
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((index) => (
+          <View key={index} style={styles.optionItem}>
+            <View
+              style={[styles.optionImageContainer, styles.skeletonContainer]}
+            >
+              <ActivityIndicator size="small" color="#FF69B4" />
+            </View>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
+  const renderOutfitLoadingSkeleton = () => {
+    return (
+      <View style={styles.optionsGrid}>
+        {[1, 2, 3, 4, 5, 6].map((index) => (
+          <View key={index} style={styles.optionItem1}>
+            <View
+              style={[styles.optionImageContainer1, styles.skeletonContainer]}
+            >
+              <ActivityIndicator size="small" color="#FF69B4" />
+            </View>
+          </View>
+        ))}
+      </View>
+    );
   };
 
   return (
@@ -924,14 +1082,16 @@ export default function AvatarSelectionScreen() {
           <Text style={styles.cancelButton}>Cancel</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Avatar Selection</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={handleDonePress}
           disabled={isAnySelectedItemLocked()}
         >
-          <Text style={[
-            styles.doneButton,
-            isAnySelectedItemLocked() && styles.disabledButton
-          ]}>
+          <Text
+            style={[
+              styles.doneButton,
+              isAnySelectedItemLocked() && styles.disabledButton,
+            ]}
+          >
             Done
           </Text>
         </TouchableOpacity>
@@ -1001,47 +1161,58 @@ export default function AvatarSelectionScreen() {
       {/* Options Container */}
       <ScrollView style={styles.optionsContainer}>
         {activeTab === "Hairstyle" ? (
-          <View style={styles.optionsGrid}>
-            {localHairstyles.map((hairstyle) => (
-              <TouchableOpacity
-                key={hairstyle.id}
-                style={[
-                  styles.optionItem,
-                  previewHairstyle === hairstyle.id &&
-                    styles.selectedOptionItem,
-                ]}
-                onPress={() => handleHairstyleSelect(hairstyle.id)}
-              >
-                <View
+          !hairstylesLoaded ? (
+            renderHairstyleLoadingSkeleton()
+          ) : (
+            <View style={styles.optionsGrid}>
+              {localHairstyles.map((hairstyle) => (
+                <TouchableOpacity
+                  key={hairstyle.id}
                   style={[
-                    styles.optionImageContainer,
+                    styles.optionItem,
                     previewHairstyle === hairstyle.id &&
-                      styles.selectedImageContainer,
-                    (hairstyle.locked || (lockedOutfitSelected && previewHairstyle === hairstyle.id)) && 
-                      styles.lockedImageContainer,
-                    lockedOutfitSelected &&
-                      previewHairstyle === hairstyle.id &&
-                      styles.lockedOptionItem,
+                      styles.selectedOptionItem,
                   ]}
+                  onPress={() => handleHairstyleSelect(hairstyle.id)}
                 >
-                  <Image
-                    source={hairstyle.image}
+                  <View
                     style={[
-                      styles.optionImage,
-                      (hairstyle.grayScale) && 
-                        styles.grayscaleImage,
+                      styles.optionImageContainer,
+                      previewHairstyle === hairstyle.id &&
+                        styles.selectedImageContainer,
+                      (hairstyle.locked ||
+                        (lockedOutfitSelected &&
+                          previewHairstyle === hairstyle.id)) &&
+                        styles.lockedImageContainer,
+                      lockedOutfitSelected &&
+                        previewHairstyle === hairstyle.id &&
+                        styles.lockedOptionItem,
                     ]}
-                    resizeMode="contain"
-                  />
-                  {hairstyle.locked && (
-                    <View style={styles.lockIconContainer}>
-                      <Ionicons name="lock-closed" size={12} color="#FF69B4" />
-                    </View>
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
+                  >
+                    <Image
+                      source={hairstyle.image}
+                      style={[
+                        styles.optionImage,
+                        hairstyle.grayScale && styles.grayscaleImage,
+                      ]}
+                      resizeMode="contain"
+                    />
+                    {hairstyle.locked && (
+                      <View style={styles.lockIconContainer}>
+                        <Ionicons
+                          name="lock-closed"
+                          size={12}
+                          color="#FF69B4"
+                        />
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )
+        ) : !outfitsLoaded ? (
+          renderOutfitLoadingSkeleton()
         ) : (
           <View style={styles.optionsGrid}>
             {localOutfits.map((outfit) => (
@@ -1058,7 +1229,9 @@ export default function AvatarSelectionScreen() {
                     styles.optionImageContainer1,
                     previewOutfit === outfit.id &&
                       styles.selectedImageContainer,
-                    (outfit.locked || (lockedHairstyleSelected && previewOutfit === outfit.id)) && 
+                    (outfit.locked ||
+                      (lockedHairstyleSelected &&
+                        previewOutfit === outfit.id)) &&
                       styles.lockedImageContainer,
                     lockedHairstyleSelected &&
                       previewOutfit === outfit.id &&
@@ -1069,8 +1242,7 @@ export default function AvatarSelectionScreen() {
                     source={outfit.image}
                     style={[
                       styles.outfitImage,
-                      (outfit.grayScale) && 
-                        styles.grayscaleImage,
+                      outfit.grayScale && styles.grayscaleImage,
                     ]}
                     resizeMode="contain"
                   />
@@ -1175,6 +1347,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 15,
+  },
+  skeletonContainer: {
+    backgroundColor: "#F7F7F780",
+    justifyContent: "center",
+    alignItems: "center",
   },
   cancelButton: {
     fontSize: 15,
@@ -1469,7 +1646,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 10,
     marginHorizontal: 5,
-    marginTop:10,
+    marginTop: 10,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#F76CCF",

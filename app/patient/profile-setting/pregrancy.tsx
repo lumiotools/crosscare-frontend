@@ -306,7 +306,7 @@ const EditablePregnancyWeekField = ({
   );
 };
 
-const Profile = () => {
+const name = () => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [profile, setProfile] = useState();
   const user = useSelector((state: any) => state.user);
@@ -540,113 +540,19 @@ const Profile = () => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={"white"} />
       <View style={styles.header}>
+        <TouchableOpacity onPress={()=>router.back()}>
+            <Ionicons name='arrow-back' size={20}/>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Your Pregnancy</Text>
         <View
           style={{
             width: 20,
           }}
         />
-        <Text style={styles.headerTitle}>Profile</Text>
-        <TouchableOpacity onPress={logout}>
-          <Ionicons name="log-out" size={20} color="black" />
-        </TouchableOpacity>
       </View>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
-          <MenuItem
-            icon={<Person />}
-            title="Account"
-            subtitle="Name, Age, Email"
-            onPress={()=>router.push('/patient/profile-setting/name')}
-          />
-          <MenuItem
-            icon={<PregrantWomen />}
-            title="Your Pregnancy"
-            subtitle="Week of Pregnancy, Progress Tracking"
-            onPress={() =>router.push('/patient/profile-setting/pregrancy')}
-          />
-          <MenuItem
-            icon={<AvatarIcon/>}
-            title="Customize your Doula"
-            subtitle="Voice tone, Hair, Dress, Language, Skin tone"
-            onPress={() =>router.push('/avatar')}
-          />
-          <MenuItem
-            icon={<Badge/>}
-            title="Hall of Fame"
-            subtitle="Earned Badges, Rewards"
-            onPress={() => router.push('/patient/profile-setting/earnbadge')}
-          />
-          <MenuItem
-            icon={<Globe/>}
-            title="Language"
-            subtitle="Change doula language"
-            onPress={() => router.push('/patient/profile-setting/language')}
-          />
-
-          <MenuItem
-            icon={<Notification/>}
-            title="Notification"
-            subtitle="Messages, Alerts"
-            onPress={() => router.push('/patient/profile-setting/notification')}
-          />
-
-          <MenuItem
-            icon={<Help/>}
-            title="Help"
-            subtitle="Help Centre, Support, Contact Us"
-            onPress={() => router.push('/patient/profile-setting/help')}
-          />
-
-          <MenuItem
-            icon={<Terms/>}
-            title="Terms & Conditions"
-            subtitle="Privacy Policy, Terms of Use"
-            onPress={() => router.push('/patient/profile-setting/tnc')}
-          />
-          {/* {isEditingName ? (
-            <EditableNameField
-              label="Name"
-              value={name || ""}
-              onSave={handleSaveName}
-              onCancel={() => setIsEditingName(false)}
-            />
-          ) : (
-            <ProfileField
-              label="Name"
-              value={name || ""}
-              onEdit={() => setIsEditingName(true)}
-            />
-          )}
-
-          {isEditingAge ? (
-            <EditableAgeField
-              label="Age"
-              age={age}
-              onSave={handleSaveAge}
-              onCancel={() => setIsEditingAge(false)}
-            />
-          ) : (
-            <ProfileField
-              label="Age"
-              value={`${age} Years`}
-              onEdit={() => setIsEditingAge(true)}
-            />
-          )}
-
-          {isEditingEmail ? (
-            <EditableEmailField
-              label="Email"
-              value={email}
-              onSave={handleSaveEmail}
-              onCancel={() => setIsEditingEmail(false)}
-            />
-          ) : (
-            <ProfileField
-              label="Email"
-              value={email}
-              onEdit={() => setIsEditingEmail(true)}
-            />
-          )}
+         
 
           {isEditingPregnancyWeek ? (
             <EditablePregnancyWeekField
@@ -663,7 +569,7 @@ const Profile = () => {
             />
           )}
 
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.avatarContainer}
             onPress={() => router.push("/avatar")}
           >
@@ -699,7 +605,7 @@ const Profile = () => {
   );
 };
 
-export default Profile;
+export default name;
 
 const styles = StyleSheet.create({
   container: {
@@ -720,7 +626,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    // paddingTop: 20,
+    paddingTop: 20,
   },
   menuItem: {
     flexDirection: "row",

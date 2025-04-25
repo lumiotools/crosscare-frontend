@@ -18,6 +18,9 @@ interface QuestionnaireManagerProps {
   onResponseSaved: (response: QuestionnaireResponse) => void;
 }
 
+// Track awarded badges to prevent duplicate requests
+const awardedTriviaBadges = new Set<string>();
+
 const QuestionnaireManager = ({
   userId,
   onQuestionReady,
@@ -114,59 +117,38 @@ const QuestionnaireManager = ({
   };
 
   // Map domain IDs to badge numbers for the API
-  const domainToBadgeMap = {
-    "domain-1": "MAMA_MILESTONE_I",
-    "domain-2": "MAMA_MILESTONE_II",
-    "domain-3": "MAMA_MILESTONE_III",
-    "domain-4": "MAMA_MILESTONE_IV",
-    "domain-5": "MAMA_MILESTONE_V",
-    "domain-6": "MAMA_MILESTONE_VI",
-  };
-
-  const awardMilestoneBadgeForDomain = async (
-    userId: string,
-    domainId: keyof typeof domainToBadgeMap
-  ) => {
+  const awardTriviaBadge = async (userId: string): Promise<any> => {
     try {
-      console.log(
-        `Awarding Milestone badge for domain ${domainId} to user ${userId}`
-      );
+      // Don't make duplicate requests for the same user
+      if (awardedTriviaBadges.has(userId)) {
+        console.log(`Trivia Queen badge already requested for user ${userId}`);
+        return null;
+      }
+      
+      console.log(`Attempting to award Trivia Queen badge to user ${userId}`);
   
-      // Check if userId is valid
+      // Validate userId
       if (!userId || userId.trim() === "") {
-        console.error(
-          "Invalid userId provided to awardMilestoneBadgeForDomain"
-        );
-        return;
+        console.error("Invalid userId provided");
+        return null;
       }
   
       // Get badge type from mapping
-      const badgeType = domainToBadgeMap[domainId];
-      if (!badgeType) {
-        console.error(`No badge mapping found for domain: ${domainId}`);
-        return;
-      }
+      const badgeType = "TRIVIA_QUEEN"; // Hardcode for reliability
   
-      // Get appropriate badge title based on domain number
-      const domainNumber = domainId.split("-")[1];
-      const romanNumerals = ["I", "II", "III", "IV", "V", "VI"];
-      const badgeTitle = `Mama Milestone ${
-        romanNumerals[parseInt(domainNumber) - 1]
-      }`;
-      const badgeDescription = `On completing each domain of the Doula questionnaire Domain ${
-        romanNumerals[parseInt(domainNumber) - 1]
-      }`;
-  
-      // Prepare the data payload
+      // Prepare the data payload for the Trivia Queen badge
       const payload = {
         badgeType: badgeType,
-        title: badgeTitle,
-        description: badgeDescription,
+        title: "Trivia Queen",
+        description: "On completing all domains of the Doula questionnaire"
       };
   
       console.log(`Badge award payload:`, payload);
   
-      // Make API call using fetch instead of axios
+      // Add to set to prevent duplicate requests
+      awardedTriviaBadges.add(userId);
+  
+      // Make API call using fetch with error handling
       const response = await fetch(
         `https://crosscare-backends.onrender.com/api/user/${userId}/badges/award`,
         {
@@ -178,28 +160,24 @@ const QuestionnaireManager = ({
         }
       );
   
-      // Check if the response is ok
+      // Handle API error responses
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Server responded with ${response.status}: ${JSON.stringify(errorData)}`);
+        const errorText = await response.text();
+        console.error(`Badge award failed with status ${response.status}:`, errorText);
+        return { success: false, message: errorText };
       }
   
       // Parse the JSON response
       const data = await response.json();
-      console.log(`Badge award response:`, data);
+      console.log(`Badge award successful:`, data);
       return data;
     } catch (error: any) {
-      console.error("Error awarding milestone badge:", error);
-      if (error.response) {
-        // For consistency with prior error handling, though fetch doesn't have this exact structure
-        console.error("Error status:", error.status);
-        console.error("Error data:", error.message);
-      } else {
-        console.error("Fetch error:", error.message);
-      }
-      return null;
+      console.error("Error awarding Trivia Queen badge:", error.message || error);
+      return { success: false, message: error.message || error };
     }
   };
+  
+  
 
   // Also update the loadQuestionnaireState function to ensure intro messages don't show again
   const loadQuestionnaireState = async () => {
@@ -1019,40 +997,13 @@ const QuestionnaireManager = ({
 
   const moveToNextDomain = () => {
     const completedDomainId = QUESTIONNAIRE_DOMAINS[state.currentDomainIndex]
-      .id as keyof typeof domainToBadgeMap;
+
     // Check if we're at the last domain
     if (state.currentDomainIndex >= QUESTIONNAIRE_DOMAINS.length - 1) {
-      awardMilestoneBadgeForDomain(userId, completedDomainId)
-        .then((result) => {
-          console.log(
-            `Badge award result for domain ${completedDomainId}:`,
-            result
-          );
-        })
-        .catch((err) => {
-          console.error(
-            `Error awarding badge for domain ${completedDomainId}:`,
-            err
-          );
-        });
       // All domains completed
       completeQuestionnaire();
       return;
     }
-
-    awardMilestoneBadgeForDomain(userId, completedDomainId)
-      .then((result) => {
-        console.log(
-          `Badge award result for domain ${completedDomainId}:`,
-          result
-        );
-      })
-      .catch((err) => {
-        console.error(
-          `Error awarding badge for domain ${completedDomainId}:`,
-          err
-        );
-      });
 
     // Move to the first question of the next domain
     setState((prevState) => ({
@@ -1070,26 +1021,16 @@ const QuestionnaireManager = ({
       isCompleted: true,
     }));
 
-    // Make sure the badge for the last domain is awarded (defensive)
-    // if (state.currentDomainIndex < QUESTIONNAIRE_DOMAINS.length) {
-    //   const completedDomainId =
-    //     QUESTIONNAIRE_DOMAINS[state.currentDomainIndex].id;
-    //   try {
-    //     const badgeResult = await awardMilestoneBadgeForDomain(
-    //       userId,
-    //       completedDomainId as keyof typeof domainToBadgeMap
-    //     );
-    //     console.log(
-    //       `Final badge award result for domain ${completedDomainId}:`,
-    //       badgeResult
-    //     );
-    //   } catch (err) {
-    //     console.error(
-    //       `Error awarding final badge for domain ${completedDomainId}:`,
-    //       err
-    //     );
-    //   }
-    // }
+    try {
+      console.log("Awarding Trivia Queen badge for completing all domains");
+      const badgeResult = await awardTriviaBadge(userId);
+      console.log(`Trivia Queen badge award result:`, badgeResult);
+    } catch (err) {
+      console.error(`Error awarding Trivia Queen badge:`, err);
+      // Continue with the rest of the function even if badge award fails
+    }
+
+    
 
     // Submit all responses to the backend
     try {
