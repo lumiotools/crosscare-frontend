@@ -28,6 +28,7 @@ import { cardData as originalCardData } from "@/constants/constant";
 // Ensure all items have a valid onPress function
 const cardData = originalCardData.map((item) => ({
   ...item,
+  id: String(item.id), // Ensure id is a number
   onPress: item.onPress || (() => {}),
 }));
 
@@ -109,9 +110,9 @@ const Home = () => {
   const [weeksComplete, setWeeksComplete] = useState(0);
   const { progressPercentage, remainingDays, dueDate } =
     calculatePregnancyProgress(weeksComplete);
-  const [name, setName] = useState<string>("");
-  const [age, setAge] = useState<number>(0);
-  const [email, setEmail] = useState<string>("");
+  // const [name, setName] = useState<string>("");
+  // const [age, setAge] = useState<number>(0);
+  // const [email, setEmail] = useState<string>("");
   // const [pregnancyWeek, setPregnancyWeek] = useState<number>(0)
 
   const { maxGlasses, glassCount, setGlassCount } = useWaterStore();
@@ -229,6 +230,7 @@ const Home = () => {
         ...user,
         user_name: data.name,
         user_email: data.email,
+        avatar_url: data.avatarUrl,
       })
     );
     setWeeksComplete(data.week || 0);
@@ -401,6 +403,7 @@ const Home = () => {
       bg1={item.bg1} // Ensure bg1 is a valid color string
       bg2={item.bg2} // Ensure bg2 is a valid color string
       image1={item.image1}
+      id={item.id}
       onPress={item.onPress}
     />
   );

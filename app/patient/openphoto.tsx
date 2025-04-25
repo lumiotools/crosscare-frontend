@@ -299,6 +299,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 300,
     borderRadius: 10,
+    // aspectRatio:1,
     resizeMode: "cover",
     backgroundColor: "#F5F5F5",
   },

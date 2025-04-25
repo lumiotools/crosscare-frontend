@@ -1004,7 +1004,7 @@ export default function HeartRateScreen() {
           <Text style={styles.sectionTitle}>Connect to Application</Text>
           <View style={styles.connectItem}>
             <Image source={require("../../assets/images/applehealth.png")} style={{ width: 24, height: 24 }} />
-            <Text style={styles.connectText}>Health App</Text>
+            <Text style={styles.connectText}>{Platform.OS === 'ios' ? 'Health App' : 'Samsung Health'}</Text>
             <TouchableOpacity>
               <Text style={styles.connectButton}>CONNECT</Text>
             </TouchableOpacity>

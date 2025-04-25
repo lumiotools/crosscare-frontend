@@ -20,7 +20,16 @@ import { TextInput } from "react-native";
 import * as Notifications from "expo-notifications";
 import { requestNotificationPermissions } from "../../../utils/NotificationManager";
 import { router } from "expo-router";
-import { setUser } from "@/store/userSlice";
+import { removeToken, setToken, setUser } from "@/store/userSlice";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Person from "@/assets/images/Svg/Person";
+import PregrantWomen from "@/assets/images/Svg/PregrantsWomen";
+import AvatarIcon from "@/assets/images/Svg/AvatarIcon";
+import Badge from "@/assets/images/Svg/Badge";
+import Globe from "@/assets/images/Svg/Globe";
+import Notification from "@/assets/images/Svg/Notification";
+import Help from "@/assets/images/Svg/Help";
+import Terms from "@/assets/images/Svg/Terms";
 
 const ProfileField = ({
   label,
@@ -245,7 +254,7 @@ const EditablePregnancyWeekField = ({
   const [inputValue, setInputValue] = useState(week.toString());
 
   const handleSave = () => {
-    Keyboard.dismiss()
+    Keyboard.dismiss();
     const newWeek = Number.parseInt(inputValue);
     if (!isNaN(newWeek) && newWeek > 0 && newWeek <= 42) {
       onSave(newWeek);
@@ -496,15 +505,105 @@ const Profile = () => {
     setIsEditingAge(false);
   };
 
+  const logout = async () => {
+    await AsyncStorage.removeItem("userToken");
+    await AsyncStorage.removeItem("user");
+    setToken(null);
+    setUser(null);
+    dispatch(removeToken());
+    router.replace("/login");
+  };
+
+  const MenuItem = ({
+    icon,
+    title,
+    subtitle,
+    onPress,
+  }: {
+    icon: React.ReactNode;
+    title: string;
+    subtitle: string;
+    onPress: () => void;
+  }) => {
+    return (
+      <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+        <View style={styles.iconContainer}>{icon}</View>
+        <View style={styles.menuTextContainer}>
+          <Text style={styles.menuTitle}>{title}</Text>
+          <Text style={styles.menuSubtitle} numberOfLines={1}>{subtitle}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={"white"} />
       <View style={styles.header}>
+        <View
+          style={{
+            width: 20,
+          }}
+        />
         <Text style={styles.headerTitle}>Profile</Text>
+        <TouchableOpacity onPress={logout}>
+          <Ionicons name="log-out" size={20} color="black" />
+        </TouchableOpacity>
       </View>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
-          {isEditingName ? (
+          <MenuItem
+            icon={<Person />}
+            title="Account"
+            subtitle="Name, Age, Email"
+            onPress={()=>router.push('/patient/profile-setting/name')}
+          />
+          <MenuItem
+            icon={<PregrantWomen />}
+            title="Your Pregnancy"
+            subtitle="Week of Pregnancy, Progress Tracking"
+            onPress={() =>router.push('/patient/profile-setting/pregrancy')}
+          />
+          <MenuItem
+            icon={<AvatarIcon/>}
+            title="Customize your Doula"
+            subtitle="Voice tone, Hair, Dress, Language, Skin tone"
+            onPress={() =>router.push('/avatar')}
+          />
+          <MenuItem
+            icon={<Badge/>}
+            title="Hall of Fame"
+            subtitle="Earned Badges, Rewards"
+            onPress={() => router.push('/patient/profile-setting/earnbadge')}
+          />
+          <MenuItem
+            icon={<Globe/>}
+            title="Language"
+            subtitle="Change doula language"
+            onPress={() => router.push('/patient/profile-setting/language')}
+          />
+
+          <MenuItem
+            icon={<Notification/>}
+            title="Notification"
+            subtitle="Messages, Alerts"
+            onPress={() => router.push('/patient/profile-setting/notification')}
+          />
+
+          <MenuItem
+            icon={<Help/>}
+            title="Help"
+            subtitle="Help Centre, Support, Contact Us"
+            onPress={() => router.push('/patient/profile-setting/help')}
+          />
+
+          <MenuItem
+            icon={<Terms/>}
+            title="Terms & Conditions"
+            subtitle="Privacy Policy, Terms of Use"
+            onPress={() => router.push('/patient/profile-setting/tnc')}
+          />
+          {/* {isEditingName ? (
             <EditableNameField
               label="Name"
               value={name || ""}
@@ -571,7 +670,9 @@ const Profile = () => {
             <Text style={styles.avatarText}>Customize your Avatar</Text>
             <View style={styles.avatarRight}>
               <Image
-                source={require("../../../assets/images/doulaImg.png")}
+                source={{
+                  uri: user?.avatar_url,
+                }}
                 style={styles.avatarImage}
               />
               <Ionicons name="chevron-forward" size={20} color="#E162BC" />
@@ -591,7 +692,7 @@ const Profile = () => {
 
           <TouchableOpacity style={styles.termsContainer}>
             <Text style={styles.termsText}>Terms & Conditions</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -608,6 +709,8 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingVertical: 15,
+    justifyContent: "space-between",
+    flexDirection: "row",
     alignItems: "center",
   },
   headerTitle: {
@@ -617,7 +720,34 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    // paddingTop: 20,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 16,
+    // borderBottomWidth: 1,
+    // borderBottomColor: "#F0F0F0",
+  },
+  iconContainer: {
+    width: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  menuTextContainer: {
+    flex: 1,
+  },
+  menuTitle: {
+    fontSize: 16,
+    fontFamily:'DMSans600',
+    color: "#AF4D93", // Magenta/purple color from the image
+    marginBottom: 4,
+  },
+  menuSubtitle: {
+    fontSize: 14,
+    fontFamily:'DMSans500',
+    color: "#7B7B7B",
   },
   fieldContainer: {
     backgroundColor: "rgba(229, 229, 229, 0.20)",
@@ -682,7 +812,7 @@ const styles = StyleSheet.create({
   avatarImage: {
     width: 32,
     height: 32,
-    borderRadius: 15,
+    borderRadius: 25,
   },
   ageInputContainer: {
     flexDirection: "row",

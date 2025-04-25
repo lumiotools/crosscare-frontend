@@ -6,7 +6,7 @@ import {
   ScrollView,
   Image,
   Dimensions,
-  ActivityIndicator
+  ActivityIndicator,
 } from "react-native";
 import React, { useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -17,23 +17,29 @@ import { Ionicons } from "@expo/vector-icons";
 
 const SelfCare = () => {
   const router = useRouter();
-  const { routines, isLoading, error, fetchRoutines, downloadAudio, setCurrentRoutine } = useSelfCareStore();
-  
+  const {
+    routines,
+    isLoading,
+    error,
+    fetchRoutines,
+    downloadAudio,
+    setCurrentRoutine,
+  } = useSelfCareStore();
 
   useEffect(() => {
     fetchRoutines();
   }, []);
 
   const handleRoutinePress = async (routineId: string) => {
-    const routine = routines.find(r => r.id === routineId);
+    const routine = routines.find((r) => r.id === routineId);
     if (!routine) return;
-    
+
     setCurrentRoutine(routine);
-    
+
     try {
       // Pre-download the audio if possible
       const audioPath = await downloadAudio(routineId);
-      
+
       // Navigate to audio player with all required data
       router.push({
         pathname: "/patient/excerises/audio_player",
@@ -41,10 +47,12 @@ const SelfCare = () => {
           title: routine.title,
           duration: routine.duration || "5 min", // Fallback duration if not set
           url: audioPath || routine.audioUrl, // Use local path if available, otherwise remote URL
-          gradientColors: JSON.stringify(routine.gradientColors || ["#7B96FF", "#0039C6"]),
+          gradientColors: JSON.stringify(
+            routine.gradientColors || ["#7B96FF", "#0039C6"]
+          ),
           description: routine.description,
-          id: routine.id
-        }
+          id: routine.id,
+        },
       });
     } catch (err) {
       console.error("Error navigating to audio player:", err);
@@ -65,14 +73,14 @@ const SelfCare = () => {
           resizeMode="cover"
         />
         <LinearGradient
-          colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.7)']}
+          colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.7)"]}
           style={styles.overlay}
         >
           <View style={styles.cardContent}>
             <Text style={styles.routineTitle}>{routine.title} &gt;</Text>
-            <Text style={styles.routineDescription} numberOfLines={2}>
+            {/* <Text style={styles.routineDescription} numberOfLines={2}>
               {routine.description}
-            </Text>
+            </Text> */}
           </View>
         </LinearGradient>
       </TouchableOpacity>
@@ -81,7 +89,10 @@ const SelfCare = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView 
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Self Care</Text>
+      </View>
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
@@ -94,7 +105,7 @@ const SelfCare = () => {
           <View style={styles.errorContainer}>
             <Ionicons name="alert-circle-outline" size={24} color="#d32f2f" />
             <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.retryButton}
               onPress={fetchRoutines}
             >
@@ -103,8 +114,8 @@ const SelfCare = () => {
           </View>
         ) : (
           <>
-            {routines.map(routine => renderRoutineCard(routine))}
-            
+            {routines.map((routine) => renderRoutineCard(routine))}
+
             {routines.length === 0 && (
               <View style={styles.emptyContainer}>
                 <Ionicons name="folder-open-outline" size={64} color="#ccc" />
@@ -125,8 +136,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "white",
   },
+  header: {
+  paddingVertical:15,
+    alignItems:'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontFamily: "DMSans600",
+    color: "#373737",
+  },
   scrollContent: {
-    paddingVertical: 20,
+    // paddingVertical: 20,
     paddingHorizontal: 16,
   },
   routineCard: {
@@ -155,7 +175,6 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 24,
     fontFamily: "DMSans600",
-    marginBottom: 8,
   },
   routineDescription: {
     color: "white",

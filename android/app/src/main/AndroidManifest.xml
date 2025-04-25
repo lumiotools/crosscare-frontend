@@ -35,7 +35,6 @@
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="com.crosscare.tech"/>
         <data android:scheme="com.crosscare.tech"/>
-        <data android:scheme="exp+crosscare"/>
       </intent-filter>
     </activity>
   </application>

@@ -2,6 +2,7 @@ import { height } from "@/constants/helper";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useSelector } from "react-redux";
 
 interface CardProps {
   title: string;
@@ -9,6 +10,7 @@ interface CardProps {
   bg2: string;
   description: string;
   image1: any;
+  id:string;
   onPress?: () => void;
 }
 
@@ -18,8 +20,10 @@ const Card: React.FC<CardProps> = ({
   bg1,
   bg2,
   image1,
+  id,
   onPress,
 }) => {
+  const user = useSelector((state: any) => state.user);
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
       <LinearGradient colors={[bg1, bg2]} style={styles.card}>
@@ -29,8 +33,8 @@ const Card: React.FC<CardProps> = ({
             <Text style={styles.cardDescription}>{description}</Text>
           </View>
           <Image
-            source={image1} // Use the image1 prop passed in
-            style={{ width: 84, height: 84 }}
+            source={parseInt(id) === 1 ? { uri: user?.avatar_url } : image1} // Use user avatar if id is 1
+            style={{ width: 84, height: 84, borderRadius: 100, borderWidth:0, }}
             resizeMode="contain"
           />
         </View>

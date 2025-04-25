@@ -18,6 +18,9 @@ interface QuestionnaireManagerProps {
   onResponseSaved: (response: QuestionnaireResponse) => void;
 }
 
+// Track awarded badges to prevent duplicate requests
+const awardedTriviaBadges = new Set<string>();
+
 const QuestionnaireManager = ({
   userId,
   onQuestionReady,
@@ -32,7 +35,7 @@ const QuestionnaireManager = ({
   const [hasAskedForTime, setHasAskedForTime] = useState(false); // Track if we've asked "Do you have a few minutes?"
   const [userWantsToStart, setUserWantsToStart] = useState(false); // Track user's response to time question
   const user = useSelector((state: any) => state.user);
-
+  console.log(user);
   // Use refs to track sent messages and prevent duplicates
   const sentMessages = useRef(new Set()).current;
   const isStartingQuestionnaire = useRef(false);
@@ -112,6 +115,69 @@ const QuestionnaireManager = ({
       return false;
     }
   };
+
+  // Map domain IDs to badge numbers for the API
+  const awardTriviaBadge = async (userId: string): Promise<any> => {
+    try {
+      // Don't make duplicate requests for the same user
+      if (awardedTriviaBadges.has(userId)) {
+        console.log(`Trivia Queen badge already requested for user ${userId}`);
+        return null;
+      }
+      
+      console.log(`Attempting to award Trivia Queen badge to user ${userId}`);
+  
+      // Validate userId
+      if (!userId || userId.trim() === "") {
+        console.error("Invalid userId provided");
+        return null;
+      }
+  
+      // Get badge type from mapping
+      const badgeType = "TRIVIA_QUEEN"; // Hardcode for reliability
+  
+      // Prepare the data payload for the Trivia Queen badge
+      const payload = {
+        badgeType: badgeType,
+        title: "Trivia Queen",
+        description: "On completing all domains of the Doula questionnaire"
+      };
+  
+      console.log(`Badge award payload:`, payload);
+  
+      // Add to set to prevent duplicate requests
+      awardedTriviaBadges.add(userId);
+  
+      // Make API call using fetch with error handling
+      const response = await fetch(
+        `https://crosscare-backends.onrender.com/api/user/${userId}/badges/award`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+  
+      // Handle API error responses
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Badge award failed with status ${response.status}:`, errorText);
+        return { success: false, message: errorText };
+      }
+  
+      // Parse the JSON response
+      const data = await response.json();
+      console.log(`Badge award successful:`, data);
+      return data;
+    } catch (error: any) {
+      console.error("Error awarding Trivia Queen badge:", error.message || error);
+      return { success: false, message: error.message || error };
+    }
+  };
+  
+  
 
   // Also update the loadQuestionnaireState function to ensure intro messages don't show again
   const loadQuestionnaireState = async () => {
@@ -930,6 +996,8 @@ const QuestionnaireManager = ({
   };
 
   const moveToNextDomain = () => {
+    const completedDomainId = QUESTIONNAIRE_DOMAINS[state.currentDomainIndex]
+
     // Check if we're at the last domain
     if (state.currentDomainIndex >= QUESTIONNAIRE_DOMAINS.length - 1) {
       // All domains completed
@@ -952,6 +1020,17 @@ const QuestionnaireManager = ({
       isActive: false,
       isCompleted: true,
     }));
+
+    try {
+      console.log("Awarding Trivia Queen badge for completing all domains");
+      const badgeResult = await awardTriviaBadge(userId);
+      console.log(`Trivia Queen badge award result:`, badgeResult);
+    } catch (err) {
+      console.error(`Error awarding Trivia Queen badge:`, err);
+      // Continue with the rest of the function even if badge award fails
+    }
+
+    
 
     // Submit all responses to the backend
     try {

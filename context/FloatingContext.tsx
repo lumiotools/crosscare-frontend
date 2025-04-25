@@ -14,7 +14,7 @@ interface FloatingContextType {
   hideMessage: () => void
 }
 
-const EXCLUDED_ROUTES = ["/login", "/signup", "/forget-password, /patient/askdoula"]
+const EXCLUDED_ROUTES = ["/login", "/signup", "/forget-password", "/patient/askdoula", '/avatar']
 
 const FloatingContext = createContext<FloatingContextType | undefined>(undefined)
 
@@ -163,6 +163,8 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: "white",
+    borderWidth:2,
+    borderColor:'#FBBBE9',
     borderRadius: 30,
     width: "90%",
     height: "70%",

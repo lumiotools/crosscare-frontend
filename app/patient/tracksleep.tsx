@@ -709,8 +709,8 @@ export default function tracksleep() {
       );
 
       const data = await response.json();
-      console.log("API data:", data);
-      setSleepLogs(data);
+      console.log("API data:", data.sleepData);
+      setSleepLogs(data.sleepData);
 
       const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"];
       const fullWeekdays = [
@@ -727,7 +727,7 @@ export default function tracksleep() {
       const sleepMap = new Map();
 
       // Process all data regardless of time range
-      data.forEach(
+      data.sleepData.forEach(
         (entry: { date: string | number | Date; duration: string }) => {
           const entryDate = new Date(entry.date);
           const fullDay = entryDate.toLocaleString("en-US", {
@@ -1464,7 +1464,7 @@ export default function tracksleep() {
                 source={require("../../assets/images/applehealth.png")}
                 style={{ width: 24, height: 24 }}
               />
-              <Text style={styles.connectText}>Health App</Text>
+              <Text style={styles.connectText}>{Platform.OS === 'ios' ? 'Health App' : 'Samsung Health'}</Text>
               <TouchableOpacity>
                 <Text style={styles.connectButton}>CONNECT</Text>
               </TouchableOpacity>
