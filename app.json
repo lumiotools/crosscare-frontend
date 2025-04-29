@@ -39,11 +39,7 @@
       "favicon": "./assets/images/favicon.png",
       "package": "com.crosscare.tech"
     },
-    "plugins": [
-      [
-        "expo-health-connect"
-      ],
-      
+    "plugins": [    
       "expo-router",
       [
         "expo-splash-screen",
