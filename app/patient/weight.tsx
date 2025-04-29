@@ -105,6 +105,15 @@ const WeightScreen = () => {
   const [weightUnit, setWeightUnit] = useState("kg")
   const [lastKnownUnit, setLastKnownUnit] = useState("kg")
 
+  const userId = user?.user_id;
+    useEffect(() => {
+      const setWeightVisited = async () => {
+        await AsyncStorage.setItem('weight_4', 'true');
+      };
+      
+      setWeightVisited();
+    }, [userId]);
+
   // Load weight unit on initial mount
   useEffect(() => {
     loadWeightUnit()

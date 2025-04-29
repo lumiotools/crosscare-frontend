@@ -16,8 +16,7 @@ const tnc = () => {
       <StatusBar barStyle="dark-content" backgroundColor={"white"} />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={20} />
-        </TouchableOpacity>
+          <Ionicons name="chevron-back" size={20} color="black" />        </TouchableOpacity>
         <Text style={styles.headerTitle}>T&C</Text>
         <View
           style={{

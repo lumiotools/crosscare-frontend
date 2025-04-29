@@ -125,6 +125,15 @@ const step = () => {
   // Calculate progress based on goal (if set)
   const progress = stepGoal ? stepsWalked / stepGoal : 0;
 
+  const userId = user?.user_id;
+  useEffect(() => {
+    const setstepVisited = async () => {
+      await AsyncStorage.setItem("step_6", "true");
+    };
+
+    setstepVisited();
+  }, [userId]);
+
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [tooltipAnim] = useState(new Animated.Value(0)); // Start with 0 opacity
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -171,15 +180,15 @@ const step = () => {
     if (isConnected) {
       // Disconnect from Fitbit
       await disconnect();
-      Alert.alert('Disconnected', 'Successfully disconnected from Fitbit');
+      Alert.alert("Disconnected", "Successfully disconnected from Fitbit");
     } else {
       // Connect to Fitbit
       const success = await connect();
       if (success) {
-        Alert.alert('Success', 'Connected to Fitbit');
+        Alert.alert("Success", "Connected to Fitbit");
         getStepStatus(); // Refresh data with Fitbit data
       } else {
-        Alert.alert('Error', 'Failed to connect to Fitbit');
+        Alert.alert("Error", "Failed to connect to Fitbit");
       }
     }
   };
@@ -190,32 +199,35 @@ const step = () => {
       const today = new Date();
       let startDate = new Date();
 
-    // const data = await getStepStatus(today);
+      // const data = await getStepStatus(today);
 
-      
-      if (timeRange === 'today') {
+      if (timeRange === "today") {
         // Just today
-      } else if (timeRange === 'week') {
+      } else if (timeRange === "week") {
         startDate.setDate(today.getDate() - 7);
-      } else if (timeRange === 'month') {
+      } else if (timeRange === "month") {
         startDate.setMonth(today.getMonth() - 1);
-      } else if (timeRange === 'lastMonth') {
+      } else if (timeRange === "lastMonth") {
         startDate.setMonth(today.getMonth() - 2);
         const endDate = new Date();
         endDate.setMonth(today.getMonth() - 1);
         today.setTime(endDate.getTime());
       }
-      
+
       // Format dates for Fitbit API (yyyy-MM-dd)
-      const startDateStr = startDate.toISOString().split('T')[0];
-      const endDateStr = today.toISOString().split('T')[0];
-      
+      const startDateStr = startDate.toISOString().split("T")[0];
+      const endDateStr = today.toISOString().split("T")[0];
+
       // Get data for date range
-      const data = await getDataForRange('activities/steps', startDateStr, endDateStr);
+      const data = await getDataForRange(
+        "activities/steps",
+        startDateStr,
+        endDateStr
+      );
       console.log(data);
-      
+
       if (!data) {
-        throw new Error('Failed to fetch Fitbit data');
+        throw new Error("Failed to fetch Fitbit data");
       }
 
       const todaySteps = getTodayStepsFromFitbit(data);
@@ -223,25 +235,24 @@ const step = () => {
       if (todaySteps !== null) {
         await sendStepsToBackend(todaySteps);
       }
-      
+
       return processFitbitStepData(data);
     } catch (error) {
-      console.error('Error fetching Fitbit step data:', error);
+      console.error("Error fetching Fitbit step data:", error);
       return null;
     }
   };
 
-
   const getTodayStepsFromFitbit = (fitbitData: any) => {
-    if (!fitbitData || !fitbitData['activities-steps']) {
+    if (!fitbitData || !fitbitData["activities-steps"]) {
       return null;
     }
-    
-    const today = new Date().toISOString().split('T')[0];
-    const todayData = fitbitData['activities-steps'].find(
+
+    const today = new Date().toISOString().split("T")[0];
+    const todayData = fitbitData["activities-steps"].find(
       (item: any) => item.dateTime === today
     );
-    
+
     return todayData ? parseInt(todayData.value) : null;
   };
 
@@ -249,42 +260,42 @@ const step = () => {
     try {
       const userId = user?.user_id;
       const apiUrl = `https://crosscare-backends.onrender.com/api/user/activity/${userId}/steps`;
-      
+
       console.log(`Sending ${steps} steps to backend API: ${apiUrl}`);
-      
+
       const response = await fetch(apiUrl, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ steps: steps, }),
+        body: JSON.stringify({ steps: steps }),
       });
-      
+
       if (!response.ok) {
         throw new Error(`API request failed with status ${response.status}`);
       }
-      
+
       const responseData = await response.json();
-      console.log('Backend API response:', responseData);
-      
+      console.log("Backend API response:", responseData);
+
       return responseData;
     } catch (error) {
-      console.error('Error sending steps to backend:', error);
+      console.error("Error sending steps to backend:", error);
       return null;
     }
   };
 
   useEffect(() => {
     if (isConnected) {
-      console.log('Setting up 1-minute refresh interval for Fitbit data');
+      console.log("Setting up 1-minute refresh interval for Fitbit data");
       // Set up interval to refresh data every 1 minute when connected to Fitbit
       const refreshInterval = setInterval(() => {
-        console.log('Refreshing Fitbit data...');
+        console.log("Refreshing Fitbit data...");
         getStepStatus();
       }, 10000); // 1 minute (60000 milliseconds)
-      
+
       return () => {
-        console.log('Clearing Fitbit refresh interval');
+        console.log("Clearing Fitbit refresh interval");
         clearInterval(refreshInterval);
       };
     }
@@ -292,22 +303,22 @@ const step = () => {
 
   // Process Fitbit step data
   const processFitbitStepData = (fitbitData: any) => {
-    if (!fitbitData || !fitbitData['activities-steps']) {
+    if (!fitbitData || !fitbitData["activities-steps"]) {
       return [];
     }
-    
-    const stepData = fitbitData['activities-steps'];
+
+    const stepData = fitbitData["activities-steps"];
     const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"];
-    
+
     // Map Fitbit data to app format
     return stepData.map((item: any) => {
       const date = new Date(item.dateTime);
       const dayIndex = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
       const dayAbbr = fixedWeekdays[dayIndex];
-      
+
       // Get the step count or default to 0
       const steps = parseInt(item.value) || 0;
-      
+
       return {
         id: `fitbit-${item.dateTime}`,
         day: dayAbbr,
@@ -586,7 +597,7 @@ const step = () => {
         const fitbitData = await fetchFitbitStepData();
 
         // console.log(fitbitData);
-        
+
         // if (fitbitData && fitbitData.length > 0) {
         //   // Get today's steps for the current count
         //   const today = new Date().toISOString().split('T')[0];
@@ -594,10 +605,10 @@ const step = () => {
         //   if (todayData) {
         //     setStepsWalked(todayData.steps);
         //   }
-          
+
         //   // Set step data from Fitbit
         //   setStepData(fitbitData);
-          
+
         //   // Process data for current time range
         //   const filteredData = processDataForTimeRange(fitbitData, timeRange);
         //   setFilteredData(filteredData);
@@ -1571,7 +1582,7 @@ const styles = StyleSheet.create({
     width: 160,
     overflow: "hidden",
     shadowColor: "#000",
-    marginTop:-25,
+    marginTop: -25,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,

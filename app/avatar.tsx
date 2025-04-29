@@ -148,6 +148,27 @@ export default function AvatarSelectionScreen() {
   // Loading state
   const isLoading = isLoadingHairstyles || isLoadingOutfits || isLoadingCombinations;
 
+
+  // useEffect(()=>{
+  //   const Avatar = async ()=>{
+  //     const response = await fetch(`https://crosscare-backends.onrender.com/api/user/${user?.user_id}/profile`, {
+  //       method: "GET",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         Authorization: `Bearer ${user?.token}`,
+  //       },
+  //     });
+
+  //     const data = await response.json();
+
+  //     console.log("API Response:", data);
+  //     if(data.avatarUrl){
+  //       router.replace("/patient/(tabs)/home");
+  //     }
+  //   }
+  //   Avatar();
+  // },[user?.user_id])
+
   // Fetch all avatar assets on component mount
   useEffect(() => {
     fetchAllAvatarAssets();
@@ -648,19 +669,19 @@ export default function AvatarSelectionScreen() {
   // Add this just before the return statement
   useEffect(() => {
     console.log("Current app state:");
-    console.log("Hairstyles:", hairstyles.map(h => h.id));
-    console.log("Outfits:", outfits.map(o => o.id));
-    console.log("Combinations:", combinations);
-    console.log("Selected/Preview IDs:", {
-      selectedHairstyleId,
-      selectedOutfitId,
-      previewHairstyleId,
-      previewOutfitId
-    });
-    console.log("Image URLs:", {
-      previewFaceImageUrl,
-      previewCombinedImageUrl
-    });
+    // console.log("Hairstyles:", hairstyles.map(h => h.id));
+    // console.log("Outfits:", outfits.map(o => o.id));
+    // console.log("Combinations:", combinations);
+    // console.log("Selected/Preview IDs:", {
+    //   selectedHairstyleId,
+    //   selectedOutfitId,
+    //   previewHairstyleId,
+    //   previewOutfitId
+    // });
+    // console.log("Image URLs:", {
+    //   previewFaceImageUrl,
+    //   previewCombinedImageUrl
+    // });
   }, [
     hairstyles,
     outfits,
@@ -1089,6 +1110,7 @@ shadow: {
 tabContainer: {
   flexDirection: "row",
   borderBottomWidth: 1,
+  marginTop:5,
   borderBottomColor: "#F76CCF4D",
 },
 tab: {

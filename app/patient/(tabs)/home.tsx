@@ -122,6 +122,131 @@ const Home = () => {
   const [foodQualityScore, setFoodQualityScore] = useState(9);
   // const [steps, setSteps] = useState(null);
 
+  const userId = user?.user_id;
+
+  useEffect(() => {
+      const setAllVisited = async () => {
+        if (userId) {
+          checkAndAwardExplorerBadge(userId);
+        }
+      };
+      
+      setAllVisited();
+    }, [userId]);
+  
+    const checkAndAwardExplorerBadge = async (userId) => {
+      try {
+        // Get visited status for all areas
+        const healthVisited = await AsyncStorage.getItem('health');
+        const journalVisited = await AsyncStorage.getItem('journal');
+        const selfCareVisited = await AsyncStorage.getItem('self-care');
+        const heartVisited = await AsyncStorage.getItem('heart_2');
+        const mealVisited = await AsyncStorage.getItem('meal_1');
+        const medicationVisited = await AsyncStorage.getItem('medication_3');
+        const weightVisited = await AsyncStorage.getItem('weight_4');
+        const waterVisited = await AsyncStorage.getItem('water_5');
+        const stepVisited = await AsyncStorage.getItem('step_6');
+        const sleepVisited = await AsyncStorage.getItem('sleep_7');
+        
+        console.log('Visited areas:', {
+          health: healthVisited,
+          journal: journalVisited,
+          selfCare: selfCareVisited,
+          heart: heartVisited,
+          meal: mealVisited,
+          medication: medicationVisited,
+          weight: weightVisited,
+          water: waterVisited,
+          step: stepVisited,
+          sleep: sleepVisited
+        });
+        
+        // Check if all required areas have been visited
+        // Main sections: health tracking, journal, and self-care
+        const mainSectionsVisited = healthVisited === 'true' && 
+                                   journalVisited === 'true' && 
+                                   selfCareVisited === 'true';
+        
+        // Optional: Check if at least one specific health tracker has been visited
+        // You can adjust this requirement based on your needs
+        const atLeastOneHealthTrackerVisited = 
+          heartVisited === 'true' &&
+          mealVisited === 'true' &&
+          medicationVisited === 'true' && 
+          weightVisited === 'true' && 
+          waterVisited === 'true' && 
+          stepVisited === 'true' && 
+          sleepVisited === 'true';
+        
+        if (mainSectionsVisited && atLeastOneHealthTrackerVisited) {
+          // Check if badge has already been awarded to prevent duplicate awards
+          const badgeAwarded = await AsyncStorage.getItem('explorerBadgeAwarded');
+          
+          if (badgeAwarded !== 'true') {
+            // Award the badge
+            await awardExplorerBadge(userId);
+            
+            // Mark badge as awarded
+            await AsyncStorage.setItem('explorerBadgeAwarded', 'true');
+            console.log('Explorer badge awarded and marked as awarded in storage');
+          } else {
+            console.log('Explorer badge already awarded previously');
+          }
+        } else {
+          console.log('Not all areas have been visited yet');
+          if (!mainSectionsVisited) {
+            console.log('Missing main sections');
+          }
+          if (!atLeastOneHealthTrackerVisited) {
+            console.log('No health trackers visited');
+          }
+        }
+      } catch (error) {
+        console.error('Error checking and awarding Explorer badge:', error);
+      }
+    };
+  
+    // Function to make API call to award the Explorer badge
+    const awardExplorerBadge = async (userId) => {
+      try {
+        const badgeType = "EXPLORER";
+        
+        // Prepare the data payload for the Explorer badge
+        const payload = {
+          badgeType: badgeType,
+          title: "EXPLORER",
+          description: "First time having explored all features of the app (should have navigated at least once to all habit trackers, self care, journal)"
+        };
+        
+        console.log('Making API call to award Explorer badge to user:', userId);
+        
+        // Make API call using fetch with error handling
+        const response = await fetch(
+          `https://crosscare-backends.onrender.com/api/user/${userId}/badges/award`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          }
+        );
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          console.log('Explorer badge awarded successfully!', data);
+        } else {
+          console.error('Failed to award Explorer badge:', data.message);
+        }
+        
+        return data.success;
+      } catch (error) {
+        console.error('Error awarding Explorer badge:', error);
+        return false;
+      }
+    };
+
   const fetchWaterData = useCallback(async () => {
     try {
       // Check if user ID is available before making the request

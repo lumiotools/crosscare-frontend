@@ -121,6 +121,16 @@ export default function HeartRateScreen() {
   const [filteredData, setFilteredData] = useState<DataItem[]>([])
   const [currentHeartRate, setCurrentHeartRate] = useState<number>(75)
 
+  const userId = user?.user_id;
+
+  useEffect(() => {
+      const setHeartVisited = async () => {
+        await AsyncStorage.setItem('heart_2', 'true');
+      };
+      
+      setHeartVisited();
+    }, [userId]);
+
   // Add a ref for the period selector button
   const periodSelectorRef = useRef<TouchableOpacity>(null)
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 })

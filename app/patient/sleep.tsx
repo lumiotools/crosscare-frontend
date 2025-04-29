@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -16,8 +16,19 @@ import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MoonIcon1 from "@/assets/images/Svg/MoonIcon1";
+import { useSelector } from "react-redux";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SleepScreen = () => {
+  const user = useSelector((state: any) => state.user);
+  const userId = user?.user_id;
+  useEffect(() => {
+    const setsleepVisited = async () => {
+      await AsyncStorage.setItem("sleep_7", "true");
+    };
+
+    setsleepVisited();
+  }, [userId]);
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#001F3E" />
@@ -57,9 +68,9 @@ const SleepScreen = () => {
       <View
         style={{
           position: "absolute",
-          zIndex:99,
-          left:0,
-          bottom:0,
+          zIndex: 99,
+          left: 0,
+          bottom: 0,
         }}
       >
         <MoonIcon1 />
