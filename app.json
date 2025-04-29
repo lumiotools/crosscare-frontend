@@ -25,7 +25,12 @@
         "RECORD_AUDIO",
         "INTERNET",
         "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_HEALTH_DATA",
+        "android.permission.WRITE_HEALTH_DATA",
+        "android.permission.READ_STEPS",
+        "android.permission.WRITE_STEPS",
+        "android.permission.health.READ_HEART_RATE"
       ]
     },
     "web": {
@@ -35,6 +40,9 @@
       "package": "com.crosscare.tech"
     },
     "plugins": [
+      [
+        "expo-health-connect"
+      ],
       
       "expo-router",
       [

@@ -1107,7 +1107,7 @@ const step = () => {
               source={require("../../assets/images/applehealth.png")}
               style={{ width: 24, height: 24 }}
             />
-            <Text style={styles.connectText}>{Platform.OS === 'ios' ? 'Health App' : 'Samsung Health'}</Text>
+            <Text style={styles.connectText}>{Platform.OS === 'ios' ? 'Health App' : 'Health Connect'}</Text>
             <TouchableOpacity>
               <Text style={styles.connectButton}>CONNECT</Text>
             </TouchableOpacity>
