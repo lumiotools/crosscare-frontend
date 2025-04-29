@@ -29,6 +29,7 @@ import WaterWaveAnimation from "@/components/waterwaveanimation";
 import { useWaterStore } from "@/zustandStore/waterStore";
 import { useSelector } from "react-redux";
 import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const MAX_HEIGHT = 200;
 const BAR_WIDTH = 20;
@@ -65,6 +66,15 @@ export default function water() {
   const [waterData, setWaterData] = useState<DataItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [timeRange, setTimeRange] = useState("week"); // "week", "month", "lastMonth"
+
+  const userId = user?.user_id;
+    useEffect(() => {
+      const setWaterVisited = async () => {
+        await AsyncStorage.setItem('water_5', 'true');
+      };
+      
+      setWaterVisited();
+    }, [userId]);
 
   // Calculate water percentage for the animation
   const waterPercentage = maxGlasses > 0 ? (glassCount / maxGlasses) * 100 : 0;

@@ -17,6 +17,7 @@ import { supabase } from "@/supabase/supabase";
 import { store } from "../store/store";
 import { setToken, setUser } from "../store/userSlice";
 import { FloatingProvider } from "@/context/FloatingContext";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -24,7 +25,7 @@ SplashScreen.preventAutoHideAsync();
 const RootLayoutNav = () => {
   const dispatch = useDispatch();
   const user = useSelector((state: any) => state.user);
-  
+
   const router = useRouter();
   const colorScheme = useColorScheme();
   const token = useSelector((state: any) => state.user.token);
@@ -92,7 +93,7 @@ const RootLayoutNav = () => {
       <Stack
         screenOptions={{
           headerShown: false,
-          animation:'ios_from_right'
+          animation: "ios_from_right",
         }}
       >
         <Stack.Screen name="index" />
@@ -103,8 +104,8 @@ const RootLayoutNav = () => {
           name="forget-password"
           options={{ title: "Forgot Password" }}
         />
-        <Stack.Screen name='avatar'/>
-        <Stack.Screen name='/patient/(tabs)/home'/>
+        <Stack.Screen name="avatar" />
+        <Stack.Screen name="/patient/(tabs)/home" />
       </Stack>
     </>
     // </ThemeProvider>
@@ -113,11 +114,16 @@ const RootLayoutNav = () => {
 
 export default function RootLayout() {
   return (
-    <Provider store={store}>
-       <FloatingProvider>
-
-        <RootLayoutNav />
-       </FloatingProvider>
-    </Provider>
+    <GestureHandlerRootView
+      style={{
+        flex: 1,
+      }}
+    >
+      <Provider store={store}>
+        <FloatingProvider>
+          <RootLayoutNav />
+        </FloatingProvider>
+      </Provider>
+    </GestureHandlerRootView>
   );
 }

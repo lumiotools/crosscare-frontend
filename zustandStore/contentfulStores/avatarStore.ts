@@ -83,7 +83,7 @@ const fetchHairstylesFromContentful = async (): Promise<Hairstyle[]> => {
       `https://cdn.contentful.com/spaces/${SPACE_ID}/environments/master/entries`,
       {
         headers: { Authorization: `Bearer ${ACCESS_TOKEN}` },
-        params: { content_type: HAIRSTYLE_CONTENT_TYPE, include: 2 },
+        params: { content_type: HAIRSTYLE_CONTENT_TYPE, include: 10 },
       }
     );
 
@@ -120,7 +120,7 @@ const fetchOutfitsFromContentful = async (): Promise<Outfit[]> => {
       `https://cdn.contentful.com/spaces/${SPACE_ID}/environments/master/entries`,
       {
         headers: { Authorization: `Bearer ${ACCESS_TOKEN}` },
-        params: { content_type: OUTFIT_CONTENT_TYPE, include: 2 },
+        params: { content_type: OUTFIT_CONTENT_TYPE, include: 10 },
       }
     );
 

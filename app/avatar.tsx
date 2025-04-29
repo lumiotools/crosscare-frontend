@@ -648,19 +648,19 @@ export default function AvatarSelectionScreen() {
   // Add this just before the return statement
   useEffect(() => {
     console.log("Current app state:");
-    console.log("Hairstyles:", hairstyles.map(h => h.id));
-    console.log("Outfits:", outfits.map(o => o.id));
-    console.log("Combinations:", combinations);
-    console.log("Selected/Preview IDs:", {
-      selectedHairstyleId,
-      selectedOutfitId,
-      previewHairstyleId,
-      previewOutfitId
-    });
-    console.log("Image URLs:", {
-      previewFaceImageUrl,
-      previewCombinedImageUrl
-    });
+    // console.log("Hairstyles:", hairstyles.map(h => h.id));
+    // console.log("Outfits:", outfits.map(o => o.id));
+    // console.log("Combinations:", combinations);
+    // console.log("Selected/Preview IDs:", {
+    //   selectedHairstyleId,
+    //   selectedOutfitId,
+    //   previewHairstyleId,
+    //   previewOutfitId
+    // });
+    // console.log("Image URLs:", {
+    //   previewFaceImageUrl,
+    //   previewCombinedImageUrl
+    // });
   }, [
     hairstyles,
     outfits,
@@ -1089,6 +1089,7 @@ shadow: {
 tabContainer: {
   flexDirection: "row",
   borderBottomWidth: 1,
+  marginTop:5,
   borderBottomColor: "#F76CCF4D",
 },
 tab: {

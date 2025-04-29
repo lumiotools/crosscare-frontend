@@ -13,6 +13,8 @@ import CalorieGoalModal from "./modal/caloriegoalmodal"
 // Import DateTimePicker at the top of the file
 import DateTimePicker from "@react-native-community/datetimepicker"
 import { Platform } from "react-native"
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import { useSelector } from "react-redux"
 
 const MAX_HEIGHT = 200
 const BAR_WIDTH = 20
@@ -76,6 +78,8 @@ const FoodItem = ({ name, portion, calories, onDelete }: Food & { onDelete: () =
       }
     }
   }, [menuVisible])
+
+  
 
   return (
     <View style={styles.foodItem}>
@@ -182,6 +186,16 @@ const meals = () => {
   const [progress, setProgress] = React.useState(0)
   const [isGoalModalVisible, setIsGoalModalVisible] = useState(false)
   const [calorieGoal, setCalorieGoal] = useState("")
+  const user = useSelector((state:any)=>state.user);
+  const userId = user?.user_id;
+
+  useEffect(() => {
+      const setMealVisited = async () => {
+        await AsyncStorage.setItem('meal_1', 'true');
+      };
+      
+      setMealVisited();
+    }, [userId]);
 
   // Add these state variables after the other useState declarations
   const [showDatePicker, setShowDatePicker] = useState(false)

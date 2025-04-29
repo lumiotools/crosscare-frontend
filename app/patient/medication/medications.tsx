@@ -9,6 +9,7 @@ import MedicationIcon from "@/assets/images/Svg/MedicationIcon"
 import DateRangePicker from "@/components/DateRangePicker"
 import DateRangeButton from "@/components/DateRangeButton"
 import { useSelector } from "react-redux"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 
 // First, let's update the interfaces to include dates
 interface MedicationTime {
@@ -125,6 +126,14 @@ export default function medications() {
   const [activeTab, setActiveTab] = useState("All")
   const user = useSelector((state: any) => state.user)
   const [isLoading, setIsLoading] = useState(true)
+  const userId = user?.user_id;
+  useEffect(() => {
+    const setMedicationVisited = async () => {
+      await AsyncStorage.setItem('medication_3', 'true');
+    };
+    
+    setMedicationVisited();
+  }, [userId]);
 
   // Update the medications data structure
   const [medications, setMedications] = useState<Medication[]>([])

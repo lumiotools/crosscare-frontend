@@ -508,6 +508,7 @@ const Profile = () => {
   const logout = async () => {
     await AsyncStorage.removeItem("userToken");
     await AsyncStorage.removeItem("user");
+    await AsyncStorage.removeItem('explorerBadgeAwarded');
     setToken(null);
     setUser(null);
     dispatch(removeToken());

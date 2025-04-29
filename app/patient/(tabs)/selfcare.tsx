@@ -14,6 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useSelfCareStore } from "@/zustandStore/contentfulStores/selfCareStore";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SelfCare = () => {
   const router = useRouter();
@@ -25,6 +26,14 @@ const SelfCare = () => {
     downloadAudio,
     setCurrentRoutine,
   } = useSelfCareStore();
+
+
+  useEffect(() => {
+    const setSelfCareVisited = async () => {
+      await AsyncStorage.setItem('self-care', 'true');
+    };
+    setSelfCareVisited();
+  }, [])
 
   useEffect(() => {
     fetchRoutines();

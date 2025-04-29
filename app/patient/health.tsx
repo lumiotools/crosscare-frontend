@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from 'react-native';
 import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,6 +10,8 @@ import WeightIcon from '@/assets/images/Svg/WeightIcon';
 import WaterIcon from '@/assets/images/Svg/WaterIcon';
 import StepsIcon from '@/assets/images/Svg/StepsIcon';
 import SleepIcon from '@/assets/images/Svg/SleepIcon';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSelector } from 'react-redux';
 
 const trackingOptions = [
   { 
@@ -56,7 +58,21 @@ const trackingOptions = [
   },
 ];
 
+
+
 const TrackingOptionsScreen = () => {
+
+  const user = useSelector((state:any) => state.user);
+  const userId = user?.user_id;
+
+  useEffect(() => {
+    const setHealthVisited = async () => {
+      await AsyncStorage.setItem('health', 'true');
+    };
+    
+    setHealthVisited();
+  }, [userId]);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={'white'} />

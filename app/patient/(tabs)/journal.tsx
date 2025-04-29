@@ -17,6 +17,7 @@ import ContentCard1 from "@/components/ContentCard1";
 import ContentCard from "@/components/ContentCard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Define types
 interface NoteItem {
@@ -59,6 +60,12 @@ export default function Journal() {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
+  useEffect(() => {
+    const setJournalVisited = async () => {
+      await AsyncStorage.setItem('journal', 'true');
+    };
+    setJournalVisited();
+  }, [])
   // Hooks
   const theme = useTheme();
   const user = useSelector((state: RootState) => state.user);
