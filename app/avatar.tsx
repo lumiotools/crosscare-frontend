@@ -148,6 +148,27 @@ export default function AvatarSelectionScreen() {
   // Loading state
   const isLoading = isLoadingHairstyles || isLoadingOutfits || isLoadingCombinations;
 
+
+  // useEffect(()=>{
+  //   const Avatar = async ()=>{
+  //     const response = await fetch(`https://crosscare-backends.onrender.com/api/user/${user?.user_id}/profile`, {
+  //       method: "GET",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         Authorization: `Bearer ${user?.token}`,
+  //       },
+  //     });
+
+  //     const data = await response.json();
+
+  //     console.log("API Response:", data);
+  //     if(data.avatarUrl){
+  //       router.replace("/patient/(tabs)/home");
+  //     }
+  //   }
+  //   Avatar();
+  // },[user?.user_id])
+
   // Fetch all avatar assets on component mount
   useEffect(() => {
     fetchAllAvatarAssets();

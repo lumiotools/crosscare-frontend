@@ -67,11 +67,8 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
       {
         id: "q1-f",
         text: "What floor do you live on?",
-        options: ["1st", "2nd", "3rd"],
         followUp: {
-          "1st": "q1-2", // Continue if "1st"
-          "2nd": "q1-2", // Continue if "2nd"
-          "3rd": "q1-2", // Continue if "3rd"
+          "*": "q1-2", // Any response leads to q1-g
         },
       },
       {
@@ -191,7 +188,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
         text: "Does anyone in your home make you feel unsafe because of physical or verbal abuse?",
         flag: "Domestic safety concern - HIGH PRIORITY",
         followUp: {
-          "*": "domain-2[q2-1]" // If no, move to next domain
+          "*": "domain[q2-1]" // If no, move to next domain
         },
       },
       {
@@ -201,7 +198,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
         options: ["Yes", "No"],
         followUp: {
           Yes: "q1-windows", // If near highway, ask about windows
-          No: "domain-2[q2-1]", // If not near highway, ask about air filter
+          No: "domain[q2-1]", // If not near highway, ask about air filter
         },
       },
       {
@@ -229,7 +226,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
         options: ["Yes", "No"],
         followUp: {
           Yes: "q1-lead-info", // If construction nearby, provide lead info
-          No: "domain-2[q2-1]", // If no construction, move to next domain
+          No: "domain[q2-1]", // If no construction, move to next domain
         },
       },
       {
@@ -237,7 +234,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
         text: "Try to keep the windows closed so you are breathing in less dust from outside and the home. This can cause lead poisoning.",
         flag: "Lead exposure risk - provided information",
         followUp: {
-          "*": "domain-2[q2-1]", // Move to next domain after providing info
+          "*": "domain[q2-1]", // Move to next domain after providing info
         },
       },
       {
@@ -255,7 +252,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
         text: "Try to keep the windows closed so you are breathing in less exhaust. Keep the filter clean.",
         flag: "Air filter maintenance education provided",
         followUp: {
-          "*": "domain-2[q2-1]", // Move to next domain after providing info
+          "*": "domain[q2-1]", // Move to next domain after providing info
         },
       },
       {
@@ -263,7 +260,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
         text: "Try to keep the windows closed so you are breathing in less exhaust.",
         flag: "Air quality education provided",
         followUp: {
-          "*": "domain-2[q2-1]", // Move to next domain after providing info
+          "*": "domain[q2-1]", // Move to next domain after providing info
         },
       },
     ],
@@ -304,11 +301,8 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
       {
         id: "q2-6",
         text: "How do you get to and from work, doctor appointments, and the grocery store?",
-        options: ["Car","Walk", "Bus"],
         followUp:{
-          Car:"q2-7",
-          Walk:"q2-7",
-          Bus:"q2-7",
+          "*":"q2-7",
         }
       },
       {

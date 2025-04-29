@@ -28,6 +28,7 @@ import { useSelector } from "react-redux";
 import { Animated } from "react-native";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { ActivityIndicator } from "react-native";
+import UpArrow from "@/assets/images/Svg/UpArrow";
 
 // Badge types constants
 const REGULAR_BADGE_TYPES = [
@@ -82,7 +83,7 @@ const STREAK_BADGE_TYPES = [
 // Map of badge types to their earned badge images
 const BADGE_IMAGES: Record<string, any> = {
   TRIVIA_QUEEN: require("../../../assets/images/badge/trivia.png"),
-  HOT_MAMA : require("../../../assets/images/badge/Hot Mama.png"),
+  HOT_MAMA: require("../../../assets/images/badge/Hot Mama.png"),
   SNAPSHOT: require("../../../assets/images/badge/snapshot queen.png"),
   HYDRATED_QUEEN: require("../../../assets/images/badge/Hydrated Queen.png"),
   HEART_SCRIBE: require("../../../assets/images/badge/heart.png"),
@@ -115,6 +116,15 @@ const BADGE_IMAGES: Record<string, any> = {
   HEALTH_QUEEN_VII: require("../../../assets/images/badge/Health Wizard 7.png"),
   HEALTH_QUEEN_VIII: require("../../../assets/images/badge/Health Wizard 8.png"),
   HEALTH_QUEEN_IX: require("../../../assets/images/badge/Health Wizard 9.png"),
+  ON_THE_MOVE_I: require("../../../assets/images/badge/On The Move 1.png"),
+  ON_THE_MOVE_II: require("../../../assets/images/badge/On The Move 2.png"),
+  ON_THE_MOVE_III: require("../../../assets/images/badge/On The Move 3.png"),
+  ON_THE_MOVE_IV: require("../../../assets/images/badge/On The Move 4.png"),
+  ON_THE_MOVE_V: require("../../../assets/images/badge/On The Move 5.png"),
+  ON_THE_MOVE_VI: require("../../../assets/images/badge/On The Move 6.png"),
+  ON_THE_MOVE_VII: require("../../../assets/images/badge/On The Move 7.png"),
+  ON_THE_MOVE_VIII: require("../../../assets/images/badge/On The Move 8.png"),
+  ON_THE_MOVE_IX: require("../../../assets/images/badge/On The Move 9.png"),
 };
 
 // Map of badge types to their locked/unearned badge images
@@ -122,7 +132,7 @@ const NOT_EARNED_BADGE: Record<string, any> = {
   HYDRATED_QUEEN: require("../../../assets/images/badge/Hydrated Queen locked.png"),
   RESTED_DIVA: require("../../../assets/images/badge/diva locked.png"),
   HEART_SCRIBE: require("../../../assets/images/badge/heart locked.png"),
-  HOT_MAMA : require("../../../assets/images/badge/Hot Mama(lock).png"),
+  HOT_MAMA: require("../../../assets/images/badge/Hot Mama(lock).png"),
   TRIVIA_QUEEN: require("../../../assets/images/badge/trivia lcoked.png"),
   SNAPSHOT: require("../../../assets/images/badge/snapshot queen locked.png"),
   EXPLORER: require("../../../assets/images/badge/explorer locked.png"),
@@ -153,6 +163,15 @@ const NOT_EARNED_BADGE: Record<string, any> = {
   WATER_WIZARD_VII: require("../../../assets/images/badge/Water Wizard 7(lock).png"),
   WATER_WIZARD_VIII: require("../../../assets/images/badge/Water Wizard 8(lock).png"),
   WATER_WIZARD_IX: require("../../../assets/images/badge/Water Wizard 9(lock).png"),
+  ON_THE_MOVE_I: require("../../../assets/images/badge/On The Move 1(lock).png"),
+  ON_THE_MOVE_II: require("../../../assets/images/badge/On The Move 2(lock).png"),
+  ON_THE_MOVE_III: require("../../../assets/images/badge/On The Move 3(lock).png"),
+  ON_THE_MOVE_IV: require("../../../assets/images/badge/On The Move 4(lock).png"),
+  ON_THE_MOVE_V: require("../../../assets/images/badge/On The Move 5(lock).png"),
+  ON_THE_MOVE_VI: require("../../../assets/images/badge/On The Move 6(lock).png"),
+  ON_THE_MOVE_VII: require("../../../assets/images/badge/On The Move 7(lock).png"),
+  ON_THE_MOVE_VIII: require("../../../assets/images/badge/On The Move 8(lock).png"),
+  ON_THE_MOVE_IX: require("../../../assets/images/badge/On The Move 9(lock).png"),
 };
 
 const ALL_BADGE = [...REGULAR_BADGE_TYPES, ...STREAK_BADGE_TYPES];
@@ -263,11 +282,14 @@ const formatBadgeTitle = (type: string | undefined): string => {
   if (!type) return "";
   return type
     .split("_")
-    .map(
-      (word: string) =>
-        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    )
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(" ");
+};
+
+const extractRomanNumeral = (type: string | undefined): string => {
+  if (!type) return "";
+  const match = type.match(/_([IVXLCDM]+)$/);
+  return match ? match[1] : "";
 };
 
 interface BadgeCarouselProps {
@@ -526,7 +548,7 @@ const BadgeCarousel: React.FC<BadgeCarouselProps> = ({
                       <View style={styles.carouselLockIconContainer}>
                         <Ionicons
                           name="lock-closed"
-                          size={24}
+                          size={20}
                           color="#FF69B4"
                         />
                       </View>
@@ -550,7 +572,9 @@ const BadgeCarousel: React.FC<BadgeCarouselProps> = ({
       {currentBadge && (
         <>
           <Text style={styles.badgeTitle}>
-            {formatBadgeTitle(currentBadge.badge.type)}
+            {`${formatBadgeTitle(
+              currentBadge.badge.type.replace(/_([IVXLCDM]+)$/, "")
+            )} ${extractRomanNumeral(currentBadge.badge.type)}`}
           </Text>
 
           <Text style={styles.badgeDescription}>
@@ -559,8 +583,7 @@ const BadgeCarousel: React.FC<BadgeCarouselProps> = ({
 
           {!isEarned && (
             <View style={styles.tipContainer}>
-              <Text style={styles.tipLabel}>Tip: </Text>
-              <Text style={styles.tipText}>{getBadgeTip(badgeType)}</Text>
+              <Text style={styles.tipLabel}>Tip :  <Text style={styles.tipText}>{getBadgeTip(badgeType)}</Text></Text>
             </View>
           )}
 
@@ -573,7 +596,7 @@ const BadgeCarousel: React.FC<BadgeCarouselProps> = ({
       )}
 
       <View {...panResponder.panHandlers} style={styles.expandButton}>
-        <SimpleLineIcons name="arrow-up" size={24} color="#CCCCCC" />
+        <UpArrow width={24} height={24} color="#FF69B4" />
       </View>
     </View>
   );
@@ -588,7 +611,7 @@ const EarnBadge = () => {
   const [currentBadgeIndex, setCurrentBadgeIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const snapPoints = useMemo(() => ["50%","90%"], []);
+  const snapPoints = useMemo(() => ["50%", "90%"], []);
 
   // Animation value for badge translation
   const badgeTranslateY = useRef(new Animated.Value(0)).current;
@@ -746,7 +769,7 @@ const EarnBadge = () => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={20} />
+        <Ionicons name="chevron-back" size={20} color="black" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Hall of Fame</Text>
         <View style={{ width: 20 }} />
@@ -763,7 +786,7 @@ const EarnBadge = () => {
       {/* Badge carousel */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size={"large"} color={'#E162BC'} />
+          <ActivityIndicator size={"large"} color={"#E162BC"} />
         </View>
       ) : allBadges.length > 0 ? (
         <BadgeCarousel
@@ -819,8 +842,11 @@ const EarnBadge = () => {
                         key={badgeType}
                         style={[
                           styles.badgeGridItem,
-                          badgeIndex === currentBadgeIndex && styles.selectedBadgeGridItem,
-                          !isEarned && badgeIndex !== currentBadgeIndex && styles.lockedBadgeWrapper,
+                          badgeIndex === currentBadgeIndex &&
+                            styles.selectedBadgeGridItem,
+                          !isEarned &&
+                            badgeIndex !== currentBadgeIndex &&
+                            styles.lockedBadgeWrapper,
                         ]}
                         onPress={() => {
                           if (badgeIndex !== -1) {
@@ -829,11 +855,7 @@ const EarnBadge = () => {
                         }}
                         activeOpacity={0.7}
                       >
-                        <View
-                          style={[
-                            styles.badgeWrapper,
-                          ]}
-                        >
+                        <View style={[styles.badgeWrapper]}>
                           {!isEarned ? (
                             // Use the locked badge image if available
                             <View style={styles.pinkBorderContainer}>
@@ -954,7 +976,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   badgeTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontFamily: "DMSans700",
     color: "#E162BC",
     marginTop: 10,
@@ -966,7 +988,7 @@ const styles = StyleSheet.create({
     color: "#7B7B7B",
     textAlign: "center",
     marginBottom: 24,
-    paddingHorizontal: 10,
+    paddingHorizontal: 20,
     lineHeight: 20,
   },
   badgeButton: {
@@ -976,11 +998,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 20,
     marginBottom: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    boxShadow: "0px 0px 4px 0px rgba(0, 0, 0, 0.25)",
+    // shadowColor: '#000',
+    // shadowOffset: { width: 10, height: 50 },
+    // shadowOpacity: 0.25,
+    // shadowRadius: 4,
+    // elevation: 4,
   },
   badgeButtonText: {
     fontSize: 14,
@@ -1088,10 +1111,10 @@ const styles = StyleSheet.create({
     borderColor: "#CCCCCC52",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor:'#F7F7F780',
-    opacity:0.5,
+    backgroundColor: "#F7F7F780",
+    opacity: 0.5,
   },
- 
+
   pinkBorderContainer: {
     width: "100%",
     height: "100%",
@@ -1116,10 +1139,10 @@ const styles = StyleSheet.create({
   carouselLockIconContainer: {
     position: "absolute",
     bottom: -10,
-    right: 10,
+    right: 20,
     backgroundColor: "#FFEAF9",
     borderRadius: 20,
-    padding: 5,
+    padding: 6,
   },
   placeholderBadge: {
     width: 72,
@@ -1164,11 +1187,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 16,
     flexDirection: "row",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
-    elevation: 1,
+    shadowColor: '#000',
+    boxShadow: "0px 0px 4px 0px rgba(0, 0, 0, 0.25)",
   },
   tipLabel: {
     fontSize: 14,
