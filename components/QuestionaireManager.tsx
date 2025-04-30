@@ -585,11 +585,11 @@ const QuestionnaireManager = ({
 
     // For subsequent questions, just ask the question with a conversational lead-in
     const conversationalLeadIns = [
-      "Could you tell me, ",
-      "I'd like to know, ",
-      "Please share with me, ",
-      "Would you mind telling me, ",
-      "I'm wondering, ",
+      // "Could you tell me, ",
+      // "I'd like to know, ",
+      // "Please share with me, ",
+      // "Would you mind telling me, ",
+      // "I'm wondering, ",
       "",
     ]
 

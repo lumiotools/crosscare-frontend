@@ -100,8 +100,8 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
         flag: "Housing insecurity",
         options: ["Yes", "No"],
         followUp: {
-          YES: "q1-smoke", // Continue to smoke questions if "YES"
-          NO: "q1-smoke", // Continue to smoke questions if "NO"
+          Yes: "q1-smoke", // Continue to smoke questions if "YES"
+          No: "q1-smoke", // Continue to smoke questions if "NO"
         },
       },
       {
@@ -110,8 +110,8 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
         flag: "Smoke exposure risk",
         options: ["Yes", "No"],
         followUp: {
-          YES: "q1-smoke-info", // Record information about second-hand smoke
-          NO: "q1-chemicals", // Continue to chemicals question
+          Yes: "q1-smoke-info", // Record information about second-hand smoke
+          No: "q1-chemicals", // Continue to chemicals question
         },
       },
       {
@@ -128,13 +128,13 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
         flag: "Chemical exposure risk",
         options: ["Yes", "No"],
         followUp: {
-          YES: "q1-chemicals-info", // Provide information about chemical exposure
-          NO: "q1-3", // Continue to paint question
+          Yes: "q1-chemicals-info", // Provide information about chemical exposure
+          No: "q1-3", // Continue to paint question
         },
       },
       {
         id: "q1-chemicals-info",
-        text: "Have them change their clothes, shoes, and shower  before coming in the home.  Do not wash their work clothes.  Explain why-potential exposure to chemicals",
+        text: "Have them change their clothes, shoes and shower before coming in the home. Do not wash their work clothes. Explain why-potential exposure to chemicals",
         flag: "Chemical exposure - provided safety information",
         followUp: {
           "*": "q1-3", // Continue to paint question after providing info
@@ -213,7 +213,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
       },
       {
         id: "q1-exhaust-info",
-        text: "Trucks and car exaust can put out harmful chemicals",
+        text: "Trucks and car's exhaust can put out harmful chemicals",
         flag: "Air quality education provided",
         followUp: {
           "*": "q1-air-filter", // Move to next domain after providing info
@@ -335,7 +335,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
       },
       {
         id: "q2-10",
-        text: "If transporatio is unreliable, she has to walk or take the bus ask if she has a plan to do something differently when the baby comes",
+        text: "If transportation is unreliable, she has to walk or take the bus ask if she has a plan to do something differently when the baby comes",
         flag: "Transportation support needed",
         followUp:{
           "*": "q2-11",
@@ -343,7 +343,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
       },
       {
         id: "q2-11",
-        text:"Are there any traditions or beliefs about pregnancy in you culture?",
+        text:"Are there any traditions or beliefs about pregnancy in your culture?",
         flag: "Cultural beliefs",
         followUp:{
           "*":"q2-12",
@@ -351,7 +351,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
       },
       {
         id: "q2-12",
-        text: "Activities that you should or shoulnt do during pregnancy",
+        text: "Activities that you should or should not do during pregnancy",
         flag: "Pregnancy education",
         followUp:{
           "*":"q2-13",
@@ -359,7 +359,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
       },
       {
         id: "q2-13",
-        text: "Any foods that you should or shouldnt eat durning pregnancy in your culture",
+        text: "Any foods that you should or should not eat during pregnancy in your culture?",
         followUp:{
           "*":"domain[q3-1]",
         }
@@ -401,7 +401,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
       },
       {
         id:"q3-11",
-        text:"Are you paid per hour or do you have a set salary",
+        text:"Are you paid per hour or do you have a set salary?",
         options:["Hourly", "Salary"],
         followUp:{
           "*": "q3-12",
@@ -409,7 +409,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
       },
       {
         id:"q3-12",
-        text:"Do you have any worries about money with the baby coming",
+        text:"Do you have any worries about money with the baby coming?",
         options:["Yes", "No"],
         followUp:{
           "*": "q3-13",
@@ -417,7 +417,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
       },
       {
         id:"q3-13",
-        text:"Will you have enough income to meet your needs while you are on maternity leave",
+        text:"Will you have enough income to meet your needs while you are on maternity leave?",
         options:["Yes", "No"],
         followUp:{
           Yes:"q3-14",
@@ -427,7 +427,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
       
       {
         id:"q3-14",
-        text:"What is you plan to support yourself and the baby during maternity leave? Do you need help?",
+        text:"What is your plan to support yourself and the baby during maternity leave? Do you need help?",
         followUp:{
           "*":"q3-4",
         }
@@ -485,77 +485,71 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
       },
       {
         id: "q3-c",
-        text:"What was the result of the pregnancy?",
+        text: "What was the result of the pregnancy? (Girl/Boy or Abortion/Miscarriage/Medical issue)",
         followUp:{
-          "*":"q3-e",
+          "*":"q3-l", // Skip q3-e and go directly to q3-l
         }
       },
-      {
-        id: "q3-e",
-        text:"Abortion?",
-        followUp:{
-          "*":"q3-l",
-        }
-      },
+      // q3-e is removed
       {
         id: "q3-l",
-        text:"Were you able to carry the baby full term?",
+        text: "Were you able to carry the baby full term?",
         followUp:{
           "*":"q3-m",
         }
       },
       {
         id: "q3-m",
-        text:"Were there any issues during pregnancy and/or birth?",
+        text: "Did you face any issues during pregnancy or birth?",
         followUp:{
           "*":"q3-n",
         }
       },
       {
         id: "q3-n",
-        text:"What was the baby’s weight, How old is your baby?",
+        text: "What was the baby's weight? How old is the child now?",
         followUp:{
           "*":"q3-o",
         }
       },
       {
         id: "q3-o",
-        text:"Does your other child/children know that you are pregnant?",
+        text: "Do your other children know that you are pregnant?",
         followUp:{
           "*":"q3-p",
         }
       },
       {
         id: "q3-p",
-        text:"What was their reaction?",
+        text: "What was their reaction?",
         followUp:{
           "*":"q3-q",
         }
       },
       {
         id: "q3-q",
-        text:"How did their reaction make you feel?",
+        text: "How did their reaction make you feel?",
         followUp:{
           "*":"q3-r",
         }
       },
       {
         id: "q3-r",
-        text:"Do you have any child care issue with your current child/children?",
+        text: "Do you have any child care issues with your current children?",
         followUp:{
           "*":"q3-s",
         }
       },
       {
         id: "q3-s",
-        text:"Will having another baby cause any more stress?",
+        text: "Will having another baby cause any more stress?",
         followUp:{
           "*":"q3-t",
         }
       },
       {
         id: "q3-t",
-        text:"Do you have any stress connected to your children?",
+        text: "Do you have any stress connected to your children?",
         followUp:{
           "*":"q3-j",
         }
@@ -597,21 +591,21 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
       },
       {
         id:"q3-i",
-        text:"Are there other family members that cause you stress? Why",
+        text:"Are there other family members that cause you stress? Why?",
         followUp:{
           "*":"q3-j",
         }
       },
       {
         id:"q3-j",
-        text:"Are you still in a relationship with the baby’s father?",
+        text:"Are you still in a relationship with the baby's father?",
         followUp:{
           "*":"q3-k",
         }
       },
       {
         id:"q3-k",
-        text:"Does he have any other children? If yes is do you have any stress caused by his previous child’s mother and/or family",
+        text:"Does he have any other children? If yes, do you have any stress caused by his previous child's mother and/or family?",
         followUp:{
           "*":"domain[q4-1]",
         }
@@ -648,7 +642,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
       },
       {
         id: "q4-5",
-        text: "What is you favorite thing to eat?",
+        text: "What is your favorite thing to eat?",
         followUp:{
           "*":"q4-6",
         }
@@ -669,7 +663,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
       },
       {
         id: "q4-8",
-        text: "Any foods that you should or shouldnt eat durning pregnancy in your culture?",
+        text: "Any foods that you should or should not eat during pregnancy in your culture?",
         followUp:{
           "*":"q4-9",
         }
@@ -694,7 +688,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
       },
       {
         id: "q4-11",
-        text: "What is your perfect way to give birth?  Do want pain medications?  Who do you want in the room with you?",
+        text: "What is your perfect way to give birth? Do you want pain medications? Who do you want in the room with you?",
         followUp:{
           "*":"q4-15",
         }
@@ -731,14 +725,14 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
       },
       {
         id: "q4-17",
-        text: "Are you nervous about breastfeeding?  Do you have assistance with breastfeeding?",
+        text: "Are you nervous about breastfeeding? Do you have assistance with breastfeeding?",
         followUp:{
           "*":"q4-19",
         }
       },
       {
         id: "q4-18",
-        text: "Did you breastfeed before?  Did you have any trouble?",
+        text: "Did you breastfeed before? Did you have any trouble?",
         options:["Yes", "No"],
         followUp:{
           Yes:"q4-19",
@@ -747,7 +741,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
       },
       {
         id: "q4-19",
-        text: "Did you breastfeed before?  Did you have any trouble?",
+        text: "Did you breastfeed before? Did you have any trouble?",
         followUp:{
           "*":"domain[q5-1]",
         }
@@ -828,7 +822,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
       },
       {
         id: "q7-6",
-        text: " How often do you feel stressed?",
+        text: "How often do you feel stressed?",
         followUp:{
           "*":"q7-7",
         }
@@ -842,7 +836,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
       },
       {
         id: "q7-8",
-        text: "Do you stress about the same thing everyday or multiple times?",
+        text: "Do you stress about the same thing every day or multiple times?",
       },
     ]
   }
