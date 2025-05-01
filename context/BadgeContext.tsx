@@ -15,6 +15,7 @@ import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import LottieView from "lottie-react-native"; // Add Lottie import
 import { Dimensions } from "react-native";
+import { usePathname } from "expo-router";
 
 // Import your badge images
 const BADGE_IMAGES: Record<string, any> = {
@@ -85,6 +86,8 @@ type BadgeContextType = {
 const BadgeContext = createContext<BadgeContextType | undefined>(undefined);
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+const EXCLUDED_ROUTES = ["/login", "/signup", "/forget-password",]
+
 // Create provider component
 export const BadgeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -108,6 +111,9 @@ export const BadgeProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const badgeContainerRef = useRef<View>(null);
   const [badgeInitialPosition, setBadgeInitialPosition] = useState({ x: 0, y: 0 });
+
+  const pathname = usePathname()
+  const shouldShowBadge = !EXCLUDED_ROUTES.some((route) => pathname?.includes(route))
 
   // Start rotation animation when badge is shown and lottie is finished
   useEffect(() => {
@@ -233,6 +239,11 @@ export const BadgeProvider: React.FC<{ children: React.ReactNode }> = ({
   // Function to show badge
   const showBadge = async (badge: Badge) => {
     console.log("showBadge called with:", badge);
+
+    if (!shouldShowBadge) {
+      console.log("Not showing badge on excluded route:", pathname)
+      return
+    }
 
     if (!badge || !badge.id) {
       console.error("Invalid badge data:", badge);

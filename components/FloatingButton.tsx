@@ -352,7 +352,14 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({
 
   const renderButtonContent = () => {
     if (isLoadingAvatar) {
-      return <Text style={styles.fallbackText}>D</Text>;
+      return <Image
+      source={{
+        uri: user?.avatar_url || 'https://tskzddfyjazcirdvloch.supabase.co/storage/v1/object/public/cross-care/avatars/avatar-660e8400-e29b-41d4-a716-446655440014-46d376a4-820f-45d8-82cb-82766db041fa.jpg'
+      }}
+        style={styles.image}
+        resizeMode={user?.avatar_url ? "cover" : "contain"}
+        onError={() => setImageLoaded(false)}
+      />
     }
     
     if (avatarImage) {
@@ -372,7 +379,7 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({
     return imageLoaded ? (
       <Image
       source={{
-        uri: user?.avatar_url || 'https://tskzddfyjazcirdvloch.supabase.co/storage/v1/object/public/cross-care/avatars/avatar-660e8400-e29b-41d4-a716-446655440014-46d376a4-820f-45d8-82cb-82766db041fa.jpg'
+        uri: user?.avatar_url  || 'https://tskzddfyjazcirdvloch.supabase.co/storage/v1/object/public/cross-care/avatars/avatar-660e8400-e29b-41d4-a716-446655440014-46d376a4-820f-45d8-82cb-82766db041fa.jpg'
       }}
         style={styles.image}
         resizeMode="cover"

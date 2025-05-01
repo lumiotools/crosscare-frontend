@@ -77,6 +77,33 @@ const emptyChartData = [
 // Default empty today data
 const emptyTodayData = [{ day: "Today", bpm: 0, date: new Date().toISOString().split("T")[0] }]
 
+const safeParseDate = (dateString: string | number | Date): Date | null => {
+  try {
+    // Handle empty or invalid input
+    if (!dateString) return null;
+    
+    // If it's already a Date object, just return it
+    if (dateString instanceof Date) {
+      // Check if it's a valid date
+      return isNaN(dateString.getTime()) ? null : dateString;
+    }
+    
+    // Try to parse the string
+    const date = new Date(dateString);
+    
+    // Check if the resulting date is valid
+    if (isNaN(date.getTime())) {
+      console.warn(`Invalid date: ${dateString}`);
+      return null;
+    }
+    
+    return date;
+  } catch (error) {
+    console.error(`Error parsing date: ${dateString}`, error);
+    return null;
+  }
+};
+
 // Sample data for the heart rate
 // Replace the existing DUMMY_HEART_DATA constant with this function
 const generateRealtimeHeartData = () => {
@@ -129,7 +156,6 @@ export default function HeartRateScreen() {
           await AsyncStorage.setItem('heart_2', 'true');
         }
       };
-      
       setHeartVisited();
     }, [userId]);
 
@@ -146,23 +172,23 @@ export default function HeartRateScreen() {
       // Determine date range based on timeRange
       const today = new Date();
       let startDate = new Date();
+      let endDate = new Date(today); // Create a copy to avoid modifying 'today'
       
       if (timeRange === 'today') {
-        // Just today
+        // Just today - no changes needed
       } else if (timeRange === 'week') {
         startDate.setDate(today.getDate() - 7);
       } else if (timeRange === 'month') {
         startDate.setMonth(today.getMonth() - 1);
       } else if (timeRange === 'lastMonth') {
-        startDate.setMonth(today.getMonth() - 2);
-        const endDate = new Date();
-        endDate.setMonth(today.getMonth() - 1);
-        today.setTime(endDate.getTime());
+        // FIXED: Create proper date objects for last month
+        startDate = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+        endDate = new Date(today.getFullYear(), today.getMonth() - 1, 0);
       }
       
       // Format dates for Fitbit API (yyyy-MM-dd)
       const startDateStr = startDate.toISOString().split('T')[0];
-      const endDateStr = today.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
       
       // Get data for date range
       const data = await getDataForRange('activities/heart', startDateStr, endDateStr);
@@ -220,22 +246,39 @@ export default function HeartRateScreen() {
     const heartRateData = fitbitData['activities-heart'];
     const fixedWeekdays = ["S", "M", "T", "W", "T", "F", "S"];
     
-    // Map Fitbit data to app format
-    return heartRateData.map((item: any) => {
-      const date = new Date(item.dateTime);
-      const dayIndex = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
-      const dayAbbr = fixedWeekdays[dayIndex];
-      
-      // Get the resting heart rate or default to 0
-      const bpm = item.value?.restingHeartRate || 0;
-      console.log(bpm);
-      
-      return {
-        day: dayAbbr,
-        bpm: bpm,
-        date: item.dateTime,
-      };
-    });
+    // Map Fitbit data to app format with error handling
+    return heartRateData
+      .map((item: any) => {
+        try {
+          if (!item || !item.dateTime) {
+            console.warn("Invalid Fitbit data item", item);
+            return null;
+          }
+          
+          // Safely parse the date
+          const date = safeParseDate(item.dateTime);
+          if (!date) {
+            console.warn(`Invalid date in Fitbit data: ${item.dateTime}`);
+            return null;
+          }
+          
+          const dayIndex = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
+          const dayAbbr = fixedWeekdays[dayIndex];
+          
+          // Get the resting heart rate or default to 0
+          const bpm = item.value?.restingHeartRate || 0;
+          
+          return {
+            day: dayAbbr,
+            bpm: bpm,
+            date: item.dateTime,
+          };
+        } catch (error) {
+          console.error(`Error processing Fitbit data item`, error);
+          return null;
+        }
+      })
+      .filter(Boolean); // Remove null entries
   };
 
   // Handle Fitbit connection/disconnection
@@ -366,6 +409,12 @@ export default function HeartRateScreen() {
     try {
       // Get current date
       const currentDate = new Date()
+
+      if (isNaN(currentDate.getTime())) {
+        console.error("Invalid current date", currentDate);
+        return false;
+      }
+
       const currentWeek = getWeekNumber(currentDate)
       const currentYear = currentDate.getFullYear()
 
@@ -378,7 +427,10 @@ export default function HeartRateScreen() {
         const parsedInfo = JSON.parse(lastResetInfo)
         lastResetWeek = parsedInfo.week
         lastResetYear = parsedInfo.year
-        setLastResetDate(new Date(parsedInfo.date))
+         const lastResetDate = safeParseDate(parsedInfo.date);
+        if (lastResetDate) {
+          setLastResetDate(lastResetDate);
+        }
       }
 
       console.log("Current week/year:", currentWeek, currentYear)
@@ -474,53 +526,72 @@ export default function HeartRateScreen() {
 
   // Process and filter data based on time range
   const processDataForTimeRange = (data: DataItem[], timeRange: string) => {
-    const allDays = generateAllDays(timeRange)
-
+    const allDays = generateAllDays(timeRange);
+  
     if (data.length === 0) {
-      return allDays
+      return allDays;
     }
-
-    const dataMap = new Map()
+  
+    const dataMap = new Map();
     data.forEach((item) => {
       if (item.date) {
-        const dateKey = new Date(item.date).toISOString().split("T")[0]
-        dataMap.set(dateKey, item)
-      }
-    })
-
-    // For "today" view, we need to specifically check if today's data exists
-    if (timeRange === "today") {
-      const todayStr = new Date().toISOString().split("T")[0]
-      const todayData = dataMap.get(todayStr)
-
-      if (todayData) {
-        return [
-          {
-            id: `today-${todayStr}`,
-            date: todayStr,
-            day: "Today",
-            bpm: todayData.bpm || 0,
-          },
-        ]
-      } else {
-        return allDays // Return empty today template
-      }
-    }
-
-    // For other views, map the data as before
-    return allDays.map((day) => {
-      const existingData = dataMap.get(day.date)
-      if (existingData) {
-        return {
-          ...day,
-          bpm: existingData.bpm || 0,
-          isRangeLabel: day.isRangeLabel,
-          rangeLabel: day.rangeLabel,
+        try {
+          // Safely parse the date
+          const date = safeParseDate(item.date);
+          if (date) {
+            const dateKey = date.toISOString().split('T')[0];
+            dataMap.set(dateKey, item);
+          }
+        } catch (error) {
+          console.error(`Error processing date: ${item.date}`, error);
+          // Skip this item if date is invalid
         }
       }
-      return day
-    })
-  }
+    });
+  
+    // For "today" view, we need to specifically check if today's data exists
+    if (timeRange === "today") {
+      try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const todayData = dataMap.get(todayStr);
+  
+        if (todayData) {
+          return [
+            {
+              id: `today-${todayStr}`,
+              date: todayStr,
+              day: "Today",
+              bpm: todayData.bpm || 0,
+            },
+          ];
+        } else {
+          return allDays; // Return empty today template
+        }
+      } catch (error) {
+        console.error("Error processing today's data", error);
+        return allDays;
+      }
+    }
+  
+    // For other views, map the data as before
+    return allDays.map((day) => {
+      try {
+        const existingData = dataMap.get(day.date);
+        if (existingData) {
+          return {
+            ...day,
+            bpm: existingData.bpm || 0,
+            isRangeLabel: day.isRangeLabel,
+            rangeLabel: day.rangeLabel,
+          };
+        }
+        return day;
+      } catch (error) {
+        console.error(`Error mapping day: ${day.date}`, error);
+        return day;
+      }
+    });
+  };
 
   const getHeartRateStatus = async () => {
     setIsLoading(true)
@@ -671,47 +742,64 @@ export default function HeartRateScreen() {
       const interval = setInterval(() => {
         setCurrentHeartRate((prevRate) => {
           // Random fluctuation between 70-85
-          const newRate = prevRate + (Math.random() * 2 - 1) // Random fluctuation
+          const newRate = prevRate + (Math.random() * 2 - 1); // Random fluctuation
           // Round to the nearest integer and clamp between 70 and 85
-          const updatedRate = Math.min(Math.max(Math.round(newRate), 70), 85)
-
+          const updatedRate = Math.min(Math.max(Math.round(newRate), 70), 85);
+  
           // Update today's heart rate in the chart data
-          const today = new Date()
-          const todayStr = today.toISOString().split("T")[0]
-
-          // Update the heart rate data for today
-          setHeartRateData((prevData) => {
-            const updatedData = [...prevData]
-            const todayIndex = updatedData.findIndex(
-              (item) => new Date(item.date).toISOString().split("T")[0] === todayStr,
-            )
-
-            if (todayIndex >= 0) {
-              // Update existing entry
-              updatedData[todayIndex] = {
-                ...updatedData[todayIndex],
-                bpm: updatedRate,
+          try {
+            const today = new Date();
+            const todayStr = today.toISOString().split("T")[0];
+  
+            // Update the heart rate data for today
+            setHeartRateData((prevData) => {
+              try {
+                const updatedData = [...prevData];
+                
+                // Find today's entry using safe date parsing
+                const todayIndex = updatedData.findIndex(item => {
+                  if (!item.date) return false;
+                  
+                  const itemDate = safeParseDate(item.date);
+                  if (!itemDate) return false;
+                  
+                  return itemDate.toISOString().split("T")[0] === todayStr;
+                });
+  
+                if (todayIndex >= 0) {
+                  // Update existing entry
+                  updatedData[todayIndex] = {
+                    ...updatedData[todayIndex],
+                    bpm: updatedRate,
+                  };
+                } else {
+                  // Add new entry for today
+                  const dayIndex = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+                  const dayAbbr = "SMTWTFS"[dayIndex];
+  
+                  updatedData.push({
+                    day: dayAbbr,
+                    bpm: updatedRate,
+                    date: todayStr,
+                  });
+                }
+  
+                return updatedData;
+              } catch (error) {
+                console.error("Error updating heart rate data", error);
+                return prevData; // Return unchanged data on error
               }
-            } else {
-              // Add new entry for today
-              const dayIndex = today.getDay() // 0 = Sunday, 1 = Monday, etc.
-              const dayAbbr = "SMTWTFS"[dayIndex]
-
-              updatedData.push({
-                day: dayAbbr,
-                bpm: updatedRate,
-                date: todayStr,
-              })
-            }
-
-            return updatedData
-          })
-
-          return updatedRate
-        })
-      }, 1000)
-
-      return () => clearInterval(interval)
+            });
+  
+            return updatedRate;
+          } catch (error) {
+            console.error("Error in heart rate simulation", error);
+            return prevRate; // Return unchanged rate on error
+          }
+        });
+      }, 1000);
+  
+      return () => clearInterval(interval);
     } else {
       // If connected to Fitbit, periodically refresh the current heart rate
       const interval = setInterval(async () => {
@@ -904,20 +992,26 @@ export default function HeartRateScreen() {
 
     // Format the date for display
     const formatDate = (dateString: string) => {
-      if (!dateString) return ""
+      if (!dateString) return "";
+      
       try {
-        const date = new Date(dateString)
-        return date
-          .toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          })
-          .toUpperCase()
+        // Use our safe date parsing function
+        const date = safeParseDate(dateString);
+        
+        if (!date) {
+          return dateString; // Return original if parsing fails
+        }
+        
+        return date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }).toUpperCase();
       } catch (e) {
-        return dateString // Return original if parsing fails
+        console.error(`Error formatting date: ${dateString}`, e);
+        return dateString; // Return original if formatting fails
       }
-    }
+    };
 
     return (
       <TouchableOpacity
