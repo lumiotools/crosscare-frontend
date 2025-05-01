@@ -33,10 +33,15 @@ const Card: React.FC<CardProps> = ({
             <Text style={styles.cardDescription}>{description}</Text>
           </View>
           <Image
-            source={parseInt(id) === 1 ? { uri: user?.avatar_url}: image1} // Use user avatar if id is 1
-            style={{ width: 84, height: 84, borderRadius: 100, borderWidth:0, }}
-            resizeMode="contain"
-          />
+  source={
+    parseInt(id) === 1
+      ? { uri: user?.avatar_url || 'https://tskzddfyjazcirdvloch.supabase.co/storage/v1/object/public/cross-care/avatars/avatar-660e8400-e29b-41d4-a716-446655440014-46d376a4-820f-45d8-82cb-82766db041fa.jpg' } // Use avatar URL if available, else use fallback
+      : image1 // For other ids, use image1
+  }
+  style={{ width: 84, height: 84, borderRadius: 42, borderWidth: 0 }} // Circular image
+  resizeMode="contain"
+/>
+
         </View>
       </LinearGradient>
     </TouchableOpacity>

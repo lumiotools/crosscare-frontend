@@ -146,9 +146,11 @@ export const useStepsStore = create<StepsState>()(
                     day: dayLetter,
                     steps: Number(entry.steps) || 0,
                     date: dateString,
-                    stepsGoal: Number(entry.stepsGoal) || get().stepGoal,
+                    stepsGoal: Number(entry.stepsGoal), // Fix applied here
                     source: entry.source || "app", // Default to app if not specified
-                  }
+                  };
+
+                  console.log("Processed step item:", stepItem)
 
                   // Store data with ISO date string as key
                   stepMap.set(dateString, stepItem)
@@ -169,7 +171,7 @@ export const useStepsStore = create<StepsState>()(
 
               if (latestEntry) {
                 stepsWalked = latestEntry.steps
-                if (latestEntry.stepsGoal > 0) {
+                if (latestEntry && latestEntry.stepsGoal > 0) {
                   stepGoal = latestEntry.stepsGoal
                 }
               }
