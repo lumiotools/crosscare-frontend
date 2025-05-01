@@ -29,6 +29,7 @@ import {
 import QuestionnaireManager from "@/components/QuestionaireManager";
 import { useLocalSearchParams } from "expo-router";
 
+
 interface Message {
   id: string;
   isUser: boolean;
@@ -1583,6 +1584,8 @@ export default function askdoula() {
     return false; // Not handled as a goal request
   };
 
+
+
   const processUserQuery = async (query: string) => {
     try {
       console.log("processUserQuery started with:", query);
@@ -2068,9 +2071,90 @@ export default function askdoula() {
         return;
       }
 
-      // For non-health specific queries, use the regular API
-      const apiResponse = await sendToAPI(query, "text");
+      // New function to call the RAG service
+      const callRagService = async (query: string, conversationHistory: any[] = []) => {
+        try {
+          // Replace with your actual Render URL once deployed
+          const RAG_SERVICE_URL = "https://crosscare-rag.onrender.com/api/chat";
+          
+          console.log(`Calling RAG service with query: "${query}"`);
+          
+          const response = await axios.post(`${RAG_SERVICE_URL}/${user?.user_id}`, {
+            query: query,
+            conversationHistory: conversationHistory
+          });
+          
+          if (response.status === 200 && response.data.success) {
+            console.log("RAG service responded successfully");
+            return response.data;
+          } else {
+            console.error("RAG service error:", response.data);
+            return null;
+          }
+        } catch (error: any) {
+          console.error("Error calling RAG service:", error.message);
+          return null;
+        }
+      };
+      
 
+      // After checking for health-specific queries (like isWaterQuery, isStepsQuery etc.)
+      // Format conversation history for RAG
+      const recentMessages = messages
+      .slice(-6) // Last 6 messages for context
+      .filter(msg => msg.type === "text") // Only text messages
+      .map(msg => ({
+        role: msg.isUser ? "user" : "assistant",
+        content: msg.content
+      }));
+
+    // Try to use RAG service first
+    try {
+      const ragResponse = await callRagService(query, recentMessages);
+      
+      if (ragResponse && ragResponse.success) {
+        // Use the response from RAG service
+        const assistantMessage = ragResponse.response;
+        speakResponse(assistantMessage);
+
+        // Add the response to messages
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          {
+            id: (Date.now() + 1).toString(),
+            type: "text",
+            content: assistantMessage,
+            isUser: false,
+            timestamp: new Date(),
+          },
+        ]);
+      } else {
+        // Fall back to Gemini if RAG fails
+        console.log("RAG service failed, falling back to Gemini");
+        const apiResponse = await sendToAPI(query, "text");
+
+        if (apiResponse) {
+          const assistantMessage = apiResponse.response;
+          speakResponse(assistantMessage);
+
+          // Add the response to messages
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            {
+              id: (Date.now() + 1).toString(),
+              type: "text",
+              content: assistantMessage,
+              isUser: false,
+              timestamp: new Date(),
+            },
+          ]);
+        }
+      }
+    } catch (error) {
+      console.error("Error with RAG service, falling back to Gemini:", error);
+      // Fall back to Gemini API
+      const apiResponse = await sendToAPI(query, "text");
+      
       if (apiResponse) {
         const assistantMessage = apiResponse.response;
         speakResponse(assistantMessage);
@@ -2087,8 +2171,9 @@ export default function askdoula() {
           },
         ]);
       }
+    }
 
-      setIsProcessing(false);
+    setIsProcessing(false);
     } catch (error: any) {
       console.error("Error in processUserQuery:", error.message);
       console.error("Error stack:", error.stack);
