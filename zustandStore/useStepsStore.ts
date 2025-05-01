@@ -146,7 +146,7 @@ export const useStepsStore = create<StepsState>()(
                     day: dayLetter,
                     steps: Number(entry.steps) || 0,
                     date: dateString,
-                    stepsGoal: Number(entry.stepsGoal), // Fix applied here
+                    stepsGoal: Number(entry.stepsGoal) || get().stepGoal, // Fix applied here
                     source: entry.source || "app", // Default to app if not specified
                   };
 
@@ -171,7 +171,7 @@ export const useStepsStore = create<StepsState>()(
 
               if (latestEntry) {
                 stepsWalked = latestEntry.steps
-                if (latestEntry && latestEntry.stepsGoal > 0) {
+                if (latestEntry.stepsGoal > 0) {
                   stepGoal = latestEntry.stepsGoal
                 }
               }
