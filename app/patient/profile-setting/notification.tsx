@@ -10,6 +10,7 @@ import {
   ScrollView,
   Alert,
   Keyboard,
+  Linking,
 } from "react-native";
 import { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -431,9 +432,8 @@ const notification = () => {
             ? Notifications.PermissionStatus.GRANTED
             : Notifications.PermissionStatus.DENIED
         );
-
+  
         if (permissionGranted) {
-          // Fixed: using permissionGranted instead of status
           setNotificationsEnabled(true);
           Alert.alert(
             "Notifications Enabled",
@@ -441,19 +441,27 @@ const notification = () => {
             [{ text: "OK" }]
           );
         } else {
-          // Show alert if permission denied
-          // Alert.alert(
-          //   "Permission Required",
-          //   "Notification permission is required. Please enable notifications in your device settings.",
-          //   [{ text: "OK" }],
-          // )
+          // If permission is denied, prompt the user to go to settings
+          Alert.alert(
+            "Permission Required",
+            "Notification permission is required. Please enable notifications in your device settings.",
+            [
+              {
+                text: "Go to Settings",
+                onPress: () => Linking.openSettings(),
+              },
+              { text: "Cancel" }
+            ]
+          );
         }
       } else {
         // Simply disable notifications in the app
         setNotificationsEnabled(false);
-        // Alert.alert("Notifications Disabled", "You will no longer receive notifications from the app.", [
-        //   { text: "OK" },
-        // ])
+        Alert.alert(
+          "Notifications Disabled",
+          "You will no longer receive notifications from the app.",
+          [{ text: "OK" }]
+        );
       }
     } catch (error) {
       console.error("Error toggling notifications:", error);
