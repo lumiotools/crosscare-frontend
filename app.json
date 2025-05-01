@@ -4,7 +4,7 @@
     "slug": "crosscare",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/app-logo.png",
+    "icon": "./assets/images/app-icon.png",
     "scheme": "com.crosscare.tech",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -41,8 +41,8 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/app-logo.png",
-          "width":200,
-          "height":200,
+          "width":300,
+          "height":300,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
@@ -58,7 +58,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/app-logo.png",
+          "icon": "./assets/images/app-splash.png",
           "color": "#ffffff"
         }
       ]

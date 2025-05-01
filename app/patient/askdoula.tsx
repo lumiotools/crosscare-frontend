@@ -2677,7 +2677,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   highlight: {
-    color: "#FF80AB",
+    color: "#F66DCE",
   },
   subtitle: {
     fontSize: 12,

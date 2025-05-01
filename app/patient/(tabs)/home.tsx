@@ -901,7 +901,12 @@ const Home = () => {
                 <View
                   style={[
                     styles.waterProgress,
-                    { width: `${(glassCount / maxGlasses) * 100}%` }, // Progress width calculated dynamically
+                    {
+                      width:
+                        maxGlasses > 0
+                          ? `${(glassCount / maxGlasses) * 100}%` // Only calculate width if maxGlasses > 0
+                          : "0%", // Set width to 0% if maxGlasses is 0
+                    },
                   ]}
               />
             </View>

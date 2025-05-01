@@ -332,7 +332,7 @@ export const useStepsStore = create<StepsState>()(
             if (get().isFitbitConnected) {
               get().fetchFitbitStepData(userId, "today")
             }
-          }, 20000) // 20 seconds
+          }, 300000) // 20 seconds
 
           // Return cleanup function to clear interval
           return () => {
