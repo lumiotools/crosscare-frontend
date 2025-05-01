@@ -540,7 +540,12 @@ const name = () => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={"white"} />
       <View style={styles.header}>
-        <TouchableOpacity onPress={()=>router.back()}>
+        <TouchableOpacity onPress={()=>router.back()} style={{
+          width: 20,
+          height: 20,
+          justifyContent: "center",
+          alignItems: "center",
+        }}>
             <Ionicons name="chevron-back" size={20} color="black" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Account</Text>

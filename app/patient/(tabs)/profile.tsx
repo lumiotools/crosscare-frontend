@@ -512,6 +512,16 @@ const Profile = () => {
     setToken(null);
     setUser(null);
     dispatch(removeToken());
+    await AsyncStorage.removeItem('health');
+    await AsyncStorage.removeItem('journal');
+   await AsyncStorage.removeItem('self-care');
+    // await AsyncStorage.removeItem('heart_2');
+    await AsyncStorage.removeItem('meal_1');
+    await AsyncStorage.removeItem('medication_3');
+            // const weightVisited = await AsyncStorage.getItem('weight_4');
+            // const waterVisited = await AsyncStorage.getItem('water_5');
+            // const stepVisited = await AsyncStorage.getItem('step_6');
+            // const sleepVisited = await AsyncStorage.getItem('sleep_7');
     router.replace("/login");
   };
 
@@ -742,7 +752,7 @@ const styles = StyleSheet.create({
   menuTitle: {
     fontSize: 16,
     fontFamily:'DMSans600',
-    color: "#AF4D93", // Magenta/purple color from the image
+    color: "#F66DCE", // Magenta/purple color from the image
     marginBottom: 4,
   },
   menuSubtitle: {

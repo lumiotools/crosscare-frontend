@@ -41,6 +41,10 @@ export default function NewPhotos() {
   }, []);
 
   const handleSave = async () => {
+    if(!title){
+      Alert.alert("Title is required", "Please enter a title for your entry.");
+      return;
+    }
     const formData = new FormData();
 
     // Add title to the FormData

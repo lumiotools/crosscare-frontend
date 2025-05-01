@@ -358,9 +358,13 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({
     if (avatarImage) {
       return (
         <Image
-          source={{ uri: user.avatar_url }}
+        source={
+          user?.avatar_url
+            ? { uri: user.avatar_url } // If avatar_url exists, use the URI
+            : require('../assets/images/hairs/h1/face/c1.png') // Fallback to local image if no avatar_url
+        }
           style={styles.image}
-          resizeMode="cover"
+          resizeMode={user?.avatar_url ? "cover" : "contain"}
           onError={() => setImageLoaded(false)}
         />
       );

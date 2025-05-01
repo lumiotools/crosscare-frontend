@@ -44,6 +44,7 @@ import {
   useStepsWithAutoRefresh,
 } from "@/zustandStore/useStepsStore";
 import * as ImagePicker from "expo-image-picker";
+import { useBadge } from "@/context/BadgeContext";
 
 interface Progress {
   progressPercentage: number;
@@ -872,7 +873,7 @@ const Home = () => {
         >
           {/* Water Intake Card */}
           <TouchableOpacity
-            style={styles.statCard}
+            style={styles.statCard1}
             onPress={() => router.push("/patient/water")}
           >
             <View style={styles.statHeader}>
@@ -912,7 +913,7 @@ const Home = () => {
 
           {/* Food Card */}
           <TouchableOpacity
-            style={styles.statCard}
+            style={styles.statCard2}
             onPress={() => router.push("/patient/meals")}
           >
             <View style={styles.statHeader}>
@@ -977,7 +978,7 @@ const Home = () => {
 
           {/* Steps Card */}
           <TouchableOpacity
-            style={styles.statCard}
+            style={styles.statCard3}
             onPress={() => router.push("/patient/steps")}
           >
             <View style={styles.statHeader}>
@@ -1011,7 +1012,7 @@ const Home = () => {
 
           {/* Due Date Card */}
           <TouchableOpacity
-            style={styles.statCard}
+            style={styles.statCard4}
             onPress={() => router.push("/patient/track")}
           >
             <View style={styles.statHeader}>
@@ -1082,18 +1083,44 @@ const styles = StyleSheet.create({
     marginVertical: Platform.OS === "ios" ? 10 : 0,
     paddingBottom: Platform.OS === "android" ? 10 : 40,
   },
-  statCard: {
+  statCard1: {
     width: "48%",
     height: 103, // Fixed height for all cards
-    backgroundColor: "#F8F9FE",
+    backgroundColor: "rgba(35, 149, 255, 0.05)",
+    boxShadow: "0px 0px 4px 0px rgba(0, 0, 0, 0.25)",
     borderRadius: 15,
     padding: 15,
     marginBottom: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
+    justifyContent: "space-between",
+  },
+  statCard2: {
+    width: "48%",
+    height: 103, // Fixed height for all cards
+    backgroundColor: "rgba(21, 135, 68, 0.05)",
+    boxShadow: "0px 0px 4px 0px rgba(0, 0, 0, 0.25)",
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    justifyContent: "space-between",
+  },
+  statCard3: {
+    width: "48%",
+    height: 103, // Fixed height for all cards
+    backgroundColor: "rgba(168, 85, 247, 0.05)",
+    boxShadow: "0px 0px 4px 0px rgba(0, 0, 0, 0.25)",
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    justifyContent: "space-between",
+  },
+  statCard4: {
+    width: "48%",
+    height: 103, // Fixed height for all cards
+    backgroundColor: "rgba(168, 85, 247, 0.05)",
+    boxShadow: "0px 0px 4px 0px rgba(0, 0, 0, 0.25)",
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
     justifyContent: "space-between",
   },
   userName: {
@@ -1148,6 +1175,8 @@ const styles = StyleSheet.create({
   },
   waterProgressBar: {
     height: 8,
+    width: "100%",
+    overflow: "hidden",
     backgroundColor: "#E1EEFF",
     borderRadius: 4,
     marginVertical: 10,

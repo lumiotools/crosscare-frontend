@@ -14,7 +14,7 @@ interface FloatingContextType {
   hideMessage: () => void
 }
 
-const EXCLUDED_ROUTES = ["/login", "/signup", "/forget-password", "/patient/askdoula", '/avatar']
+const EXCLUDED_ROUTES = ["/login", "/signup", "/forget-password", "/patient/askdoula", '/avatar', '/patient/profile-setting/earnbadge']
 
 const FloatingContext = createContext<FloatingContextType | undefined>(undefined)
 
@@ -42,7 +42,7 @@ export const FloatingProvider: React.FC<FloatingProviderProps> = ({
   const [buttonPosition, setButtonPosition] = useState({ x: 0, y: 0 })
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [showMessageBubble, setShowMessageBubble] = useState(false)
-  const [currentMessage, setCurrentMessage] = useState(initialMessage)
+  const [currentMessage, setCurrentMessage] = useState(initialMessage);
 
   const pathname = usePathname()
 

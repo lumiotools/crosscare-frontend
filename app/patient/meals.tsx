@@ -191,7 +191,9 @@ const meals = () => {
 
   useEffect(() => {
       const setMealVisited = async () => {
+        if(userId){
         await AsyncStorage.setItem('meal_1', 'true');
+        }
       };
       
       setMealVisited();

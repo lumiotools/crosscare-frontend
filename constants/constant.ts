@@ -31,7 +31,7 @@ export const cardData = [
     description: "Personalised to your pregnancy",
     bg1: "#FBBBE9", // Light pink
     bg2: "#E162BC", // Deep pink
-    image1: require("../assets/images/doulaImg.png"),
+    image1: require("../assets/images/hairs/h1/face/c1.png"),
     onPress: () => {
       router.push({
         pathname: "/patient/askdoula",

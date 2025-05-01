@@ -28,6 +28,10 @@ import {
 } from "@/constants/questionaireData";
 import QuestionnaireManager from "@/components/QuestionaireManager";
 import { useLocalSearchParams } from "expo-router";
+import name from './profile-setting/name';
+import { width, height } from '../../constants/helper';
+import ProfileIcon from "@/assets/images/Svg/ProfileIcon";
+import Person from "@/assets/images/Svg/Person";
 
 interface Message {
   id: string;
@@ -2314,16 +2318,16 @@ export default function askdoula() {
             {/* )} */}
             <Text style={styles.headerTitle}>Ask Your Doula</Text>
             </View>
-            <View style={{ flexDirection: "row" }}>
+            <View style={{ flexDirection: "row" }}>{}
               <TouchableOpacity
                 onPress={clearChatHistory}
                 style={{ marginRight: 12 }}
               >
-                <Feather name="trash-2" size={20} color="#E5E5E5" />
+                <Feather name="trash-2" size={20} color={messages.length > 0 ? "#434343" : "#f5f5f5"} />
               </TouchableOpacity>
-              <TouchableOpacity>
+              {/* <TouchableOpacity>
                 <Feather name="more-vertical" size={20} color="#E5E5E5" />
-              </TouchableOpacity>
+              </TouchableOpacity> */}
             </View>
           </View>
         )}
@@ -2344,7 +2348,11 @@ export default function askdoula() {
             <View style={styles.profileSection}>
               <View style={styles.profileImageContainer}>
                 <Image
-                  source={{ uri: user?.avatar_url }}
+                  source={
+                    user?.avatar_url
+                      ? { uri: user.avatar_url } // If avatar_url exists, use the URI
+                      : require('../../assets/images/hairs/h1/face/c1.png') // Fallback to local image if no avatar_url
+                  }
                   style={styles.profileImage}
                 />
               </View>
@@ -2376,8 +2384,8 @@ export default function askdoula() {
                   {!message.isUser && (
                     <Image
                       source={{
-                        uri: user?.avatar_url,
-                      }}
+    uri: user?.avatar_url || 'https://tskzddfyjazcirdvloch.supabase.co/storage/v1/object/public/cross-care/avatars/avatar-660e8400-e29b-41d4-a716-446655440014-46d376a4-820f-45d8-82cb-82766db041fa.jpg'
+  }}
                       style={styles.doulaAvatar}
                     />
                   )}
@@ -2407,14 +2415,28 @@ export default function askdoula() {
                     />
                   )}
 
-                  {message.isUser && (
-                    <Image
-                      source={{
-                        uri: user?.user_photo,
-                      }}
-                      style={styles.userAvatar}
-                    />
-                  )}
+{message.isUser && (
+  <>
+    {user?.user_photo ? (
+      <Image
+        source={{ uri: user.user_photo }}
+        style={styles.userAvatar}
+      />
+    ) : (
+      <View style={{
+        width: 36,
+        height: 36,
+        borderWidth: 1.44,
+        borderColor: "#FDE8F8",
+        borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+      }}>
+        <Person width={36} height={36} color={'#E0E0E0'} />
+      </View>
+    )}
+  </>
+)}
                 </View>
               ))}
 
@@ -2643,13 +2665,13 @@ const styles = StyleSheet.create({
   },
   greeting: {
     marginTop: 16,
-    fontSize: 16,
+    fontSize: 18,
   },
   name: {
     fontWeight: "bold",
   },
   title: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "600",
     marginTop: 8,
   },
@@ -2706,10 +2728,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: "DMSans400",
     fontSize: 12,
-    height: "100%",
+    // height: 48,
+    height:'100%'
   },
   micButton: {
     padding: 4,
+    // paddingLeft,
   },
   sendButton: {
     width: 48,
