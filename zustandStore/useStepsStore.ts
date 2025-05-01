@@ -146,9 +146,11 @@ export const useStepsStore = create<StepsState>()(
                     day: dayLetter,
                     steps: Number(entry.steps) || 0,
                     date: dateString,
-                    stepsGoal: Number(entry.stepsGoal) || get().stepGoal,
+                    stepsGoal: Number(entry.stepsGoal) || get().stepGoal, // Fix applied here
                     source: entry.source || "app", // Default to app if not specified
-                  }
+                  };
+
+                  console.log("Processed step item:", stepItem)
 
                   // Store data with ISO date string as key
                   stepMap.set(dateString, stepItem)
@@ -330,7 +332,7 @@ export const useStepsStore = create<StepsState>()(
             if (get().isFitbitConnected) {
               get().fetchFitbitStepData(userId, "today")
             }
-          }, 20000) // 20 seconds
+          }, 300000) // 20 seconds
 
           // Return cleanup function to clear interval
           return () => {

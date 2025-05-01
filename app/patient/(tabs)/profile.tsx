@@ -30,6 +30,8 @@ import Globe from "@/assets/images/Svg/Globe";
 import Notification from "@/assets/images/Svg/Notification";
 import Help from "@/assets/images/Svg/Help";
 import Terms from "@/assets/images/Svg/Terms";
+import Logout from "@/assets/images/Svg/Logout";
+import { width, height } from '../../../constants/helper';
 
 const ProfileField = ({
   label,
@@ -506,23 +508,40 @@ const Profile = () => {
   };
 
   const logout = async () => {
-    await AsyncStorage.removeItem("userToken");
-    await AsyncStorage.removeItem("user");
-    await AsyncStorage.removeItem('explorerBadgeAwarded');
-    setToken(null);
-    setUser(null);
-    dispatch(removeToken());
-    await AsyncStorage.removeItem('health');
-    await AsyncStorage.removeItem('journal');
-   await AsyncStorage.removeItem('self-care');
-    // await AsyncStorage.removeItem('heart_2');
-    await AsyncStorage.removeItem('meal_1');
-    await AsyncStorage.removeItem('medication_3');
+    Alert.alert(
+      "Confirm Logout",
+      "Are you sure you want to logout?",
+      [
+        {
+          text: "No",
+          onPress: () => console.log("Logout Cancelled"),
+          style: "cancel"
+        },
+        {
+          text: "Yes, logout",
+          onPress: async () => {
+            await AsyncStorage.removeItem("userToken");
+            await AsyncStorage.removeItem("user");
+            await AsyncStorage.removeItem('explorerBadgeAwarded');
+            setToken(null);
+            setUser(null);
+            dispatch(removeToken());
+            await AsyncStorage.removeItem('health');
+            await AsyncStorage.removeItem('journal');
+            await AsyncStorage.removeItem('self-care');
+            // await AsyncStorage.removeItem('heart_2');
+            await AsyncStorage.removeItem('meal_1');
+            await AsyncStorage.removeItem('medication_3');
             // const weightVisited = await AsyncStorage.getItem('weight_4');
             // const waterVisited = await AsyncStorage.getItem('water_5');
             // const stepVisited = await AsyncStorage.getItem('step_6');
             // const sleepVisited = await AsyncStorage.getItem('sleep_7');
-    router.replace("/login");
+            router.replace("/login");
+          }
+        }
+      ],
+      { cancelable: false } // Makes the alert non-dismissible unless they confirm or cancel
+    );
   };
 
   const MenuItem = ({
@@ -558,7 +577,7 @@ const Profile = () => {
         />
         <Text style={styles.headerTitle}>Profile</Text>
         <TouchableOpacity onPress={logout}>
-          <Ionicons name="log-out" size={20} color="black" />
+          <Logout width={20} height={20}/>
         </TouchableOpacity>
       </View>
       <ScrollView showsVerticalScrollIndicator={false}>

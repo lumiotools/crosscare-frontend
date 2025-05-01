@@ -358,11 +358,9 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({
     if (avatarImage) {
       return (
         <Image
-        source={
-          user?.avatar_url
-            ? { uri: user.avatar_url } // If avatar_url exists, use the URI
-            : require('../assets/images/hairs/h1/face/c1.png') // Fallback to local image if no avatar_url
-        }
+        source={{
+          uri: user?.avatar_url || 'https://tskzddfyjazcirdvloch.supabase.co/storage/v1/object/public/cross-care/avatars/avatar-660e8400-e29b-41d4-a716-446655440014-46d376a4-820f-45d8-82cb-82766db041fa.jpg'
+        }}
           style={styles.image}
           resizeMode={user?.avatar_url ? "cover" : "contain"}
           onError={() => setImageLoaded(false)}
@@ -373,13 +371,22 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({
     // Fallback to default image if no avatar or error loading
     return imageLoaded ? (
       <Image
-        source={{ uri: user.avatar_url }}
+      source={{
+        uri: user?.avatar_url || 'https://tskzddfyjazcirdvloch.supabase.co/storage/v1/object/public/cross-care/avatars/avatar-660e8400-e29b-41d4-a716-446655440014-46d376a4-820f-45d8-82cb-82766db041fa.jpg'
+      }}
         style={styles.image}
         resizeMode="cover"
         onError={() => setImageLoaded(false)}
       />
     ) : (
-      <Text style={styles.fallbackText}>D</Text>
+      <Image
+      source={{
+        uri: user?.avatar_url || 'https://tskzddfyjazcirdvloch.supabase.co/storage/v1/object/public/cross-care/avatars/avatar-660e8400-e29b-41d4-a716-446655440014-46d376a4-820f-45d8-82cb-82766db041fa.jpg'
+      }}
+        style={styles.image}
+        resizeMode="cover"
+        onError={() => setImageLoaded(false)}
+      />
     );
   };
 

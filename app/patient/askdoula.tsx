@@ -32,6 +32,7 @@ import name from './profile-setting/name';
 import { width, height } from '../../constants/helper';
 import ProfileIcon from "@/assets/images/Svg/ProfileIcon";
 import Person from "@/assets/images/Svg/Person";
+import User from "@/assets/images/Svg/User";
 
 
 interface Message {
@@ -2500,28 +2501,28 @@ export default function askdoula() {
                     />
                   )}
 
-{message.isUser && (
-  <>
-    {user?.user_photo ? (
-      <Image
-        source={{ uri: user.user_photo }}
-        style={styles.userAvatar}
-      />
-    ) : (
-      <View style={{
-        width: 36,
-        height: 36,
-        borderWidth: 1.44,
-        borderColor: "#FDE8F8",
-        borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-      }}>
-        <Person width={36} height={36} color={'#E0E0E0'} />
-      </View>
-    )}
-  </>
-)}
+                {message.isUser && (
+                  <>
+                    {user?.user_photo ? (
+                      <Image
+                        source={{ uri: user.user_photo }}
+                        style={styles.userAvatar}
+                      />
+                    ) : (
+                      <>
+                      <View style={{
+                        borderWidth: 1.44,
+                        borderRadius: 25,
+                        borderColor: "#FDE8F8",
+                        boxShadow: "0px 0px 0.72px 0px rgba(0, 0, 0, 0.30);",
+                      }}>
+
+                        <User  width={36} height={36}/>
+                      </View>
+                      </>
+                    )}
+                  </>
+                )}
                 </View>
               ))}
 
@@ -2761,7 +2762,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   highlight: {
-    color: "#FF80AB",
+    color: "#F66DCE",
   },
   subtitle: {
     fontSize: 12,

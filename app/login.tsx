@@ -28,6 +28,7 @@ import LogoSvg from "@/assets/images/Svg/LogoSvg";
 import CustomTextInput from "@/components/ui/CustomTextInput";
 import { width } from "@/constants/helper";
 import { LinearGradient } from "expo-linear-gradient";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // WebBrowser.maybeCompleteAuthSession();
 // GoogleSignin.configure({
@@ -150,6 +151,13 @@ const Login: FC = () => {
   };
 
   return (
+    <SafeAreaView style={{
+      flex: 1,
+      backgroundColor: "#fff",
+      justifyContent: "center",
+      alignItems: "center",
+    }}>
+
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -157,7 +165,7 @@ const Login: FC = () => {
       <View
         style={{
           justifyContent: "center",
-          marginTop: 60,
+          marginTop: 40,
         }}
       >
         <View
@@ -171,7 +179,7 @@ const Login: FC = () => {
         <View
           style={{
             width: "100%",
-            marginTop: width * 56,
+            marginTop: 56,
             flexDirection: "column",
             gap: 20,
           }}
@@ -199,9 +207,9 @@ const Login: FC = () => {
             disabled={loading}
           >
             <LinearGradient
-              colors={["#87247D", "#E05FA0"]} // Gradient colors
-              start={{ x: 0, y: 0 }} // Start of the gradient (top-left)
-              end={{ x: 1, y: 0 }} // End of the gradient (top-right)
+              colors={["#EF99D9", "#E35ABB"]} // Gradient colors
+              start={{ x: Math.cos((117 * Math.PI) / 180), y: Math.sin((117 * Math.PI) / 180) }}
+              end={{ x: Math.cos(((117 + 180) * Math.PI) / 180), y: Math.sin(((117 + 180) * Math.PI) / 180) }}// End of the gradient (top-right)
               style={styles.gradient} // Apply gradient as background
             >
               {loading ? (
@@ -216,7 +224,7 @@ const Login: FC = () => {
         <TouchableOpacity onPress={() => router.push("/forget-password")}>
           <Text
             style={{
-              fontSize: width * 14,
+              fontSize: 14,
               width: "100%",
               textAlign: "left",
               color: "#E05FA0",
@@ -237,7 +245,7 @@ const Login: FC = () => {
         >
           <Text
             style={{
-              fontSize: width * 14,
+              fontSize: 14,
               color: "#1B2559",
               fontFamily: "DMSans400",
               marginTop: 0.017,
@@ -249,9 +257,9 @@ const Login: FC = () => {
           </Text>
           <Text
             style={{
-              fontSize: width * 14,
+              fontSize: 14,
               color: "#545454",
-              fontFamily: "Poppins400",
+              fontFamily: "DMSans400",
 
               textAlign: "center",
             }}
@@ -274,6 +282,7 @@ const Login: FC = () => {
         Terms & Conditions | Privacy Policy | Contact Us
       </Text>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
@@ -287,11 +296,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   title: {
-    fontSize: width * 18,
+    fontSize: 18,
     // fontWeight: '600',
     textAlign: "center",
     // marginBottom: 16,
-    fontFamily: "Satoshi500",
+    fontFamily: "DMSans500",
     color: "#545454",
   },
   subtitle: {
@@ -312,8 +321,9 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   gradient: {
+    paddingVertical:14,
+    paddingHorizontal: 12,
     width: "100%", // Make the gradient fill the entire button
-    height: "100%", // Make the gradient fill the entire button
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 8,
@@ -335,23 +345,22 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   button: {
-    height: 56,
     backgroundColor: "#87247D",
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 8,
   },
   buttonText: {
-    fontSize: width * 18,
+    fontSize: 20,
     color: "#fff",
     letterSpacing: 0.2,
     // fontWeight: "bold",
-    fontFamily: "Satoshi700",
+    fontFamily: "DMSans600",
   },
   footerText: {
     textAlign: "center",
-    fontFamily: "Poppins400",
-    fontSize: width * 12,
+    fontFamily: "DMSans400",
+    fontSize: 12,
     color: "#545454",
     paddingBottom: 20,
   },

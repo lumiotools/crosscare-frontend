@@ -4,6 +4,7 @@ import { View, StyleSheet, TouchableOpacity } from "react-native"
 import FloatingButton from "@/components/FloatingButton"
 import AskDoula from "@/components/AskDoula"
 import { usePathname } from "expo-router"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 
 interface FloatingContextType {
   handleButtonPress: () => void
@@ -43,6 +44,7 @@ export const FloatingProvider: React.FC<FloatingProviderProps> = ({
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [showMessageBubble, setShowMessageBubble] = useState(false)
   const [currentMessage, setCurrentMessage] = useState(initialMessage);
+  const [hasMessageBeenShown, setHasMessageBeenShown] = useState(false)
 
   const pathname = usePathname()
 
@@ -66,14 +68,28 @@ export const FloatingProvider: React.FC<FloatingProviderProps> = ({
     setButtonPosition(position)
   }, [])
 
-  // Function to show message
-  const showMessage = useCallback((message?: string) => {
-    if (message) {
-      setCurrentMessage(message)
+  const checkMessageStatus = async () => {
+    const status = await AsyncStorage.getItem('hasMessageBeenShown')
+    if (status === 'true') {
+      setHasMessageBeenShown(true)
     }
-    setShowMessageBubble(true)
+  }
+
+  useEffect(() => {
+    checkMessageStatus()
   }, [])
 
+  // Function to show message
+  const showMessage = useCallback((message?: string) => {
+    if (!hasMessageBeenShown) {
+      if (message) {
+        setCurrentMessage(message)
+      }
+      setShowMessageBubble(true)
+      AsyncStorage.setItem('hasMessageBeenShown', 'true')  // Set flag that the message has been shown
+      setHasMessageBeenShown(true)
+    }
+  }, [hasMessageBeenShown])
   // Function to hide message
   const hideMessage = useCallback(() => {
     setShowMessageBubble(false)

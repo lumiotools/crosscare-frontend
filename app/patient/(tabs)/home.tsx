@@ -45,6 +45,7 @@ import {
 } from "@/zustandStore/useStepsStore";
 import * as ImagePicker from "expo-image-picker";
 import { useBadge } from "@/context/BadgeContext";
+import User from "@/assets/images/Svg/User";
 
 interface Progress {
   progressPercentage: number;
@@ -818,18 +819,21 @@ const Home = () => {
                 overflow: "hidden",
               }}
             >
-              <Image
-                source={{
-                  uri:
-                    image ||
-                    "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-IiR3eCJFbWfehr5WotOVpXRSj1c7N3.png",
-                }}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  borderRadius: 50,
-                }}
-              />
+              {image ? (
+                <Image
+                  source={{ uri: image }}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    borderRadius: 50,
+                  }}
+                  resizeMode="contain"
+                />
+              ) : (
+                <>
+                  <User width='100%' height='100%' color="#888" /> {/* Replace with your icon component */}
+                </>
+              )}
             </View>
             {isUploading && (
               <View
@@ -894,11 +898,16 @@ const Home = () => {
             </View>
 
             <View style={styles.waterProgressBar}>
-              <View
-                style={[
-                  styles.waterProgress,
-                  { width: `${(glassCount / 10) * 100}%` },
-                ]}
+                <View
+                  style={[
+                    styles.waterProgress,
+                    {
+                      width:
+                        maxGlasses > 0
+                          ? `${(glassCount / maxGlasses) * 100}%` // Only calculate width if maxGlasses > 0
+                          : "0%", // Set width to 0% if maxGlasses is 0
+                    },
+                  ]}
               />
             </View>
 
