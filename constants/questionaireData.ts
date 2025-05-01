@@ -420,8 +420,8 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
         text:"Will you have enough income to meet your needs while you are on maternity leave?",
         options:["Yes", "No"],
         followUp:{
-          Yes:"q3-14",
-          No:"q3-15",
+          Yes:"q3-15",
+          No:"q3-14",
         }
       },
       
@@ -673,8 +673,8 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
         text: "Do you have a birthing plan?",
         options:["Yes", "No"],
         followUp:{
-          Yes:"q4-10",
-          No:"q4-11",
+          Yes:"q4-11",
+          No:"q4-10",
         }
       },
       {
@@ -758,7 +758,6 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
         text: "Do you have any issues in your home, like mold, pests, or no heat?",
         flag: "Environmental hazard, refer to housing services",
       },
-      
     ],
   },
   {

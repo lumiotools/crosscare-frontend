@@ -29,6 +29,10 @@ import { Animated } from "react-native";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { ActivityIndicator } from "react-native";
 import UpArrow from "@/assets/images/Svg/UpArrow";
+import { LinearGradient } from "expo-linear-gradient";
+import PaginationDot from "react-native-insta-pagination-dots"
+import Lock from "@/assets/images/Svg/Lock";
+
 
 // Badge types constants
 const REGULAR_BADGE_TYPES = [
@@ -177,16 +181,92 @@ const NOT_EARNED_BADGE: Record<string, any> = {
 const ALL_BADGE = [...REGULAR_BADGE_TYPES, ...STREAK_BADGE_TYPES];
 
 const BADGE_TIPS: Record<string, string> = {
-  HYDRATED_QUEEN:
-    "Track your water intake daily and reach your hydration goals to unlock this badge.",
+  HOT_MAMA:
+    "Complete the 3 month streak by being consistent for atleast 25 days in month",
+  HYDRATED_QUEEN: "Log your water intake to unlock this badge",
   RESTED_DIVA:
-    "Track your sleep and rest at least 8 hours to unlock this badge.",
-  HEART_SCRIBE:
-    "Record your feelings and emotions in the journal section for 5 consecutive days.",
-  TRIVIA_QUEEN: "Complete all the doula questionnaire to receive this badge.",
-  SNAPSHOT: "Take and share your first progress photo to unlock this badge.",
+    "Log sleep for the first time and take minimum 8 hours of sleep to unlock this badge",
+  HEART_SCRIBE: "Log an entry in the journal for the first time to unlock this badge",
+  TRIVIA_QUEEN: "Complete all domains of the questionnaire asked by Doula to unlock this badge",
+  SNAPSHOT: "Upload your photo to unlock this badge",
   EXPLORER:
-    "Visit and check in to self care, journal and all habit screen to earn this badge.",
+    "Explore all the features of this app to unlock this badge",
+  SLEEP_WIZARD_I:
+    "Log sleep daily consistently for 25/30 days in 1st month to unlock this badge",
+  SLEEP_WIZARD_II:
+    "Log sleep daily consistently for 25/30 days in 2nd month to unlock this badge",
+  SLEEP_WIZARD_III:
+    "Log sleep daily consistently for 25/30 days in 3rd month to unlock this badge",
+  SLEEP_WIZARD_IV:
+    "Log sleep daily consistently for 25/30 days in 4th month to unlock this badge",
+  SLEEP_WIZARD_V:
+    "Log sleep daily consistently for 25/30 days in 5th month to unlock this badge",
+  SLEEP_WIZARD_VI:
+    "Log sleep daily consistently for 25/30 days in 6th month to unlock this badge",
+  SLEEP_WIZARD_VII:
+    "Log sleep daily consistently for 25/30 days in 7th month to unlock this badge",
+  SLEEP_WIZARD_VIII:
+    "Log sleep daily consistently for 25/30 days in 8th month to unlock this badge",
+  SLEEP_WIZARD_IX:
+    "Log sleep daily consistently for 25/30 days in 9th month to unlock this badge",
+  WATER_WIZARD_I:
+    "Log water daily consistently for 25/30 days in 1st month to unlock this badge",
+  WATER_WIZARD_II:
+    "Log water daily consistently for 25/30 days in 2nd month to unlock this badge",
+  WATER_WIZARD_III:
+    "Log water daily consistently for 25/30 days in 3rd month to unlock this badge",
+  WATER_WIZARD_IV:
+    "Log water daily consistently for 25/30 days in 4th month to unlock this badge",
+  WATER_WIZARD_V:
+    "Log water daily consistently for 25/30 days in 5th month to unlock this badge",
+  WATER_WIZARD_VI:
+    "Log water daily consistently for 25/30 days in 6th month to unlock this badge",
+  WATER_WIZARD_VII:
+    "Log water daily consistently for 25/30 days in 7th month to unlock this badge",
+  WATER_WIZARD_VIII:
+    "Log water daily consistently for 25/30 days in 8th month to unlock this badge",
+  WATER_WIZARD_IX:
+    "Log water daily consistently for 25/30 days in 9th month to unlock this badge",
+  HEALTH_QUEEN_I: "Log all habits daily consistently in 1st month to unlock this badge",
+  HEALTH_QUEEN_II: "Log all habits daily consistently in 2nd month to unlock this badge",
+  HEALTH_QUEEN_III: "Log all habits daily consistently in 3rd month to unlock this badge",
+  HEALTH_QUEEN_IV: "Log all habits daily consistently in 4th month to unlock this badge",
+  HEALTH_QUEEN_V: "Log all habits daily consistently in 5th month to unlock this badge",
+  HEALTH_QUEEN_VI: "Log all habits daily consistently in 6th month to unlock this badge",
+  HEALTH_QUEEN_VII: "Log all habits daily consistently in 7th month to unlock this badge",
+  HEALTH_QUEEN_VIII: "Log all habits daily consistently in 8th month to unlock this badge",
+  HEALTH_QUEEN_IX: "Log all habits daily consistently in 9th month to unlock this badge",
+  ON_THE_MOVE_I:
+    "Complete step goals daily for 25/30 days in 1st month to unlock this badge",
+  ON_THE_MOVE_II:
+    "Complete step goals daily for 25/30 days in 2nd month to unlock this badge",
+  ON_THE_MOVE_III:
+    "Complete step goals daily for 25/30 days in 3rd month to unlock this badge",
+  ON_THE_MOVE_IV:
+    "Complete step goals daily for 25/30 days in 4th month to unlock this badge",
+  ON_THE_MOVE_V:
+    "Complete step goals daily for 25/30 days in 5th month to unlock this badge",
+  ON_THE_MOVE_VI:
+    "Complete step goals daily for 25/30 days in 6th month to unlock this badge",
+  ON_THE_MOVE_VII:
+    "Complete step goals daily for 25/30 days in 7th month to unlock this badge",
+  ON_THE_MOVE_VIII:
+    "Complete step goals daily for 25/30 days in 8th month to unlock this badge",
+  ON_THE_MOVE_IX:
+    "Complete step goals daily for 25/30 days in 9th month to unlock this badge",
+};
+
+const BADGE_DESCRIPTION: Record<string, string> = {
+  HOT_MAMA:
+    "3 month streak with being consistent at least 25/30 days in each month",
+  HYDRATED_QUEEN: "First time water is logged",
+  RESTED_DIVA:
+    "First time logging sleep (and getting minimum 8 hours of sleep)",
+  HEART_SCRIBE: "First time Logging an entry in the journal.",
+  TRIVIA_QUEEN: "On completing all domains of the questionnaire asked by Doula",
+  SNAPSHOT: "First time photo is uploaded",
+  EXPLORER:
+    "First time having explored all features of the app (should have navigated at least once to all habit trackers, self care, journal)",
   SLEEP_WIZARD_I:
     "Logged sleep daily monthly, consistent 25/30 days in the month.",
   SLEEP_WIZARD_II:
@@ -232,11 +312,28 @@ const BADGE_TIPS: Record<string, string> = {
   HEALTH_QUEEN_VII: "Logged all habits daily for a month (food, water, sleep)",
   HEALTH_QUEEN_VIII: "Logged all habits daily for a month (food, water, sleep)",
   HEALTH_QUEEN_IX: "Logged all habits daily for a month (food, water, sleep)",
-  ON_THE_MOVE_I: "Track your physical activity for 3 consecutive days.",
-  ON_THE_MOVE_II: "Track your physical activity for 7 consecutive days.",
-  ON_THE_MOVE_III: "Track your physical activity for 14 consecutive days.",
-  ON_THE_MOVE_IV: "Track your physical activity for 30 consecutive days.",
-  ON_THE_MOVE_V: "Track your physical activity for 60 consecutive days.",
+  ON_THE_MOVE_I:
+    "Step goals are met every day for a month (at least 25 days in a month)",
+  ON_THE_MOVE_II:
+    "Step goals are met every day for a month (at least 25 days in a month)",
+  ON_THE_MOVE_III:
+    "Step goals are met every day for a month (at least 25 days in a month)",
+  ON_THE_MOVE_IV:
+    "Step goals are met every day for a month (at least 25 days in a month)",
+  ON_THE_MOVE_V:
+    "Step goals are met every day for a month (at least 25 days in a month)",
+  ON_THE_MOVE_VI:
+    "Step goals are met every day for a month (at least 25 days in a month)",
+  ON_THE_MOVE_VII:
+    "Step goals are met every day for a month (at least 25 days in a month)",
+  ON_THE_MOVE_VIII:
+    "Step goals are met every day for a month (at least 25 days in a month)",
+  ON_THE_MOVE_IX:
+    "Step goals are met every day for a month (at least 25 days in a month)",
+};
+
+const getBadgeDescription = (badgeType: string): string => {
+  return BADGE_DESCRIPTION[badgeType] || DEFAULT_TIP;
 };
 
 const getBadgeTip = (badgeType: string): string => {
@@ -294,7 +391,6 @@ const extractRomanNumeral = (type: string | undefined): string => {
 
 interface BadgeCarouselProps {
   badges: (Badge | VirtualBadge)[];
-  onPageChange: (page: number) => void;
   currentBadgeIndex: number;
   badgeTranslateY: Animated.Value;
   onChevronSlide: (gestureState: any) => void;
@@ -311,7 +407,7 @@ const PaginationDots = ({
   onDotPress: (index: number) => void;
 }) => {
   // Always show 5 dots, with the active dot in the middle when possible
-  const maxVisibleDots = 5;
+  const maxVisibleDots = totalDots;
   const halfVisible = Math.floor(maxVisibleDots / 2);
 
   let startDot = Math.max(0, activeDotIndex - halfVisible);
@@ -339,13 +435,20 @@ const PaginationDots = ({
       {visibleDots.map((dotIndex) => (
         <TouchableOpacity
           key={dotIndex}
-          style={[
-            styles.paginationDot,
-            activeDotIndex === dotIndex && styles.paginationDotActive,
-          ]}
           onPress={() => onDotPress(dotIndex)}
           activeOpacity={0.8}
-        />
+        >
+          {activeDotIndex === dotIndex ? (
+            <LinearGradient
+              colors={["rgba(250, 181, 232, 1)", "rgba(247, 108, 207, 1)"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.paginationDotActive}
+            />
+          ) : (
+            <View style={styles.paginationDot} />
+          )}
+        </TouchableOpacity>
       ))}
     </View>
   );
@@ -359,7 +462,7 @@ interface ViewableItemsChangedInfo {
 
 const BadgeCarousel: React.FC<BadgeCarouselProps> = ({
   badges,
-  onPageChange,
+  // onPageChange,
   currentBadgeIndex,
   badgeTranslateY,
   onChevronSlide,
@@ -386,7 +489,6 @@ const BadgeCarousel: React.FC<BadgeCarouselProps> = ({
     const page = Math.round(offsetX / BADGE_SLIDE_WIDTH);
     if (page !== currentPage && page >= 0 && page < badges.length) {
       setCurrentPage(page);
-      onPageChange(page);
     }
   };
 
@@ -464,9 +566,9 @@ const BadgeCarousel: React.FC<BadgeCarouselProps> = ({
             styles.scrollViewContent,
             { paddingHorizontal: (width - BADGE_SLIDE_WIDTH) / 2 },
           ]}
-          decelerationRate="fast"
+          decelerationRate="normal"
           snapToInterval={BADGE_SLIDE_WIDTH}
-          snapToAlignment="center"
+          // snapToAlignment="center"
           contentOffset={{ x: currentBadgeIndex * BADGE_SLIDE_WIDTH, y: 0 }}
         >
           {badges.map((badge, index) => {
@@ -546,11 +648,7 @@ const BadgeCarousel: React.FC<BadgeCarouselProps> = ({
                         </View>
                       )}
                       <View style={styles.carouselLockIconContainer}>
-                        <Ionicons
-                          name="lock-closed"
-                          size={20}
-                          color="#FF69B4"
-                        />
+                        <Lock/>
                       </View>
                     </View>
                   )}
@@ -562,11 +660,20 @@ const BadgeCarousel: React.FC<BadgeCarouselProps> = ({
       </Animated.View>
 
       {/* Pagination dots */}
-      <PaginationDots
+      {/* <PaginationDots
         totalDots={badges.length}
         activeDotIndex={currentPage}
         onDotPress={scrollToPage}
-      />
+      /> */}
+
+      <View style={styles.paginationContainer}>
+        <PaginationDot
+          maxPage={badges.length}
+          curPage={currentPage}
+          activeDotColor='rgba(247, 108, 207, 1)'
+          inactiveDotColor='rgba(123, 123, 123, 0.8)'
+        />
+      </View>
 
       {/* Badge details */}
       {currentBadge && (
@@ -574,7 +681,7 @@ const BadgeCarousel: React.FC<BadgeCarouselProps> = ({
           <Text style={styles.badgeTitle}>
             {`${formatBadgeTitle(
               currentBadge.badge.type.replace(/_([IVXLCDM]+)$/, "")
-            )} ${extractRomanNumeral(currentBadge.badge.type)}`}
+            )} ${extractRomanNumeral(currentBadge.badge.title)}`}
           </Text>
 
           <Text style={styles.badgeDescription}>
@@ -583,7 +690,10 @@ const BadgeCarousel: React.FC<BadgeCarouselProps> = ({
 
           {!isEarned && (
             <View style={styles.tipContainer}>
-              <Text style={styles.tipLabel}>Tip :  <Text style={styles.tipText}>{getBadgeTip(badgeType)}</Text></Text>
+              <Text style={styles.tipLabel}>
+                Tip :{" "}
+                <Text style={styles.tipText}>{getBadgeTip(badgeType)}</Text>
+              </Text>
             </View>
           )}
 
@@ -595,9 +705,9 @@ const BadgeCarousel: React.FC<BadgeCarouselProps> = ({
         </>
       )}
 
-      <View {...panResponder.panHandlers} style={styles.expandButton}>
+      {/* <View {...panResponder.panHandlers} style={styles.expandButton}>
         <UpArrow width={24} height={24} color="#FF69B4" />
-      </View>
+      </View> */}
     </View>
   );
 };
@@ -615,6 +725,23 @@ const EarnBadge = () => {
 
   // Animation value for badge translation
   const badgeTranslateY = useRef(new Animated.Value(0)).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only respond to significant upward swipes
+        return Math.abs(gestureState.dy) > 10 && gestureState.dy < 0
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Only respond to upward swipes
+        if (gestureState.dy < 0) {
+          handleChevronSlide(gestureState)
+        }
+      },
+      onPanResponderRelease: () => {},
+    }),
+  ).current
 
   const handleChevronSlide = useCallback((gestureState: any) => {
     // If sliding up with enough velocity or distance, open the bottom sheet
@@ -647,16 +774,20 @@ const EarnBadge = () => {
   const handleSelectBadge = (index: number) => {
     if (index >= 0 && index < allBadges.length) {
       setCurrentBadgeIndex(index);
+
       // Close the bottom sheet after selecting a badge
+      bottomSheetRef.current?.close();
+      console.log("Selected badge index:", index);
     }
   };
 
   // Handle page change
-  const handlePageChange = (page: number) => {
-    if (page >= 0 && page < allBadges.length) {
-      setCurrentBadgeIndex(page);
-    }
-  };
+  // const handlePageChange = (page: number) => {
+  //   if (page >= 0 && page < allBadges.length) {
+  //     // setCurrentBadgeIndex(page);
+  //     console.log("Current badge index:", page);
+  //   }
+  // };
 
   // Fetch badges from API
   const fetchBadges = async () => {
@@ -712,9 +843,7 @@ const EarnBadge = () => {
               awardedAt: "",
               badge: {
                 createdAt: "",
-                description: `Complete the required tasks to earn the ${formatBadgeTitle(
-                  badgeType
-                )} badge!`,
+                description: getBadgeDescription(badgeType),
                 title: formatBadgeTitle(badgeType),
                 type: badgeType,
               },
@@ -729,7 +858,42 @@ const EarnBadge = () => {
         // Combine earned and unearned badges, with earned ones first
         setAllBadges([...earnedBadgesData, ...unearnedBadgesData]);
       } else {
+
+        const badgeTypes = data.map((badge) => badge.badge.type);
+        setEarnedBadges(badgeTypes.length);
+        setBadgeData(data);
+
+        // Create arrays to hold earned and unearned badges
+        const earnedBadgesData: Badge[] = [];
+        const unearnedBadgesData: VirtualBadge[] = [];
+
+        // First add all earned badges
+        data.forEach((earnedBadge) => {
+          earnedBadgesData.push(earnedBadge);
+        });
         // If no data, create virtual badges for all badge types
+        ALL_BADGE.forEach((badgeType) => {
+          // Check if this badge type is already earned
+          if (!badgeTypes.includes(badgeType)) {
+            // If not earned, create a virtual badge
+            const virtualBadge = {
+              isVirtual: true,
+              awardedAt: "",
+              badge: {
+                createdAt: "",
+                description: getBadgeDescription(badgeType),
+                title: formatBadgeTitle(badgeType),
+                type: badgeType,
+              },
+              badgeId: `virtual-${badgeType}`,
+              id: `virtual-${badgeType}`,
+              patientId: user.user_id,
+            };
+            unearnedBadgesData.push(virtualBadge);
+          }
+        });
+
+        setAllBadges([...earnedBadgesData, ...unearnedBadgesData]);
 
         setBadgeData([]);
         setEarnedBadges(0);
@@ -769,7 +933,7 @@ const EarnBadge = () => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-        <Ionicons name="chevron-back" size={20} color="black" />
+          <Ionicons name="chevron-back" size={20} color="black" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Hall of Fame</Text>
         <View style={{ width: 20 }} />
@@ -791,16 +955,21 @@ const EarnBadge = () => {
       ) : allBadges.length > 0 ? (
         <BadgeCarousel
           badges={allBadges}
-          onPageChange={handlePageChange}
+          // onPageChange={handlePageChange}
           currentBadgeIndex={currentBadgeIndex}
           badgeTranslateY={badgeTranslateY}
           onChevronSlide={handleChevronSlide}
           earnedBadgeTypes={earnedBadgeTypes}
         />
       ) : (
-        <View style={styles.noBadgesContainer}>
-          <Text style={styles.noBadgesText}>No badges available</Text>
-        </View>
+        <BadgeCarousel
+        badges={allBadges}
+        // onPageChange={handlePageChange}
+        currentBadgeIndex={currentBadgeIndex}
+        badgeTranslateY={badgeTranslateY}
+        onChevronSlide={handleChevronSlide}
+        earnedBadgeTypes={earnedBadgeTypes}
+      />
       )}
 
       <BottomSheet
@@ -851,6 +1020,7 @@ const EarnBadge = () => {
                         onPress={() => {
                           if (badgeIndex !== -1) {
                             handleSelectBadge(badgeIndex);
+                            console.log("Badge selected:", badgeIndex);
                           }
                         }}
                         activeOpacity={0.7}
@@ -882,11 +1052,7 @@ const EarnBadge = () => {
                                 </View>
                               )}
                               <View style={styles.lockIconContainer}>
-                                <Ionicons
-                                  name="lock-closed"
-                                  size={12}
-                                  color="#FF69B4"
-                                />
+                                <Lock width={12} height={12}/>
                               </View>
                             </View>
                           ) : // Use the earned badge image
@@ -918,6 +1084,21 @@ const EarnBadge = () => {
           )}
         </BottomSheetScrollView>
       </BottomSheet>
+      <View
+        {...panResponder.panHandlers}
+        style={{
+          position: "absolute",
+          bottom: 20,
+          left: 0,
+          right: 0,
+          height: 50,
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: -1,
+        }}
+      >
+        <UpArrow width={24} height={24} color="#FF69B4" />
+      </View>
     </SafeAreaView>
   );
 };
@@ -970,8 +1151,8 @@ const styles = StyleSheet.create({
     marginHorizontal: BADGE_SPACING / 2,
   },
   badgeImageContainer: {
-    width: width * 0.4,
-    height: width * 0.4,
+    width: width * 0.3,
+    height: width * 0.3,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -1028,6 +1209,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FF69B4",
     width: 10,
     height: 10,
+    marginHorizontal: 3,
     borderRadius: 5,
   },
   noBadgesContainer: {
@@ -1047,7 +1229,7 @@ const styles = StyleSheet.create({
   },
   expandButton: {
     padding: 5,
-    width: 50,
+    width: '100%',
     height: 50,
     alignItems: "center",
     justifyContent: "center",
@@ -1062,7 +1244,7 @@ const styles = StyleSheet.create({
   },
   bottomSheetIndicator: {
     backgroundColor: "#E0E0E0",
-    width: 20,
+    width: 30,
     height: 5,
   },
   bottomSheetHeader: {
@@ -1144,6 +1326,16 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 6,
   },
+  instaDotContainer: {
+    // You can customize the container style here
+    // paddingVertical: 10,
+  },
+  paginationContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 15,
+    marginBottom: 25,
+  },
   placeholderBadge: {
     width: 72,
     height: 72,
@@ -1186,8 +1378,9 @@ const styles = StyleSheet.create({
     padding: 12,
     marginHorizontal: 20,
     marginBottom: 16,
-    flexDirection: "row",
-    shadowColor: '#000',
+    shadowColor: "#000",
+    width: width * 0.85,  // 90% of the screen width
+    alignSelf: "center",
     boxShadow: "0px 0px 4px 0px rgba(0, 0, 0, 0.25)",
   },
   tipLabel: {
@@ -1196,7 +1389,7 @@ const styles = StyleSheet.create({
     color: "#373737",
   },
   tipText: {
-    flex: 1,
+    // flex: 1,
     fontSize: 14,
     fontFamily: "DMSans500",
     color: "#7B7B7B",

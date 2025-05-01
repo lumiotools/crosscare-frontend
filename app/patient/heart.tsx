@@ -85,7 +85,7 @@ const generateRealtimeHeartData = () => {
 
   // Generate data for the past 7 days
   for (let i = 6; i >= 0; i--) {
-    const date = new Date()
+    const date = new Date(today)
     date.setDate(today.getDate() - i)
     const dateString = date.toISOString().split("T")[0]
 
@@ -103,7 +103,7 @@ const generateRealtimeHeartData = () => {
     })
   }
 
-  console.log(result);
+  console.log(result)
 
   return result
 }
@@ -125,7 +125,9 @@ export default function HeartRateScreen() {
 
   useEffect(() => {
       const setHeartVisited = async () => {
-        await AsyncStorage.setItem('heart_2', 'true');
+        if(user?.user_id){
+          await AsyncStorage.setItem('heart_2', 'true');
+        }
       };
       
       setHeartVisited();
@@ -1072,7 +1074,7 @@ export default function HeartRateScreen() {
                 if (periodSelectorRef.current) {
                   periodSelectorRef.current.measure((x: any, y: any, width: number, height: any, pageX: any, pageY: any) => {
                     setDropdownPosition({
-                      top: pageY +10, // Position below the button with a small gap
+                      top: pageY + height-8, // Position below the button with a small gap
                       right: width > 0 ? Dimensions.get("window").width - (pageX + width) : 20,
                     })
                     setDropdownVisible(true)

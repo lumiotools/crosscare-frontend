@@ -107,12 +107,12 @@ const SelfCare = () => {
       >
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#4A6FE1" />
+            <ActivityIndicator size="large" color="#F66DCE" />
             <Text style={styles.loadingText}>Loading routines...</Text>
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
-            <Ionicons name="alert-circle-outline" size={24} color="#d32f2f" />
+            <Ionicons name="alert-circle-outline" size={24} color="#F66DCE" />
             <Text style={styles.errorText}>{error}</Text>
             <TouchableOpacity
               style={styles.retryButton}
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontSize: 16,
     fontFamily: "DMSans400",
-    color: "#ff6b6b",
+    color: "#F66DCE",
     textAlign: "center",
   },
   retryButton: {

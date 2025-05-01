@@ -21,6 +21,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { setUser } from "@/store/userSlice";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAvatarStore } from "@/zustandStore/contentfulStores/avatarStore";
+import Lock from "@/assets/images/Svg/Lock";
 
 // List of regular badge types
 const REGULAR_BADGE_TYPES = [
@@ -339,94 +340,61 @@ export default function AvatarSelectionScreen() {
 
   const calculateUnlockableItems = (badges: Badge[]): UnlockResult => {
     // Count regular badges and streak badges
-    const regularBadges = badges.filter((badge) => {
-      // Check if the badge title is in our list of regular badge names
-      return REGULAR_BADGE_TYPES.includes(badge.badge.type);
-    });
-
-    const streakBadges = badges.filter((badge) =>
-      STREAK_BADGE_TYPES.includes(badge.badge.type)
-    );
-
-    console.log(
-      "Regular badges:",
-      regularBadges.length,
-      regularBadges.map((b) => b.badge.type)
-    );
-    console.log(
-      "Streak badges:",
-      streakBadges.length,
-      streakBadges.map((b) => b.badge.type)
-    );
-
+    const regularBadges = badges.filter((badge) => REGULAR_BADGE_TYPES.includes(badge.badge.type));
+    const streakBadges = badges.filter((badge) => STREAK_BADGE_TYPES.includes(badge.badge.type));
+  
+    console.log("Regular badges:", regularBadges.length, regularBadges.map((b) => b.badge.type));
+    console.log("Streak badges:", streakBadges.length, streakBadges.map((b) => b.badge.type));
+  
     // Calculate unlockable items based on rules:
-    // - 1 hair & 1 outfit for every 3 regular badges
+    // - 1 hair OR 1 outfit for every 3 regular badges
     // - 1 hair OR 1 outfit for every streak badge
-
-    const regularUnlockPairs = Math.floor(regularBadges.length / 3);
-    console.log("Regular unlock pairs:", regularUnlockPairs);
-
+  
+    // Number of unlocks for regular badges (1 unlock per 3 regular badges)
+    const regularUnlocks = Math.floor(regularBadges.length / 3);
+    console.log("Regular unlocks:", regularUnlocks);
+  
+    // Number of unlocks for streak badges (1 unlock per streak badge)
     const streakUnlocks = streakBadges.length;
     console.log("Streak unlocks:", streakUnlocks);
-
-    // For streak badges, alternate between hair and outfit
-    let regularHairs = 0;
-    let regularOutfits = 0;
-
-    for (let i = 0; i < regularUnlockPairs; i++) {
-      // Alternate between hair and outfit, starting with hair
-      if (i % 2 === 0) {
-        regularHairs++;
-      } else {
-        regularOutfits++;
-      }
-    }
-
-    // For streak badges: alternate between hair and outfit
-    let streakHairs = 0;
-    let streakOutfits = 0;
-
-    for (let i = 0; i < streakUnlocks; i++) {
-      // Alternate between hair and outfit, starting with hair
-      if (i % 2 === 0) {
-        streakHairs++;
-      } else {
-        streakOutfits++;
-      }
-    }
-
+  
+    // For regular unlocks: Alternate between hair and outfit
+    let regularHairs = Math.floor(regularUnlocks / 2); // Half for hair
+    let regularOutfits = regularUnlocks - regularHairs; // Remaining for outfits
+  
+    // For streak unlocks: Alternate between hair and outfit
+    let streakHairs = Math.floor(streakUnlocks / 2); // Half for hair
+    let streakOutfits = streakUnlocks - streakHairs; // Remaining for outfits
+  
+    console.log("Regular hairs:", regularHairs, "Regular outfits:", regularOutfits);
     console.log("Streak hairs:", streakHairs, "Streak outfits:", streakOutfits);
-
-    // Calculate how many items should be unlocked in total
+  
+    // Calculate the total hairs and outfits to unlock
     const totalHairsToUnlock = regularHairs + streakHairs;
     const totalOutfitsToUnlock = regularOutfits + streakOutfits;
-
-    console.log(
-      "Total hairs to unlock:",
-      totalHairsToUnlock,
-      "Total outfits to unlock:",
-      totalOutfitsToUnlock
-    );
-
-    // Get locked hairstyles and outfits from our Contentful data
+  
+    console.log("Total hairs to unlock:", totalHairsToUnlock, "Total outfits to unlock:", totalOutfitsToUnlock);
+  
+    // Get locked hairstyles and outfits from Contentful data
     const lockedHairstyleIds = hairstyles
-      .filter(h => h.locked)
-      .map(h => h.id)
+      .filter((h) => h.locked)
+      .map((h) => h.id)
       .slice(0, totalHairsToUnlock);
-
+  
     const lockedOutfitIds = outfits
-      .filter(o => o.locked)
-      .map(o => o.id)
+      .filter((o) => o.locked)
+      .map((o) => o.id)
       .slice(0, totalOutfitsToUnlock);
-
+  
     console.log("Hairstyles to unlock:", lockedHairstyleIds);
     console.log("Outfits to unlock:", lockedOutfitIds);
-
+  
     return {
       hairstyles: lockedHairstyleIds,
       outfits: lockedOutfitIds,
     };
   };
+  
 
   const handleHairstyleSelect = (hairstyleId: string): void => {
     // Always update the preview hairstyle
@@ -747,7 +715,7 @@ export default function AvatarSelectionScreen() {
             {isPreviewLocked() && (
               <View style={styles.lockBadgeContainer}>
                 <View style={styles.lockBadge}>
-                  <Ionicons name="lock-closed" size={14} color="#FF68D4" />
+                  <Lock width={16} height={16} />
                 </View>
               </View>
             )}
@@ -843,11 +811,7 @@ export default function AvatarSelectionScreen() {
                     )}
                     {hairstyle.locked && (
                       <View style={styles.lockIconContainer}>
-                        <Ionicons
-                          name="lock-closed"
-                          size={12}
-                          color="#FF69B4"
-                        />
+                        <Lock width={12} height={12} />
                       </View>
                     )}
                   </View>
@@ -904,7 +868,7 @@ export default function AvatarSelectionScreen() {
                 )}
                 {outfit.locked && (
                   <View style={styles.lockIconContainer}>
-                    <Ionicons name="lock-closed" size={12} color="#FF69B4" />
+                    <Lock width={12} height={12} />
                   </View>
                 )}
               </View>

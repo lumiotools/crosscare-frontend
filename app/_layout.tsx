@@ -18,6 +18,8 @@ import { store } from "../store/store";
 import { setToken, setUser } from "../store/userSlice";
 import { FloatingProvider } from "@/context/FloatingContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { BadgeProvider } from "@/context/BadgeContext";
+import { BadgeMonitor } from "@/context/BadgeMonitor";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -47,6 +49,7 @@ const RootLayoutNav = () => {
     OpenSans500: require("../assets/fonts/OpenSans-Medium.ttf"),
     OpenSans600: require("../assets/fonts/OpenSans-SemiBold.ttf"),
     OpenSans700: require("../assets/fonts/OpenSans-Bold.ttf"),
+    GroBold: require("../assets/fonts/GROBOLD.ttf"),
   });
 
   // Check for existing token on app load
@@ -121,7 +124,10 @@ export default function RootLayout() {
     >
       <Provider store={store}>
         <FloatingProvider>
+        <BadgeProvider>
+        <BadgeMonitor />
           <RootLayoutNav />
+          </BadgeProvider>
         </FloatingProvider>
       </Provider>
     </GestureHandlerRootView>

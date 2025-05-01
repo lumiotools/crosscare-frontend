@@ -33,7 +33,7 @@ const Card: React.FC<CardProps> = ({
             <Text style={styles.cardDescription}>{description}</Text>
           </View>
           <Image
-            source={parseInt(id) === 1 ? { uri: user?.avatar_url } : image1} // Use user avatar if id is 1
+            source={parseInt(id) === 1 ? { uri: user?.avatar_url}: image1} // Use user avatar if id is 1
             style={{ width: 84, height: 84, borderRadius: 100, borderWidth:0, }}
             resizeMode="contain"
           />

@@ -389,6 +389,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
+    paddingLeft:8
   },
   timerText: {
     fontSize: 14,
@@ -397,6 +398,7 @@ const styles = StyleSheet.create({
   },
   micButton: {
     marginRight: 16,
+    paddingLeft: 8,
     backgroundColor: "#FFF",
     justifyContent: "center",
     alignItems: "center",
@@ -410,6 +412,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 16,
     gap: 8,
+    paddingLeft: 8,
   },
   processingIndicator: {
     width: 8,

@@ -213,7 +213,7 @@ export default function Journal() {
     if (loading) {
       return (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#f06292" />
+          <ActivityIndicator size="large" color="#F66DCE" />
         </View>
       );
     }
@@ -244,6 +244,8 @@ export default function Journal() {
       );
     }
 
+    
+
     return (
       <View style={styles.sectionsContainer}>
         {filteredSections.map((section, sectionIndex) => (
@@ -267,6 +269,20 @@ export default function Journal() {
   // Render photos section
   const renderPhotosSection = () => {
     const filteredPhotos = filterPhotos(photosSearchQuery); // Define filteredPhotos
+
+
+    if (filteredPhotos.length === 0) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>
+            {photosSearchQuery.trim() !== ""
+              ? "No Image match your search"
+              : "No Image yet. Click 'Add image' to create your first photo."}
+          </Text>
+        </View>
+      );
+    }
+    
     return (
       <View style={styles.sectionsContainer}>
         {filteredPhotos.map((section, sectionIndex) => (
@@ -441,7 +457,7 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     borderBottomWidth: 2,
-    borderBottomColor: "#f06292",
+    borderBottomColor: "#F76CCF",
   },
   tabText: {
     fontSize: 16,
@@ -503,7 +519,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#f06292",
+    backgroundColor: "#F66DCE",
     borderWidth: 1,
     borderColor: "#FCD2F0",
     paddingHorizontal: 20,
@@ -529,12 +545,12 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: "#f06292",
+    color: "#F66DCE",
     marginBottom: 15,
     textAlign: "center",
   },
   refreshButton: {
-    backgroundColor: "#f06292",
+    backgroundColor: "#F66DCE",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 25,
