@@ -36,7 +36,7 @@ const CustomTextInput: React.FC<CustomTextInputProps> = ({
     <View style={styles.container}>
       <View style={styles.inputContainer}>
         {/* Icon */}
-        <Feather name={icon} size={width * 16} color="#8A8A8A" style={styles.icon} />
+        <Feather name={icon} size={16} color="#8A8A8A" style={styles.icon} />
         {/* TextInput */}
         <TextInput
           {...props}
@@ -52,7 +52,7 @@ const CustomTextInput: React.FC<CustomTextInputProps> = ({
           <TouchableOpacity onPress={handlePasswordVisibility}>
             <Feather
               name={showPassword ? 'eye-off' : 'eye'}
-              size={width * 18}
+              size={18}
               color='#B0B0B0'
               style={styles.eyeIcon}
             />
@@ -89,9 +89,9 @@ const styles = StyleSheet.create({
     flex: 1,
     // height: '100%',
     // marginTop: 7,
-    fontSize: width * 16,
+    fontSize: 16,
     color: '#000',
-    fontFamily: 'Satoshi400',
+    fontFamily: 'DMSans400',
   },
   eyeIcon: {
     marginLeft:  10,
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     color: 'red',
     fontSize:width * 12,
     marginTop: 2,
-    fontFamily: 'Poppins400',
+    fontFamily: 'DMSans400',
   },
 });
 
