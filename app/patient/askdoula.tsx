@@ -37,9 +37,9 @@ import User from "@/assets/images/Svg/User";
 
 interface Message {
   id: string;
+  type: "text" | "audio";
   isUser: boolean;
   timestamp: Date;
-  type: "text" | "audio";
   content: string; // text content or audio URI
 }
 
@@ -109,6 +109,8 @@ function isIncrementalRequest(query: string) {
 export default function askdoula() {
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  
+  
   const [messages, setMessages] = useState<Message[]>([]);
   const user = useSelector((state: any) => state.user);
   const [healthData, setHealthData] = useState(null);
@@ -318,6 +320,8 @@ export default function askdoula() {
   //     checkQuestionnaireStatus()
   //   }
   // }, [user?.user_id])
+
+  const [isMuted, setIsMuted] = useState(false)
 
   const userId = user?.user_id;
 
@@ -948,8 +952,13 @@ export default function askdoula() {
   const speakResponse = (text: string) => {
     // This function would normally use text-to-speech
     // For now, we'll just log the response
-    console.log("Speaking response:", text);
-  };
+    if (!isMuted) {
+      console.log("Speaking response:", text)
+      // Here you would normally call your text-to-speech implementation
+    } else {
+      console.log("Voice is muted, not speaking response")
+    }
+  }
 
   // Function to detect log requests using our more advanced patterns
   function detectLogRequestWithPatterns(query: string) {
@@ -2240,6 +2249,11 @@ export default function askdoula() {
       ]);
     }
 
+    // if(assistantResponse){
+    //   speakResponse(assistantResponse);
+    // }
+
+
     // Process the transcript if available
     if (transcript) {
       setIsTyping(true);
@@ -2379,6 +2393,37 @@ export default function askdoula() {
     }
   };
 
+  useEffect(() => {
+    const loadMuteState = async () => {
+      try {
+        const savedMuteState = await AsyncStorage.getItem("isMuted")
+        if (savedMuteState !== null) {
+          setIsMuted(savedMuteState === "true")
+        }
+      } catch (error) {
+        console.error("Error loading mute state:", error)
+      }
+    }
+
+    loadMuteState()
+  }, [])
+
+  useEffect(() => {
+    const saveMuteState = async () => {
+      try {
+        await AsyncStorage.setItem("isMuted", isMuted.toString())
+      } catch (error) {
+        console.error("Error saving mute state:", error)
+      }
+    }
+
+    saveMuteState()
+  }, [isMuted])
+
+  const toggleMute = () => {
+    setIsMuted(!isMuted)
+  }
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -2483,6 +2528,11 @@ export default function askdoula() {
                         message.isUser ? styles.userBubble : styles.doulaBubble,
                       ]}
                     >
+                      {!message.isUser && (
+                        <TouchableOpacity style={styles.bubbleMuteButton} onPress={toggleMute}>
+                          <Ionicons name={isMuted ? "volume-mute" : "volume-medium"} size={16} color="#E162BC" />
+                        </TouchableOpacity>
+                      )}
                       <Text
                         style={[
                           styles.messageText,
@@ -2605,6 +2655,7 @@ export default function askdoula() {
               <VoiceRecorder
                 onSendAudio={handleAudioSent}
                 systemPrompt={systemPrompt}
+                isMuted={isMuted}
               />
             </View>
 
@@ -2820,6 +2871,18 @@ const styles = StyleSheet.create({
   micButton: {
     padding: 4,
     // paddingLeft,
+  },
+  bubbleMuteButton: {
+    position: "absolute",
+    top: 5,
+    right: 5,
+    zIndex: 1,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   sendButton: {
     width: 48,

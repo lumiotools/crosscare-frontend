@@ -46,6 +46,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { useBadge } from "@/context/BadgeContext";
 import User from "@/assets/images/Svg/User";
+import { Linking } from "react-native";
 
 interface Progress {
   progressPercentage: number;
@@ -478,6 +479,9 @@ const Home = () => {
             borderWidth: 2,
             borderColor: "#E162BC",
           }}
+          onPress={() => {
+            Linking.openURL("tel:911");
+          }}
         >
           <Text
             style={{
@@ -486,7 +490,7 @@ const Home = () => {
               fontSize: 16,
             }}
           >
-            SOS
+            911
           </Text>
         </TouchableOpacity>
 
