@@ -621,5 +621,9 @@
   "healthTracking": "Seguimiento de salud"
   },
   "buttonText": "RECLAMAR",
-  "badgeText": "Nuevo Insignia Desbloqueada"
+  "badgeText": "Nuevo Insignia Desbloqueada",
+   "noNotesSearch": "No hay notas que coincidan con tu búsqueda",
+  "noNotesDefault": "Aún no hay notas. Haz clic en 'Agregar nueva' para crear tu primera nota.",
+  "noPhotosSearch": "Ninguna imagen coincide con tu búsqueda",
+  "noPhotosDefault": "Aún no hay imágenes. Haz clic en 'Agregar imagen' para subir tu primera foto."
 }

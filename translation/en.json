@@ -617,5 +617,9 @@
   },
   "daysLeft": "days left",
   "buttonText": "CLAIM",
-  "badgeText": "New Badge Unlocked"
+  "badgeText": "New Badge Unlocked",
+  "noNotesSearch": "No notes match your search",
+    "noNotesDefault": "No notes yet. Click 'Add new' to create your first note.",
+    "noPhotosSearch": "No image matches your search",
+    "noPhotosDefault": "No image yet. Click 'Add image' to create your first photo."
 }

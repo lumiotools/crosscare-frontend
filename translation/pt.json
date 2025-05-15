@@ -617,5 +617,9 @@
     "healthTracking": "Acompanhamento de saúde"
   },
   "buttonText": "RECLAMAR",
-  "badgeText": "Novo Distintivo Desbloqueado"
+  "badgeText": "Novo Distintivo Desbloqueado",
+  "noNotesSearch": "Nenhuma nota corresponde à sua pesquisa",
+  "noNotesDefault": "Ainda não há notas. Clique em 'Adicionar nova' para criar sua primeira nota.",
+  "noPhotosSearch": "Nenhuma imagem corresponde à sua pesquisa",
+  "noPhotosDefault": "Ainda não há imagens. Clique em 'Adicionar imagem' para enviar sua primeira foto."
 }

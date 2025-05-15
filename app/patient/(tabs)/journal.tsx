@@ -239,8 +239,8 @@ export default function Journal() {
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>
             {notesSearchQuery.trim() !== ""
-              ? "No notes match your search"
-              : "No notes yet. Click 'Add new' to create your first note."}
+              ? t('noNotesSearch')
+              : t('noNotesDefault')}
           </Text>
         </View>
       );
@@ -278,8 +278,8 @@ export default function Journal() {
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>
             {photosSearchQuery.trim() !== ""
-              ? "No Image match your search"
-              : "No Image yet. Click 'Add image' to create your first photo."}
+              ? t('noPhotosSearch')
+              : t('noPhotosDefault')}
           </Text>
         </View>
       );
@@ -319,7 +319,7 @@ export default function Journal() {
         >
           <Ionicons name="chevron-back" size={20} color="black" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Journal</Text>
+        <Text style={styles.headerTitle}>{t('journals')}</Text>
         <TouchableOpacity style={styles.menuButton}>
           <Feather name="more-vertical" size={20} color="#E5E5E5" />
         </TouchableOpacity>
