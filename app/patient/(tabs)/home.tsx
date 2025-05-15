@@ -2,7 +2,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  ImageBackground,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,26 +10,19 @@ import {
 } from "react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { supabase } from "@/supabase/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 // import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { useDispatch, useSelector } from "react-redux";
 import { removeToken, setUser } from "@/store/userSlice";
 import { useFocusEffect, useRouter } from "expo-router";
-import { AntDesign, Feather, Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import Svg, { Path } from "react-native-svg";
-import { height, width } from "@/constants/helper";
+import { Ionicons } from "@expo/vector-icons";
 import { StatusBar, Platform } from "react-native";
 import Card from "@/components/Card";
-import { cardData as originalCardData } from "@/constants/constant";
+import { useTranslation } from "react-i18next"
+import '../../../translation/i18next' 
 
 // Ensure all items have a valid onPress function
-const cardData = originalCardData.map((item) => ({
-  ...item,
-  id: String(item.id), // Ensure id is a number
-  onPress: item.onPress || (() => {}),
-}));
+
 
 import ProgressCircle from "@/components/ProgressCircle";
 import { Image } from "react-native";
@@ -89,7 +81,6 @@ const calculatePregnancyProgress = (weeksComplete: number): Progress => {
 //     "457085426884-5aboj03hndd1l6teed5hl85vq2ba9t1b.apps.googleusercontent.com",
 // });
 
-// Define prop types for the components
 interface UserProfile {
   name?: string;
   email?: string;
@@ -109,6 +100,7 @@ const Home = () => {
   const user = useSelector((state: any) => state.user);
   // console.log("token", token);
   // console.log("userData1", user);
+  const { t, i18n } = useTranslation()
 
   const [weeksComplete, setWeeksComplete] = useState(0);
   const { progressPercentage, remainingDays, dueDate } =
@@ -126,6 +118,46 @@ const Home = () => {
   // const [steps, setSteps] = useState(null);
 
   const userId = user?.user_id;
+
+  const cardData1 = [
+  {
+    id: '1',
+    title: t('cards.askDoula.title'),
+    description: t('cards.askDoula.description'),
+    bg1: "#FBBBE9", // Light pink
+    bg2: "#E162BC", // Deep pink
+    image1: require("../../../assets/images/hairs/h1/face/c1.png"),
+    onPress: () => {
+      router.push({
+        pathname: "/patient/askdoula",
+        params: { from_modal: "true" },
+      });
+    },
+  },
+  {
+    id: '2',
+    title: t('cards.calendar.title'),
+    description: t('cards.calendar.description'),
+    bg1: "#FFE5B0", // Light yellow
+    bg2: "#FFAA00", // Bright orange
+    image1: require("../../../assets/images/calendra.png"),
+  },
+  {
+    id: '3',
+    title: t('cards.motherCare.title'),
+    description: t('cards.motherCare.description'),
+    bg1: "#ACF3FF", // Light blue
+    bg2: "#64C4D4", // Turquoise
+    image1: require("../../../assets/images/mother.png"),
+    onPress: () => router.push("/patient/health"),
+  },
+];
+
+const cardData = cardData1.map((item) => ({
+  ...item,
+  id: String(item.id), // Ensure id is a number
+  onPress: item.onPress || (() => {}),
+}));
 
   useEffect(() => {
       const setAllVisited = async () => {
@@ -690,103 +722,6 @@ const Home = () => {
     >
       <StatusBar backgroundColor="#FAB5E8" barStyle="dark-content" />
 
-      {/* <LinearGradient
-        colors={["#FAB5E8", "#F76CCFFF"]}
-        start={{ x: 0.027, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{
-          height: Platform.OS === 'android' ? "43%" : '48%',
-          borderBottomLeftRadius:30,
-          borderBottomRightRadius:30,
-        }}
-      >
-        {Header()}
-
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-around",
-            alignItems: "center",
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "column",
-              justifyContent: "center",
-              alignItems: "flex-start",
-              gap: 2,
-            }}
-          >
-            <Text style={{ fontSize: 18, color: "white" }}>{`${progressPercentage.toFixed(1)}%`}</Text>
-            <Text
-              style={{
-                fontSize: 8,
-                color: "white",
-                fontFamily: "Inter_18pt-Regular",
-              }}
-            >
-              DONE
-            </Text>
-          </View>
-
-          <ProgressCircle weeksComplete={weeksComplete} />
-
-          <View
-            style={{
-              flexDirection: "column",
-              justifyContent: "center",
-              alignItems: "flex-end",
-              gap: 2,
-            }}
-          >
-            <Text style={{ fontSize: 18, color: "white" }}>{remainingDays}</Text>
-            <Text
-              style={{
-                fontSize: 8,
-                color: "white",
-                fontFamily: "Inter_18pt-Regular",
-              }}
-            >
-              DAYS TO GO
-            </Text>
-          </View>
-        </View>
-
-        <View
-          style={{
-            justifyContent: "center",
-            alignItems: "center",
-            pointerEvents: "auto",
-          }}
-        >
-          <TouchableOpacity
-            onPress={() => router.push("/patient/track")}
-            style={{
-              flexDirection: "row",
-              justifyContent: "center",
-              alignItems: "center",
-              marginTop: Platform.OS === "ios" ? 10 : 30,
-              paddingHorizontal: 8,
-              paddingVertical: 6,
-              gap: 6,
-              borderRadius: 18,
-              backgroundColor: "rgba(232, 222, 248, 0.22)",
-              zIndex: 10, // Ensure it’s clickable
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 14,
-                fontFamily: "Inter600",
-                color: "#f8dede",
-              }}
-            >
-              More
-            </Text>
-            <AntDesign name="arrowright" size={12} color="#F8DEDE" />
-          </TouchableOpacity>
-        </View>
-      </LinearGradient> */}
       <ScrollView
         style={{
           flex: 1,
@@ -867,7 +802,7 @@ const Home = () => {
           }}
         >
           <Text style={styles.userName}>{user.user_name}</Text>
-          <Text style={styles.weekText}>Week {weeksComplete}</Text>
+          <Text style={styles.weekText}>  {t("home.week")} {weeksComplete}</Text>
         </View>
 
         <View
@@ -898,7 +833,7 @@ const Home = () => {
               >
                 <WaterIcon width={14} height={14} />
               </View>
-              <Text style={styles.statTitle}>Water Intake</Text>
+              <Text style={styles.statTitle} numberOfLines={1} ellipsizeMode="tail">{t('home.waterIntake')}</Text>
             </View>
 
             <View style={styles.waterProgressBar}>
@@ -919,7 +854,7 @@ const Home = () => {
               <Text style={styles.statSuffix}>
                 {" "}
                 <Text style={styles.statValue}>{glassCount}</Text> /{" "}
-                {maxGlasses} Glasses
+                {maxGlasses} {t('home.glasses')}
               </Text>
             </View>
           </TouchableOpacity>
@@ -943,7 +878,7 @@ const Home = () => {
               >
                 <FoodIcon width={14} height={14} />
               </View>
-              <Text style={styles.statTitle}>Food</Text>
+              <Text style={styles.statTitle}>{t('home.food')}</Text>
             </View>
 
             <View style={styles.foodQualityContainer}>
@@ -982,11 +917,21 @@ const Home = () => {
               />
             </View>
 
-            <Text style={styles.qualityScoreLabel}>
-              Quality Score:{" "}
-              <Text style={styles.qualityScoreValue}>{foodQualityScore}</Text>{" "}
-              /10
+            <View style={{
+              flexDirection: "row",
+            }}>
+              
+            <Text style={styles.qualityScoreLabel} numberOfLines={1}>
+             {t('home.quality_score')}:{" "}
+             
             </Text>
+            <Text style={styles.qualityScoreValue}>{foodQualityScore} <Text style={{
+              fontSize: 12,
+              color: "#373737",
+              fontFamily: "DMSans500",
+            }}>/10</Text> </Text> 
+            </View>
+
           </TouchableOpacity>
 
           {/* Steps Card */}
@@ -1008,7 +953,7 @@ const Home = () => {
               >
                 <StepsIcon width={14} height={14} />
               </View>
-              <Text style={styles.statTitle}>Steps</Text>
+              <Text style={styles.statTitle}>{t('home.steps')}</Text>
             </View>
 
             <Text style={styles.stepsValue}>{stepsWalked}</Text>
@@ -1019,7 +964,7 @@ const Home = () => {
                 marginTop: 5,
               }}
             >
-              <Text style={styles.stepsGoal}>Goal:</Text> {stepGoal}
+              <Text style={styles.stepsGoal}>{t('home.goal')}:</Text> {stepGoal}
             </Text>
           </TouchableOpacity>
 
@@ -1042,7 +987,7 @@ const Home = () => {
               >
                 <Calendar width={14} height={14} />
               </View>
-              <Text style={styles.statTitle}>Due Date</Text>
+              <Text style={styles.statTitle} numberOfLines={1}>{t('home.due_date')}</Text>
             </View>
             <Text
               style={{
@@ -1060,7 +1005,7 @@ const Home = () => {
               >
                 {remainingDays}
               </Text>{" "}
-              days left
+              {t('daysLeft')}
             </Text>
             <Text
               style={{
@@ -1160,6 +1105,7 @@ const styles = StyleSheet.create({
   statHeader: {
     flexDirection: "row",
     alignItems: "center",
+    paddingRight:20,
     marginBottom: 5,
   },
   statIcon: {
@@ -1210,13 +1156,15 @@ const styles = StyleSheet.create({
   },
   qualityScoreLabel: {
     fontSize: 12,
+    marginTop:6,
+    // maxWidth:' 100%',
     color: "#373737",
     fontFamily: "DMSans500",
   },
   qualityScoreValue: {
     fontSize: 18,
-    fontWeight: "600",
     color: "#22C800",
+    fontFamily:'DMSans600'
     // marginLeft: 5,
   },
   qualityScoreSuffix: {

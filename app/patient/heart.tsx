@@ -23,6 +23,7 @@ import { useSelector } from "react-redux"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import * as WebBrowser from "expo-web-browser"
 import { useFitbit } from "@/zustandStore/useFitbitStore"
+import { useTranslation } from "react-i18next"
 
 const { width } = Dimensions.get("window")
 const BAR_WIDTH = 20
@@ -56,12 +57,7 @@ type TimeRangeOption = {
   label: string
 }
 
-const timeRangeOptions: TimeRangeOption[] = [
-  { id: "today", label: "Today" },
-  { id: "week", label: "Last 7 Days" },
-  { id: "month", label: "This Month" },
-  { id: "lastMonth", label: "Last Month" },
-]
+
 
 // Default empty chart data
 const emptyChartData = [
@@ -149,6 +145,15 @@ export default function HeartRateScreen() {
   const [currentHeartRate, setCurrentHeartRate] = useState<number>(75)
 
   const userId = user?.user_id;
+
+  const {t} = useTranslation();
+
+  const timeRangeOptions: TimeRangeOption[] = [
+  { id: "today", label: t('hearts.Today') },
+  { id: "week", label: t('hearts.Last7Days') },
+  { id: "month", label: t('hearts.ThisMonth') },
+  { id: "lastMonth", label: t('hearts.LastMonth') },
+]
 
   useEffect(() => {
       const setHeartVisited = async () => {
@@ -321,7 +326,7 @@ export default function HeartRateScreen() {
         {
           id: `today-${todayStr}`,
           date: todayStr,
-          day: "Today",
+          day: t('hearts.Today') ,
           bpm: 0,
         },
       ]
@@ -560,7 +565,7 @@ export default function HeartRateScreen() {
             {
               id: `today-${todayStr}`,
               date: todayStr,
-              day: "Today",
+              day: t('hearts.Today') ,
               bpm: todayData.bpm || 0,
             },
           ];
@@ -1058,7 +1063,7 @@ export default function HeartRateScreen() {
         {isSelected && hasBpm && (
           <Animated.View style={[styles.tooltip, { opacity: tooltipAnim }]}>
             <View style={styles.tooltipContent}>
-              <Text style={styles.tooltipTitle}>AVG. HEART-RATE</Text>
+              <Text style={styles.tooltipTitle} numberOfLines={1}>{t('hearts.HeartRateTooltip')}</Text>
               <Text style={styles.tooltipWeight}>
                 {item.bpm}{" "}
                 <Text
@@ -1079,6 +1084,7 @@ export default function HeartRateScreen() {
     )
   }
 
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -1088,7 +1094,7 @@ export default function HeartRateScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={20} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Heart-Rate</Text>
+        <Text style={styles.headerTitle}>{t('hearts.HeartRate')}</Text>
         <TouchableOpacity style={styles.menuButton}>
           <Feather name="more-vertical" size={20} color="#E5E5E5" />
         </TouchableOpacity>
@@ -1107,19 +1113,19 @@ export default function HeartRateScreen() {
 
         {/* Connect to Application */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Connect to Application</Text>
+          <Text style={styles.sectionTitle}>{t('hearts.ConnectToApplication')}</Text>
           <View style={styles.connectItem}>
             <Image source={require("../../assets/images/applehealth.png")} style={{ width: 24, height: 24 }} />
             <Text style={styles.connectText}>{Platform.OS === 'ios' ? 'Health App' : 'Samsung Health'}</Text>
             <TouchableOpacity>
-              <Text style={styles.connectButton}>CONNECT</Text>
+              <Text style={styles.connectButton}>{t('actions.Connect')}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Connect to Device Section */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Connect to Device</Text>
+          <Text style={styles.sectionTitle}>{t('hearts.ConnectToDevice')}</Text>
           <View style={styles.connectItem}>
             <Image source={require("../../assets/images/fitbit.png")} style={{ width: 24, height: 24 }} />
             <Text style={styles.connectText}>Fitbit</Text>
@@ -1127,7 +1133,7 @@ export default function HeartRateScreen() {
               onPress={handleFitbitConnection}
             >
               <Text style={styles.connectButton}>
-                {fitbitLoading ? 'CONNECTING...' : isConnected ? 'DISCONNECT' : 'CONNECT'}
+                {fitbitLoading ? t('actions.Connecting') : isConnected ? t('actions.Disconnect') : t('actions.Connect')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -1157,7 +1163,7 @@ export default function HeartRateScreen() {
           <View style={styles.analysisHeader}>
             <View style={styles.analysisTab}>
               <MaterialIcons name="bar-chart" size={18} color="#F2C3C8" />
-              <Text style={styles.analysisTabText}>Analysis</Text>
+              <Text style={styles.analysisTabText}>{t('hearts.Analysis')}</Text>
             </View>
             {/* Update the TouchableOpacity for the period selector to include the ref and measure its position */}
             <TouchableOpacity
@@ -1254,12 +1260,15 @@ export default function HeartRateScreen() {
         {/* Bottom Section */}
         <View style={styles.bottomContainer}>
           <View style={styles.messageContainer}>
-            <Text style={styles.messageTitle}>Monitor Your Heart Health</Text>
-            <Text style={styles.messageSubtitle}>Set a reminder for regular checks.</Text>
+            <Text style={styles.messageTitle}>{t('hearts.MonitorYourHeartHealth')}</Text>
+            <Text style={styles.messageSubtitle} numberOfLines={1}>{t('hearts.SetReminderSubtitle')}</Text>
           </View>
-          <TouchableOpacity style={styles.reminderButton}>
+          <TouchableOpacity style={styles.reminderButton} onPress={()=>router.push({
+                        pathname: '/patient/settings/reminder',
+                        params: { type: 'heart' }
+                      })}>
             <Ionicons name="alarm" size={16} color="white" />
-            <Text style={styles.reminderButtonText}>Set Reminder</Text>
+            <Text style={styles.reminderButtonText} numberOfLines={1}>{t('hearts.SetReminder')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -1514,6 +1523,7 @@ const styles = StyleSheet.create({
   reminderButtonText: {
     color: "#FEF8FD",
     marginLeft: 8,
+    maxWidth:130,
     fontSize: 12,
     fontFamily: "Inter500",
   },

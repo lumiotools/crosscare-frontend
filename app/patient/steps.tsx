@@ -1,5 +1,3 @@
-//
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
@@ -30,6 +28,7 @@ import { useSelector } from "react-redux";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFitbit } from "@/zustandStore/useFitbitStore";
 import { Alert } from "react-native";
+import { useTranslation } from "react-i18next";
 
 const { width } = Dimensions.get("window");
 const BAR_WIDTH = 20;
@@ -67,12 +66,7 @@ type TimeRangeOption = {
   label: string;
 };
 
-const timeRangeOptions: TimeRangeOption[] = [
-  { id: "today", label: "Today" },
-  { id: "week", label: "Last 7 Days" },
-  { id: "month", label: "This Month" },
-  { id: "lastMonth", label: "Last Month" },
-];
+
 
 // Custom Progress Bar Component
 const CustomProgressBar = ({ progress }: { progress: number }) => {
@@ -124,6 +118,15 @@ const step = () => {
 
   // Calculate progress based on goal (if set)
   const progress = stepGoal ? stepsWalked / stepGoal : 0;
+
+  const {t} = useTranslation();
+
+  const timeRangeOptions: TimeRangeOption[] = [
+  { id: "today", label: t('stepScreen.today') },
+  { id: "week", label: t('stepScreen.last7Days') },
+  { id: "month", label: t('stepScreen.thisMonth')},
+  { id: "lastMonth", label: t('stepScreen.lastMonth') },
+];
 
   const userId = user?.user_id;
   useEffect(() => {
@@ -527,7 +530,7 @@ const step = () => {
           {
             id: `today-${todayStr}`,
             date: todayStr,
-            day: "Today",
+            day: t('stepScreen.today'),
             steps: todayData.steps || 0,
             stepsGoal: todayData.stepsGoal || 0,
           },
@@ -1067,7 +1070,7 @@ const step = () => {
         >
           <Ionicons name="chevron-back" size={20} color="black" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Steps</Text>
+        <Text style={styles.headerTitle}>{t('stepScreen.steps')}</Text>
         <TouchableOpacity style={styles.menuButton}>
           <Feather name="more-vertical" size={20} color="#E5E5E5" />
         </TouchableOpacity>
@@ -1098,7 +1101,7 @@ const step = () => {
                   color: "black",
                 }}
               >
-                {stepGoal ? `of ${stepGoal} steps walked` : "steps walked"}
+                {stepGoal ? `of ${stepGoal} ${t('stepScreen.stepsWalked')}` : t('stepScreen.stepsWalked')}
               </Text>
             </Text>
             <TouchableOpacity
@@ -1112,39 +1115,39 @@ const step = () => {
 
         {/* Connect to Application Section */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Connect to Application</Text>
+          <Text style={styles.sectionTitle}>{t('stepScreen.connectToApplication')}</Text>
           <View style={styles.connectItem}>
             <Image
               source={require("../../assets/images/applehealth.png")}
               style={{ width: 24, height: 24 }}
             />
             <Text style={styles.connectText}>
-              {Platform.OS === "ios" ? "Health App" : "Samsung Health"}
+              {Platform.OS === "ios" ? t('stepScreen.appleHealth') : t('stepScreen.samsungHealth')}
             </Text>
             <TouchableOpacity>
-              <Text style={styles.connectButton}>CONNECT</Text>
+              <Text style={styles.connectButton}>{t('stepScreen.connect')}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Connect to Device Section */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Connect to Device</Text>
+          <Text style={styles.sectionTitle}>{t('stepScreen.connectToDevice')}</Text>
           <View style={styles.connectItem}>
             <Image
               source={require("../../assets/images/fitbit.png")}
               style={{ width: 24, height: 24 }}
             />
-            <Text style={styles.connectText}>Fitbit</Text>
+            <Text style={styles.connectText}>{t('stepScreen.fitbit')}</Text>
             <TouchableOpacity onPress={handleFitbitConnection}>
               <Text style={styles.connectButton}>
                 {!initialCheckDone
-                  ? "CHECKING..."
+                  ? t('stepScreen.checkConnection')
                   : fitbitLoading
                   ? "CONNECTING..."
                   : isConnected
-                  ? "DISCONNECT"
-                  : "CONNECT"}
+                  ? t('stepScreen.disconnect')
+                  : t('stepScreen.connect')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -1154,7 +1157,7 @@ const step = () => {
           <View style={styles.analysisHeader}>
             <View style={styles.analysisTab}>
               <MaterialIcons name="bar-chart" size={18} color="#CDC8E2" />
-              <Text style={styles.analysisTabText}>Analysis</Text>
+              <Text style={styles.analysisTabText}>{t('stepScreen.stepAnalysis')}</Text>
             </View>
             <TouchableOpacity
               ref={periodSelectorRef}

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator } from "react-native";
 import {
   View,
@@ -23,6 +24,8 @@ const WeightModal = ({ visible, onClose, onSave, reload }: WeightModalProps) => 
   const [loading, setLoading] = useState(false);
   const user = useSelector((state: any) => state.user);
   // console.log(user.user_id);
+
+  const {t} = useTranslation();
 
   const handleSave = async () => {
     if (!weight) {
@@ -82,7 +85,7 @@ const WeightModal = ({ visible, onClose, onSave, reload }: WeightModalProps) => 
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>Add New Weight Log</Text>
+          <Text style={styles.modalTitle}>{t('weightScreen.addNewWeightLog')}</Text>
 
           <View style={styles.inputContainer}>
             <TextInput
@@ -90,7 +93,7 @@ const WeightModal = ({ visible, onClose, onSave, reload }: WeightModalProps) => 
               value={weight}
               onChangeText={setWeight}
               keyboardType="numeric"
-              placeholder="-- KG"
+              placeholder={t('weightScreen.weightPlaceholder')}
               placeholderTextColor="#ccc"
             />
           </View>
@@ -100,14 +103,14 @@ const WeightModal = ({ visible, onClose, onSave, reload }: WeightModalProps) => 
               style={styles.cancelButton}
               onPress={handleCancel}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={styles.cancelButtonText}>{t('weightScreen.cancel')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
               {loading ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.saveButtonText}>Save & Continue</Text>
+                <Text style={styles.saveButtonText} numberOfLines={1}>{t('weightScreen.saveAndContinue')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -185,6 +188,7 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: "white",
     fontSize: 14,
+    maxWidth:130,
     fontFamily: "Inter500",
   },
 });

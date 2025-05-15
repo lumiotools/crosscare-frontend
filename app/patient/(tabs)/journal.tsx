@@ -18,6 +18,7 @@ import ContentCard from "@/components/ContentCard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useTranslation } from "react-i18next";
 
 // Define types
 interface NoteItem {
@@ -59,6 +60,7 @@ export default function Journal() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const { t, i18n } = useTranslation();
 
   useEffect(() => {
     const setJournalVisited = async () => {
@@ -335,7 +337,7 @@ export default function Journal() {
               activeTab === "Notes" && styles.activeTabText,
             ]}
           >
-            Notes
+            {t('journal.notes')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -348,7 +350,7 @@ export default function Journal() {
               activeTab === "Photos" && styles.activeTabText,
             ]}
           >
-            Photos
+           {t('journal.photos')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -358,7 +360,7 @@ export default function Journal() {
         <Feather name="search" size={20} color="rgba(60, 60, 67, 0.60)" />
         {activeTab === "Notes" ? (
           <TextInput
-            placeholder="Search Notes"
+            placeholder={t('journal.placeholderNotes')}
             value={notesSearchQuery}
             onChangeText={setNotesSearchQuery}
             placeholderTextColor="rgba(60, 60, 67, 0.60)"
@@ -366,7 +368,7 @@ export default function Journal() {
           />
         ) : (
           <TextInput
-            placeholder="Search Photos"
+            placeholder={t('journal.placeholderPhoto')}
             value={photosSearchQuery}
             onChangeText={setPhotosSearchQuery}
             placeholderTextColor="rgba(60, 60, 67, 0.60)"
@@ -403,7 +405,7 @@ export default function Journal() {
           }}
         >
           <Feather name="plus" size={16} color="white" />
-          <Text style={styles.fabText}>Add new</Text>
+          <Text style={styles.fabText}>{t('journal.addNew')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

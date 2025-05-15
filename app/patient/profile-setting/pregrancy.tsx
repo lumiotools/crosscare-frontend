@@ -1,5 +1,3 @@
-"use client";
-
 import {
   StyleSheet,
   Text,
@@ -30,6 +28,7 @@ import Globe from "@/assets/images/Svg/Globe";
 import Notification from "@/assets/images/Svg/Notification";
 import Help from "@/assets/images/Svg/Help";
 import Terms from "@/assets/images/Svg/Terms";
+import { useTranslation } from "react-i18next";
 
 const ProfileField = ({
   label,
@@ -112,134 +111,6 @@ const EditableNameField = ({
   );
 };
 
-// Editable age field component
-const EditableAgeField = ({
-  label,
-  age,
-  onSave,
-  onCancel,
-}: {
-  label: string;
-  age: number;
-  onSave: (age: number) => void;
-  onCancel: () => void;
-}) => {
-  const [inputValue, setInputValue] = useState(age.toString());
-
-  const handleSave = () => {
-    Keyboard.dismiss();
-    const newAge = Number.parseInt(inputValue);
-    if (!isNaN(newAge) && newAge > 0) {
-      onSave(newAge);
-    } else {
-      onCancel();
-    }
-  };
-
-  return (
-    <View style={styles.fieldContainer}>
-      <View style={styles.fieldContent}>
-        <Text style={styles.fieldLabel}>{label}</Text>
-        <View style={styles.editActions}>
-          {/* <TouchableOpacity onPress={onCancel} style={styles.editButton}>
-            <Text style={{
-              color: '#E162BC',
-              fontSize: 12,
-              fontFamily:'DMSans600',
-            }}>Cancel</Text>
-          </TouchableOpacity> */}
-          <TouchableOpacity
-            onPress={handleSave}
-            style={[styles.editButton, { marginLeft: 10 }]}
-          >
-            <Text
-              style={{
-                color: "#E162BC",
-                fontSize: 14,
-                fontFamily: "DMSans600",
-              }}
-            >
-              Save
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-      <View style={styles.separator} />
-      <View style={styles.ageInputContainer}>
-        <TextInput
-          style={styles.ageInput}
-          value={inputValue}
-          onChangeText={setInputValue}
-          keyboardType="numeric"
-          autoFocus
-        />
-        <Text style={styles.fieldValue}> Years</Text>
-      </View>
-    </View>
-  );
-};
-
-const EditableEmailField = ({
-  label,
-  value,
-  onSave,
-  onCancel,
-}: {
-  label: string;
-  value: string;
-  onSave: (value: string) => void;
-  onCancel: () => void;
-}) => {
-  const [inputValue, setInputValue] = useState(value);
-
-  return (
-    <View style={styles.fieldContainer}>
-      <View style={styles.fieldContent}>
-        <Text style={styles.fieldLabel}>{label}</Text>
-        <View style={styles.editActions}>
-          {/* <TouchableOpacity
-            onPress={() => onCancel()}
-            style={styles.editButton}
-          >
-            <Text style={{
-              color: '#E162BC',
-              fontSize: 12,
-              fontFamily:'DMSans600',
-            }}>Cancel</Text>
-          </TouchableOpacity> */}
-          <TouchableOpacity
-            onPress={() => {
-              Keyboard.dismiss();
-              onSave(inputValue);
-            }}
-            style={[styles.editButton, { marginLeft: 10 }]}
-          >
-            <Text
-              style={{
-                color: "#E162BC",
-                fontSize: 14,
-                fontFamily: "DMSans600",
-              }}
-            >
-              Save
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-      <View style={styles.separator} />
-      <TextInput
-        style={styles.fieldInput}
-        value={inputValue}
-        onChangeText={setInputValue}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoCorrect={false}
-        autoFocus
-      />
-    </View>
-  );
-};
-
 const EditablePregnancyWeekField = ({
   label,
   week,
@@ -252,7 +123,7 @@ const EditablePregnancyWeekField = ({
   onCancel: () => void;
 }) => {
   const [inputValue, setInputValue] = useState(week.toString());
-
+ const {t} = useTranslation();
   const handleSave = () => {
     Keyboard.dismiss();
     const newWeek = Number.parseInt(inputValue);
@@ -286,7 +157,7 @@ const EditablePregnancyWeekField = ({
                 fontFamily: "DMSans600",
               }}
             >
-              Save
+                {t('save')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -327,6 +198,7 @@ const name = () => {
   const [isEditingAge, setIsEditingAge] = useState(false);
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [isEditingPregnancyWeek, setIsEditingPregnancyWeek] = useState(false);
+  const {t} = useTranslation();
 
   const getProfile = async () => {
     const response = await fetch(
@@ -543,7 +415,7 @@ const name = () => {
         <TouchableOpacity onPress={()=>router.back()}>
             <Ionicons name="chevron-back" size={20} color="black" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Your Pregnancy</Text>
+        <Text style={styles.headerTitle}>{t('profile.yourpregnancy')}</Text>
         <View
           style={{
             width: 20,
@@ -556,14 +428,14 @@ const name = () => {
 
           {isEditingPregnancyWeek ? (
             <EditablePregnancyWeekField
-              label="Week of Pregnancy"
+              label={t('profile.weekofpregnancy')}
               week={pregnancyWeek}
               onSave={handleSavePregnancyWeek}
               onCancel={() => setIsEditingPregnancyWeek(false)}
             />
           ) : (
             <ProfileField
-              label="Week of Pregnancy"
+              label={t('profile.weekofpregnancy')}
               value={`Week ${pregnancyWeek}`}
               onEdit={() => setIsEditingPregnancyWeek(true)}
             />

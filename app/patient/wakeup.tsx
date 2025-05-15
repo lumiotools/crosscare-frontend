@@ -15,6 +15,7 @@ import MoonIcon from "@/assets/images/Svg/MoonIcon";
 import SunIcon from "@/assets/images/Svg/SunIcon";
 import { useLocalSearchParams } from "expo-router";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = (width - 48) / 2; // 2 columns with 16px padding on sides and middle
@@ -59,6 +60,7 @@ const wakeup = () => {
 
     const params = useLocalSearchParams();
     console.log(params);
+      const { t } = useTranslation();
 
   // Parse parameters passed from the previous screen
   const sleepTime = (params.sleepTime as string) || "11:00 PM"
@@ -147,7 +149,7 @@ const wakeup = () => {
         >
           <Ionicons name="chevron-back" size={20} color="white" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Track Sleep</Text>
+        <Text style={styles.headerTitle}>{t("wakeup.trackSleep")}</Text>
         <TouchableOpacity style={styles.menuButton}>
           <Feather name="more-vertical" size={20} color="#E5E5E5" />
         </TouchableOpacity>
@@ -165,7 +167,7 @@ const wakeup = () => {
 
         {/* Sleep Time */}
         <View style={styles.sleepTimeContainer}>
-          <Text style={styles.sleepAtText}>Wake Up at</Text>
+          <Text style={styles.sleepAtText}>{t("wakeup.wakeUpAt")}</Text>
           <TouchableOpacity
             style={{
               paddingHorizontal: 8,
@@ -191,42 +193,28 @@ const wakeup = () => {
         </View>
 
         {/* Best Times Section */}
-        <Text style={styles.sectionTitle}>Best Times to Sleep</Text>
+        <Text style={styles.sectionTitle}>{t("wakeup.bestTimesToSleep")}</Text>
 
         <View style={styles.gridContainer}>
           {wakeUpTimes.map((item, index) => (
             <View key={index} style={styles.card}>
               <View style={styles.cardIcon}>{renderFace(item.mood)}</View>
               <Text style={styles.cardTime}>{item.time}</Text>
-              <Text style={styles.cardCycles}>{item.cycles} cycles</Text>
-              <Text style={styles.cardHours}>{item.hours} hr</Text>
+              <Text style={styles.cardCycles}>{item.cycles} {t("wakeup.cycles")}</Text>
+              <Text style={styles.cardHours}>{item.hours} {t("wakeup.hr")}</Text>
             </View>
           ))}
         </View>
 
         {/* How It Works Section */}
         <View style={styles.howItWorksContainer}>
-          <Text style={styles.howItWorksTitle}>How It Works</Text>
-          <View style={styles.bulletPoint}>
-            <Text style={styles.bulletDot}>•</Text>
-            <Text style={styles.bulletText}>
-              A good night's sleep consists of 5-6 cycles
-            </Text>
-          </View>
-          <View style={styles.bulletPoint}>
-            <Text style={styles.bulletDot}>•</Text>
-            <Text style={styles.bulletText}>
-              Each cycle lasts for about 90 minutes
-            </Text>
-          </View>
-          <View style={styles.bulletPoint}>
-            <Text style={styles.bulletDot}>•</Text>
-            <Text style={styles.bulletText}>
-              Waking up in the middle of a cycle leaves you feeling tired, but
-              waking up at the end of a completed cycle helps you feel refreshed
-              and ready for the day!
-            </Text>
-          </View>
+          <Text style={styles.howItWorksTitle}>{t("wakeup.howItWorks")}</Text>
+          {(t("wakeup.howItWorksPoints", { returnObjects: true }) as string[]).map((point, index) => (
+            <View key={index} style={styles.bulletPoint}>
+              <Text style={styles.bulletDot}>•</Text>
+              <Text style={styles.bulletText}>{point}</Text>
+            </View>
+          ))}
         </View>
       </ScrollView>
     </SafeAreaView>

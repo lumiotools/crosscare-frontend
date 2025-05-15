@@ -30,6 +30,7 @@ import { useWaterStore } from "@/zustandStore/waterStore";
 import { useSelector } from "react-redux";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useTranslation } from "react-i18next";
 
 const MAX_HEIGHT = 200;
 const BAR_WIDTH = 20;
@@ -61,6 +62,8 @@ export default function water() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [newGoal, setNewGoal] = useState("");
+  const {t} = useTranslation();
+  const [timeRangeDropdownVisible, setTimeRangeDropdownVisible] = useState(false)
   
   // State variables for water data
   const [waterData, setWaterData] = useState<DataItem[]>([]);
@@ -85,6 +88,20 @@ export default function water() {
     const days = [];
     let startDate: Date;
     let endDate: Date;
+
+     if (timeRange === "today") {
+      // Just show today
+      const dateString = today.toISOString().split("T")[0]
+      days.push({
+        id: `today-${dateString}`,
+        date: dateString,
+        day: t('waterScreen.today'),
+        waterMl: glassCount * 250, // Use current glass count for today
+        waterL: (glassCount * 250) / 1000, // Convert to liters
+        goalMl: maxGlasses * 250,
+      })
+      return days
+    }
     
     if (timeRange === "week") {
       // Weekly view - show each day
@@ -600,6 +617,7 @@ export default function water() {
   const CustomBar = ({ item, index, isSelected }: CustomBarProps) => {
     // Check if this is a month view
     const isMonthView = timeRange !== "week";
+     const isTodayView = timeRange === "today"
     
     // Skip rendering for range labels in month view - they're just for organization
     if (isMonthView && item.isRangeLabel) {
@@ -615,24 +633,25 @@ export default function water() {
     const normalizedWeight = item.waterL - roundedMin;
     
     const calculatedHeight = (normalizedWeight / dataRange) * MAX_HEIGHT;
-    const barHeight = item.waterL > 0 ? Math.max(calculatedHeight, 2) : 2;
-    
-    // Use thinner bars for month views
-    const barWidth = isMonthView ? 4 : BAR_WIDTH;
+    const barHeight = item.waterL > 0 ? Math.max(calculatedHeight, 2) : 2
+
+  // Use wider bars for today view
+    const barWidth = isTodayView ? BAR_WIDTH * 2 : isMonthView ? 4 : BAR_WIDTH
     
     return (
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={() => handleBarPress(index)}
         style={[
-          styles.barContainer,
-          isMonthView && { 
-            width: barWidth, 
-            marginRight: 2, // Tighter spacing for clustered bars
-            marginLeft: item.rangeLabel && index > 0 && 
-                       getFilteredData[index-1].rangeLabel !== item.rangeLabel ? 10 : 0 // Add space between ranges
-          }
-        ]}
+        styles.barContainer,
+        isMonthView && {
+          width: barWidth,
+          marginRight: 2, // Tighter spacing for clustered bars
+          marginLeft:
+            item.rangeLabel && index > 0 && getFilteredData[index - 1].rangeLabel !== item.rangeLabel ? 10 : 0, // Add space between ranges
+        },
+        isTodayView && styles.todayBarContainer,
+      ]}
       >
         {!isMonthView && (
           <View style={styles.barLabelContainer}>
@@ -660,7 +679,7 @@ export default function water() {
         {isSelected && (
           <View style={styles.tooltip}>
             <View style={styles.tooltipContent}>
-              <Text style={styles.tooltipTitle}>WATER</Text>
+              <Text style={styles.tooltipTitle}>{t('water')}</Text>
               <Text style={styles.tooltipWeight}>
                 {item.waterL.toFixed(2)}{" "}
                 <Text style={{ fontSize: 16, color: "#67B6FF" }}>L</Text>
@@ -686,7 +705,7 @@ export default function water() {
         >
           <Ionicons name="chevron-back" size={20} color="black" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Water</Text>
+        <Text style={styles.headerTitle}>{t('water')}</Text>
         <TouchableOpacity style={styles.menuButton} onPress={()=>router.push('/patient/unitscreen')}>
           <Feather name="more-vertical" size={20} color="#E5E5E5" />
         </TouchableOpacity>
@@ -708,7 +727,7 @@ export default function water() {
 
         {/* Glass Info */}
         <Text style={styles.glassInfo}>
-          {glassCount} Glass is{" "}
+          {glassCount} {t('waterScreen.glass')} is{" "}
           {glassCount * 250 >= 1000
             ? ((glassCount * 250) / 1000).toFixed(2) + "L"
             : glassCount * 250 + "ml"}
@@ -739,7 +758,7 @@ export default function water() {
                 }}
               >
                 {" "}
-                {glassCount ? ` of ${maxGlasses} Glasses` : " Glasses"}
+                {glassCount ? ` of ${maxGlasses}  ${t('waterScreen.Glasses')}` : t('waterScreen.glass')}
               </Text>
             </Text>
             <TouchableOpacity onPress={openGoalModal}>
@@ -753,23 +772,79 @@ export default function water() {
           <View style={styles.analysisHeader}>
             <View style={styles.analysisTab}>
               <MaterialIcons name="bar-chart" size={18} color="#99CEFF" />
-              <Text style={styles.analysisTabText}>Analysis</Text>
+              <Text style={styles.analysisTabText}>{t('waterScreen.Analysis')}</Text>
             </View>
-            <TouchableOpacity 
-              style={styles.periodSelector}
-              onPress={() => {
-                // Toggle between week, month, and last month
-                if (timeRange === "week") setTimeRange("month");
-                else if (timeRange === "month") setTimeRange("lastMonth");
-                else setTimeRange("week");
-              }}
-            >
-              <Text style={styles.periodText}>
-                {timeRange === "week" ? "Last 7 Days" : 
-                 timeRange === "month" ? "This Month" : "Last Month"}
-              </Text>
-              <Ionicons name="chevron-down" size={14} color="#4dabff" />
-            </TouchableOpacity>
+              <View>
+              <TouchableOpacity
+                style={styles.periodSelector}
+                onPress={() => setTimeRangeDropdownVisible(!timeRangeDropdownVisible)}
+              >
+                <Text style={styles.periodText}>
+                  {timeRange === "today"
+                    ? t('today')
+                    : timeRange === "week"
+                      ?t('last7Days') 
+                      : timeRange === "month"
+                        ? t('thisMonth')
+                        : t('lastMonth')}
+                </Text>
+                <Ionicons name={timeRangeDropdownVisible ? "chevron-up" : "chevron-down"} size={14} color="#4dabff" />
+              </TouchableOpacity>
+
+              {/* Dropdown Menu */}
+              {timeRangeDropdownVisible && (
+                <View style={styles.dropdownMenu}>
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, timeRange === "today" && styles.dropdownItemSelected]}
+                    onPress={() => {
+                      setTimeRange("today")
+                      setTimeRangeDropdownVisible(false)
+                    }}
+                  >
+                    <Text style={[styles.dropdownItemText, timeRange === "today" && styles.dropdownItemTextSelected]}>
+                      {t('today')}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, timeRange === "week" && styles.dropdownItemSelected]}
+                    onPress={() => {
+                      setTimeRange("week")
+                      setTimeRangeDropdownVisible(false)
+                    }}
+                  >
+                    <Text style={[styles.dropdownItemText, timeRange === "week" && styles.dropdownItemTextSelected]}>
+                      {t('last7Days')}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, timeRange === "month" && styles.dropdownItemSelected]}
+                    onPress={() => {
+                      setTimeRange("month")
+                      setTimeRangeDropdownVisible(false)
+                    }}
+                  >
+                    <Text style={[styles.dropdownItemText, timeRange === "month" && styles.dropdownItemTextSelected]}>
+                      {t('thisMonth')}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, timeRange === "lastMonth" && styles.dropdownItemSelected]}
+                    onPress={() => {
+                      setTimeRange("lastMonth")
+                      setTimeRangeDropdownVisible(false)
+                    }}
+                  >
+                    <Text
+                      style={[styles.dropdownItemText, timeRange === "lastMonth" && styles.dropdownItemTextSelected]}
+                    >
+                      {t('lastMonth')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
           </View>
         </View>
 
@@ -798,7 +873,7 @@ export default function water() {
             ))}
 
             {/* For month views, render date labels at the bottom */}
-            {timeRange !== "week" && (
+            {timeRange !== "week" && timeRange !== "today" && (
               <View style={styles.dateLabelsContainer}>
                 {getFilteredData
                   .filter(item => item.isRangeLabel)
@@ -813,7 +888,8 @@ export default function water() {
             {/* Bars */}
             <View style={[
               styles.barsContainer,
-              timeRange !== "week" && { paddingHorizontal: 10 }
+              timeRange === "today" && styles.todayBarsContainer,
+              timeRange !== "week" && timeRange !== "today" && { paddingHorizontal: 10 }
             ]}>
               {isLoading ? (
                 <View style={styles.loadingContainer}>
@@ -826,7 +902,7 @@ export default function water() {
               ) : (
                 // For month views, filter out the range labels as they're shown separately
                 getFilteredData
-                  .filter(item => timeRange === "week" || !item.isRangeLabel)
+                  .filter(item => timeRange === "week" || timeRange === "today" || !item.isRangeLabel)
                   .map((item, index) => (
                     <CustomBar
                       key={index}
@@ -843,9 +919,9 @@ export default function water() {
         {/* Bottom Message */}
         <View style={styles.bottomContainer}>
           <View style={styles.messageContainer}>
-            <Text style={styles.messageTitle}>Make Every Drop Count!</Text>
-            <Text style={styles.messageSubtitle}>
-              Set a reminder and stay on track.
+            <Text style={styles.messageTitle}>{t('waterScreen.makeEveryDropCount')}</Text>
+            <Text style={styles.messageSubtitle} numberOfLines={1}>
+              {t('waterScreen.setReminderMessage')}
             </Text>
           </View>
           <TouchableOpacity style={styles.reminderButton} onPress={() => {
@@ -855,7 +931,7 @@ export default function water() {
             });
           }}>
             <Ionicons name="alarm" size={16} color="white" />
-            <Text style={styles.reminderButtonText}>Set Reminder</Text>
+            <Text style={styles.reminderButtonText} numberOfLines={1}>{t('waterScreen.setReminder')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -975,6 +1051,38 @@ const styles = StyleSheet.create({
     width: "60%",
     marginBottom: 20,
   },
+    dropdownMenu: {
+    position: "absolute",
+    top: 40,
+    right: 0,
+    width: 120,
+    backgroundColor: "white",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#D0E8FF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 20,
+  },
+   dropdownItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  dropdownItemSelected: {
+    backgroundColor: "#F0F8FF",
+  },
+  dropdownItemText: {
+    fontSize: 12,
+    letterSpacing: 0.28,
+    fontFamily: "Inter500",
+    color: "#4dabff",
+  },
+  dropdownItemTextSelected: {
+     fontFamily: "Inter500",
+  },
   input: {
     borderWidth: 1,
     borderColor: "#E0E0E0",
@@ -1050,12 +1158,21 @@ const styles = StyleSheet.create({
     height: "100%",
     paddingLeft: SPACING,
   },
+    todayBarsContainer: {
+    justifyContent: "center",
+    paddingLeft: 0,
+  },
   barContainer: {
     width: BAR_WIDTH,
     marginRight: SPACING,
     alignItems: "center",
     height: "100%",
     justifyContent: "flex-end",
+  },
+   todayBarContainer: {
+    marginHorizontal: 0,
+    borderTopLeftRadius: 15,
+    borderTopRightRadius: 15,
   },
   barWrapper: {
     width: BAR_WIDTH,
@@ -1283,6 +1400,7 @@ const styles = StyleSheet.create({
     color: "#FEF8FD",
     marginLeft: 8,
     fontSize: 12,
+    maxWidth:130,
     fontFamily: "Inter500",
   },
   thinBar: {

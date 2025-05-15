@@ -2,6 +2,7 @@ import Pen from "@/assets/images/Svg/Pen";
 import { useLocalSearchParams } from "expo-router";
 import { router } from "expo-router";
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   StyleSheet,
   View,
@@ -72,15 +73,17 @@ export default function OpenNote() {
 
   const [datePart, timePart] = item?.date.split(", ");
 
+  const {t} = useTranslation(); 
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={handleCancel}>
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={styles.cancelText}>{t('cancel')}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerText}>New Entry</Text>
+        <Text style={styles.headerText}>{t('new_entry')}</Text>
         <TouchableOpacity onPress={()=>handleSave(item.id)}>
-          <Text style={styles.saveText}>Save</Text>
+          <Text style={styles.saveText}>{t('save')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -93,7 +96,7 @@ export default function OpenNote() {
           {isEditing ? (
             <TextInput
               style={styles.titleInput}
-              placeholder="Title"
+              placeholder={t('journal.title')}
               multiline
               autoFocus
               value={title}
@@ -103,14 +106,14 @@ export default function OpenNote() {
           ) : (
             <Text style={styles.titleInput}>{title}</Text>
           )}
-          <Text>On {datePart}</Text>
-          <Text>At {timePart}</Text>
+          <Text>{t('on')} {datePart}</Text>
+          <Text>{t('journal.at')} {timePart}</Text>
 
           {/* Content */}
           {isEditing ? (
             <TextInput
               style={styles.contentInput}
-              placeholder="Start writing ..."
+              placeholder={t('journal.start_writing')}
               value={content}
               onChangeText={setContent}
               placeholderTextColor="#E5E5E5"

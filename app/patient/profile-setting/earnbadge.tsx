@@ -1,5 +1,3 @@
-"use client";
-
 import {
   Dimensions,
   StatusBar,
@@ -32,6 +30,7 @@ import UpArrow from "@/assets/images/Svg/UpArrow";
 import { LinearGradient } from "expo-linear-gradient";
 import PaginationDot from "react-native-insta-pagination-dots"
 import Lock from "@/assets/images/Svg/Lock";
+import { useTranslation } from "react-i18next";
 
 
 // Badge types constants
@@ -181,155 +180,95 @@ const NOT_EARNED_BADGE: Record<string, any> = {
 const ALL_BADGE = [...REGULAR_BADGE_TYPES, ...STREAK_BADGE_TYPES];
 
 const BADGE_TIPS: Record<string, string> = {
-  HOT_MAMA:
-    "Complete the 3 month streak by being consistent for atleast 25 days in month",
-  HYDRATED_QUEEN: "Log your water intake to unlock this badge",
-  RESTED_DIVA:
-    "Log sleep for the first time and take minimum 8 hours of sleep to unlock this badge",
-  HEART_SCRIBE: "Log an entry in the journal for the first time to unlock this badge",
-  TRIVIA_QUEEN: "Complete all domains of the questionnaire asked by Doula to unlock this badge",
-  SNAPSHOT: "Upload your photo to unlock this badge",
-  EXPLORER:
-    "Explore all the features of this app to unlock this badge",
-  SLEEP_WIZARD_I:
-    "Log sleep daily consistently for 25/30 days in 1st month to unlock this badge",
-  SLEEP_WIZARD_II:
-    "Log sleep daily consistently for 25/30 days in 2nd month to unlock this badge",
-  SLEEP_WIZARD_III:
-    "Log sleep daily consistently for 25/30 days in 3rd month to unlock this badge",
-  SLEEP_WIZARD_IV:
-    "Log sleep daily consistently for 25/30 days in 4th month to unlock this badge",
-  SLEEP_WIZARD_V:
-    "Log sleep daily consistently for 25/30 days in 5th month to unlock this badge",
-  SLEEP_WIZARD_VI:
-    "Log sleep daily consistently for 25/30 days in 6th month to unlock this badge",
-  SLEEP_WIZARD_VII:
-    "Log sleep daily consistently for 25/30 days in 7th month to unlock this badge",
-  SLEEP_WIZARD_VIII:
-    "Log sleep daily consistently for 25/30 days in 8th month to unlock this badge",
-  SLEEP_WIZARD_IX:
-    "Log sleep daily consistently for 25/30 days in 9th month to unlock this badge",
-  WATER_WIZARD_I:
-    "Log water daily consistently for 25/30 days in 1st month to unlock this badge",
-  WATER_WIZARD_II:
-    "Log water daily consistently for 25/30 days in 2nd month to unlock this badge",
-  WATER_WIZARD_III:
-    "Log water daily consistently for 25/30 days in 3rd month to unlock this badge",
-  WATER_WIZARD_IV:
-    "Log water daily consistently for 25/30 days in 4th month to unlock this badge",
-  WATER_WIZARD_V:
-    "Log water daily consistently for 25/30 days in 5th month to unlock this badge",
-  WATER_WIZARD_VI:
-    "Log water daily consistently for 25/30 days in 6th month to unlock this badge",
-  WATER_WIZARD_VII:
-    "Log water daily consistently for 25/30 days in 7th month to unlock this badge",
-  WATER_WIZARD_VIII:
-    "Log water daily consistently for 25/30 days in 8th month to unlock this badge",
-  WATER_WIZARD_IX:
-    "Log water daily consistently for 25/30 days in 9th month to unlock this badge",
-  HEALTH_QUEEN_I: "Log all habits daily consistently in 1st month to unlock this badge",
-  HEALTH_QUEEN_II: "Log all habits daily consistently in 2nd month to unlock this badge",
-  HEALTH_QUEEN_III: "Log all habits daily consistently in 3rd month to unlock this badge",
-  HEALTH_QUEEN_IV: "Log all habits daily consistently in 4th month to unlock this badge",
-  HEALTH_QUEEN_V: "Log all habits daily consistently in 5th month to unlock this badge",
-  HEALTH_QUEEN_VI: "Log all habits daily consistently in 6th month to unlock this badge",
-  HEALTH_QUEEN_VII: "Log all habits daily consistently in 7th month to unlock this badge",
-  HEALTH_QUEEN_VIII: "Log all habits daily consistently in 8th month to unlock this badge",
-  HEALTH_QUEEN_IX: "Log all habits daily consistently in 9th month to unlock this badge",
-  ON_THE_MOVE_I:
-    "Complete step goals daily for 25/30 days in 1st month to unlock this badge",
-  ON_THE_MOVE_II:
-    "Complete step goals daily for 25/30 days in 2nd month to unlock this badge",
-  ON_THE_MOVE_III:
-    "Complete step goals daily for 25/30 days in 3rd month to unlock this badge",
-  ON_THE_MOVE_IV:
-    "Complete step goals daily for 25/30 days in 4th month to unlock this badge",
-  ON_THE_MOVE_V:
-    "Complete step goals daily for 25/30 days in 5th month to unlock this badge",
-  ON_THE_MOVE_VI:
-    "Complete step goals daily for 25/30 days in 6th month to unlock this badge",
-  ON_THE_MOVE_VII:
-    "Complete step goals daily for 25/30 days in 7th month to unlock this badge",
-  ON_THE_MOVE_VIII:
-    "Complete step goals daily for 25/30 days in 8th month to unlock this badge",
-  ON_THE_MOVE_IX:
-    "Complete step goals daily for 25/30 days in 9th month to unlock this badge",
+  HOT_MAMA: 'badgeTips.HOT_MAMA',
+  HYDRATED_QUEEN: "badgeTips.HYDRATED_QUEEN",
+  RESTED_DIVA: "badgeTips.RESTED_DIVA",
+  HEART_SCRIBE: "badgeTips.HEART_SCRIBE",
+  TRIVIA_QUEEN: "badgeTips.TRIVIA_QUEEN",
+  SNAPSHOT: "badgeTips.SNAPSHOT",
+  EXPLORER: "badgeTips.EXPLORER",
+  SLEEP_WIZARD_I: "badgeTips.SLEEP_WIZARD_I",
+  SLEEP_WIZARD_II: "badgeTips.SLEEP_WIZARD_II",
+  SLEEP_WIZARD_III: "badgeTips.SLEEP_WIZARD_III",
+  SLEEP_WIZARD_IV: "badgeTips.SLEEP_WIZARD_IV",
+  SLEEP_WIZARD_V: "badgeTips.SLEEP_WIZARD_V",
+  SLEEP_WIZARD_VI:"badgeTips.SLEEP_WIZARD_VI",
+  SLEEP_WIZARD_VII: "badgeTips.SLEEP_WIZARD_VII",
+  SLEEP_WIZARD_VIII:"badgeTips.SLEEP_WIZARD_VIII",
+  SLEEP_WIZARD_IX:"badgeTips.SLEEP_WIZARD_IX",
+  WATER_WIZARD_I:"badgeTips.WATER_WIZARD_I",
+  WATER_WIZARD_II:"badgeTips.WATER_WIZARD_II",
+  WATER_WIZARD_III:"badgeTips.WATER_WIZARD_III",
+  WATER_WIZARD_IV:"badgeTips.WATER_WIZARD_IV",
+  WATER_WIZARD_V:"badgeTips.WATER_WIZARD_V",
+  WATER_WIZARD_VI:"badgeTips.WATER_WIZARD_VI",
+  WATER_WIZARD_VII:"badgeTips.WATER_WIZARD_VII",
+  WATER_WIZARD_VIII:"badgeTips.WATER_WIZARD_VIII",
+  WATER_WIZARD_IX:"badgeTips.WATER_WIZARD_IX",
+  HEALTH_QUEEN_I: "badgeTips.HEALTH_QUEEN_I",
+  HEALTH_QUEEN_II: "badgeTips.HEALTH_QUEEN_II",
+  HEALTH_QUEEN_III: "badgeTips.HEALTH_QUEEN_III",
+  HEALTH_QUEEN_IV: "badgeTips.HEALTH_QUEEN_IV",
+  HEALTH_QUEEN_V: "badgeTips.HEALTH_QUEEN_V",
+  HEALTH_QUEEN_VI: "badgeTips.HEALTH_QUEEN_VI",
+  HEALTH_QUEEN_VII: "badgeTips.HEALTH_QUEEN_VII",
+  HEALTH_QUEEN_VIII: "badgeTips.HEALTH_QUEEN_VIII",
+  HEALTH_QUEEN_IX: "badgeTips.HEALTH_QUEEN_IX",
+  ON_THE_MOVE_I:"badgeTips.ON_THE_MOVE_I",
+  ON_THE_MOVE_II:"badgeTips.ON_THE_MOVE_II",
+  ON_THE_MOVE_III:"badgeTips.ON_THE_MOVE_III",
+  ON_THE_MOVE_IV:"badgeTips.ON_THE_MOVE_IV",
+  ON_THE_MOVE_V:"badgeTips.ON_THE_MOVE_V",
+  ON_THE_MOVE_VI:"badgeTips.ON_THE_MOVE_VI",
+  ON_THE_MOVE_VII:"badgeTips.ON_THE_MOVE_VII",
+  ON_THE_MOVE_VIII:"badgeTips.ON_THE_MOVE_VIII",
+  ON_THE_MOVE_IX:"badgeTips.ON_THE_MOVE_IX",
 };
 
 const BADGE_DESCRIPTION: Record<string, string> = {
-  HOT_MAMA:
-    "3 month streak with being consistent at least 25/30 days in each month",
-  HYDRATED_QUEEN: "First time water is logged",
-  RESTED_DIVA:
-    "First time logging sleep (and getting minimum 8 hours of sleep)",
-  HEART_SCRIBE: "First time Logging an entry in the journal.",
-  TRIVIA_QUEEN: "On completing all domains of the questionnaire asked by Doula",
-  SNAPSHOT: "First time photo is uploaded",
-  EXPLORER:
-    "First time having explored all features of the app (should have navigated at least once to all habit trackers, self care, journal)",
-  SLEEP_WIZARD_I:
-    "Logged sleep daily monthly, consistent 25/30 days in the month.",
-  SLEEP_WIZARD_II:
-    "Logged sleep daily monthly, consistent 25/30 days in the month.",
-  SLEEP_WIZARD_III:
-    "Logged sleep daily monthly, consistent 25/30 days in the month.",
-  SLEEP_WIZARD_IV:
-    "Logged sleep daily monthly, consistent 25/30 days in the month.",
-  SLEEP_WIZARD_V:
-    "Logged sleep daily monthly, consistent 25/30 days in the month.",
-  SLEEP_WIZARD_VI:
-    "Logged sleep daily monthly, consistent 25/30 days in the month.",
-  SLEEP_WIZARD_VII:
-    "Logged sleep daily monthly, consistent 25/30 days in the month.",
-  SLEEP_WIZARD_VIII:
-    "Logged sleep daily monthly, consistent 25/30 days in the month.",
-  SLEEP_WIZARD_IX:
-    "Logged sleep daily monthly, consistent 25/30 days in the month.",
-  WATER_WIZARD_I:
-    "Logged water daily monthly, consistent 25/30 days in the month",
-  WATER_WIZARD_II:
-    "Logged water daily monthly, consistent 25/30 days in the month",
-  WATER_WIZARD_III:
-    "Logged water daily monthly, consistent 25/30 days in the month",
-  WATER_WIZARD_IV:
-    "Logged water daily monthly, consistent 25/30 days in the month",
-  WATER_WIZARD_V:
-    "Logged water daily monthly, consistent 25/30 days in the month",
-  WATER_WIZARD_VI:
-    "Logged water daily monthly, consistent 25/30 days in the month",
-  WATER_WIZARD_VII:
-    "Logged water daily monthly, consistent 25/30 days in the month",
-  WATER_WIZARD_VIII:
-    "Logged water daily monthly, consistent 25/30 days in the month",
-  WATER_WIZARD_IX:
-    "Logged water daily monthly, consistent 25/30 days in the month",
-  HEALTH_QUEEN_I: "Logged all habits daily for a month (food, water, sleep)",
-  HEALTH_QUEEN_II: "Logged all habits daily for a month (food, water, sleep)",
-  HEALTH_QUEEN_III: "Logged all habits daily for a month (food, water, sleep)",
-  HEALTH_QUEEN_IV: "Logged all habits daily for a month (food, water, sleep)",
-  HEALTH_QUEEN_V: "Logged all habits daily for a month (food, water, sleep)",
-  HEALTH_QUEEN_VI: "Logged all habits daily for a month (food, water, sleep)",
-  HEALTH_QUEEN_VII: "Logged all habits daily for a month (food, water, sleep)",
-  HEALTH_QUEEN_VIII: "Logged all habits daily for a month (food, water, sleep)",
-  HEALTH_QUEEN_IX: "Logged all habits daily for a month (food, water, sleep)",
-  ON_THE_MOVE_I:
-    "Step goals are met every day for a month (at least 25 days in a month)",
-  ON_THE_MOVE_II:
-    "Step goals are met every day for a month (at least 25 days in a month)",
-  ON_THE_MOVE_III:
-    "Step goals are met every day for a month (at least 25 days in a month)",
-  ON_THE_MOVE_IV:
-    "Step goals are met every day for a month (at least 25 days in a month)",
-  ON_THE_MOVE_V:
-    "Step goals are met every day for a month (at least 25 days in a month)",
-  ON_THE_MOVE_VI:
-    "Step goals are met every day for a month (at least 25 days in a month)",
-  ON_THE_MOVE_VII:
-    "Step goals are met every day for a month (at least 25 days in a month)",
-  ON_THE_MOVE_VIII:
-    "Step goals are met every day for a month (at least 25 days in a month)",
-  ON_THE_MOVE_IX:
-    "Step goals are met every day for a month (at least 25 days in a month)",
+  HOT_MAMA: "badgeDescription.HOT_MAMA",
+  HYDRATED_QUEEN: "badgeDescription.HYDRATED_QUEEN",
+  RESTED_DIVA:"badgeDescription.RESTED_DIVA",
+  HEART_SCRIBE:"badgeDescription.HEART_SCRIBE",
+  TRIVIA_QUEEN:"badgeDescription.TRIVIA_QUEEN",
+  SNAPSHOT:"badgeDescription.SNAPSHOT",
+  EXPLORER:"badgeDescription.EXPLORER",
+  SLEEP_WIZARD_I:"badgeDescription.SLEEP_WIZARD_I",
+  SLEEP_WIZARD_II:"badgeDescription.SLEEP_WIZARD_II",
+  SLEEP_WIZARD_III:"badgeDescription.SLEEP_WIZARD_III",
+  SLEEP_WIZARD_IV:"badgeDescription.SLEEP_WIZARD_IV",
+  SLEEP_WIZARD_V:"badgeDescription.SLEEP_WIZARD_V",
+  SLEEP_WIZARD_VI:"badgeDescription.SLEEP_WIZARD_VI",
+  SLEEP_WIZARD_VII:"badgeDescription.SLEEP_WIZARD_VII",
+  SLEEP_WIZARD_VIII:"badgeDescription.SLEEP_WIZARD_VIII",
+  SLEEP_WIZARD_IX:"badgeDescription.SLEEP_WIZARD_IX",
+  WATER_WIZARD_I:"badgeDescription.WATER_WIZARD_I",
+  WATER_WIZARD_II:"badgeDescription.WATER_WIZARD_II",
+  WATER_WIZARD_III:"badgeDescription.WATER_WIZARD_III",
+  WATER_WIZARD_IV:"badgeDescription.WATER_WIZARD_IV",
+  WATER_WIZARD_V:"badgeDescription.WATER_WIZARD_V",
+  WATER_WIZARD_VI:"badgeDescription.WATER_WIZARD_VI",
+  WATER_WIZARD_VII:"badgeDescription.WATER_WIZARD_VII",
+  WATER_WIZARD_VIII:"badgeDescription.WATER_WIZARD_VIII",
+  WATER_WIZARD_IX:"badgeDescription.WATER_WIZARD_IX",
+  HEALTH_QUEEN_I: "badgeDescription.HEALTH_QUEEN_I",
+  HEALTH_QUEEN_II: "badgeDescription.HEALTH_QUEEN_II",
+  HEALTH_QUEEN_III: "badgeDescription.HEALTH_QUEEN_III",
+  HEALTH_QUEEN_IV: "badgeDescription.HEALTH_QUEEN_IV",
+  HEALTH_QUEEN_V: "badgeDescription.HEALTH_QUEEN_V",
+  HEALTH_QUEEN_VI: "badgeDescription.HEALTH_QUEEN_VI",
+  HEALTH_QUEEN_VII: "badgeDescription.HEALTH_QUEEN_VII",
+  HEALTH_QUEEN_VIII: "badgeDescription.HEALTH_QUEEN_VIII",
+  HEALTH_QUEEN_IX: "badgeDescription.HEALTH_QUEEN_IX",
+  ON_THE_MOVE_I:"badgeDescription.ON_THE_MOVE_I",
+  ON_THE_MOVE_II: "badgeDescription.ON_THE_MOVE_II",
+  ON_THE_MOVE_III:"badgeDescription.ON_THE_MOVE_III",
+  ON_THE_MOVE_IV:"badgeDescription.ON_THE_MOVE_IV",
+  ON_THE_MOVE_V: "badgeDescription.ON_THE_MOVE_V",
+  ON_THE_MOVE_VI: "badgeDescription.ON_THE_MOVE_VI",
+  ON_THE_MOVE_VII: "badgeDescription.ON_THE_MOVE_VII",
+  ON_THE_MOVE_VIII:"badgeDescription.ON_THE_MOVE_VIII",
+  ON_THE_MOVE_IX:"badgeDescription.ON_THE_MOVE_IX",
 };
 
 const getBadgeDescription = (badgeType: string): string => {
@@ -474,6 +413,8 @@ const BadgeCarousel: React.FC<BadgeCarouselProps> = ({
     currentBadgeIndex < badges.length ? currentBadgeIndex : 0
   );
 
+  const {t} = useTranslation();
+
   // Get current badge information with safety check
   const currentBadge =
     badges &&
@@ -482,6 +423,16 @@ const BadgeCarousel: React.FC<BadgeCarouselProps> = ({
     currentPage < badges.length
       ? badges[currentPage]
       : null;
+
+  const getTranslatedBadgeTip = (badgeType: string): string => {
+    const tipKey = BADGE_TIPS[badgeType] || DEFAULT_TIP
+    return t(tipKey)
+  }
+
+  const getTranslatedBadgeDescription = (badgeType: string): string => {
+    const descriptionKey = BADGE_DESCRIPTION[badgeType] || DEFAULT_TIP
+    return t(descriptionKey)
+  }
 
   // Handle scroll event to update current page
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -501,6 +452,7 @@ const BadgeCarousel: React.FC<BadgeCarouselProps> = ({
       });
     }
   };
+
 
   const panResponder = useRef(
     PanResponder.create({
@@ -691,15 +643,15 @@ const BadgeCarousel: React.FC<BadgeCarouselProps> = ({
           {!isEarned && (
             <View style={styles.tipContainer}>
               <Text style={styles.tipLabel}>
-                Tip :{" "}
-                <Text style={styles.tipText}>{getBadgeTip(badgeType)}</Text>
+                {t('tip')}: {" "}
+                <Text style={styles.tipText}>{getTranslatedBadgeTip(badgeType)}</Text>
               </Text>
             </View>
           )}
 
           {isEarned && (
             <TouchableOpacity style={styles.badgeButton}>
-              <Text style={styles.badgeButtonText}>Badge Rewarded</Text>
+              <Text style={styles.badgeButtonText}>{t('earnBagdes.badgeRewarded')}</Text>
             </TouchableOpacity>
           )}
         </>
@@ -789,6 +741,18 @@ const EarnBadge = () => {
   //   }
   // };
 
+  const {t} = useTranslation();
+
+   const getTranslatedBadgeTip = (badgeType: string): string => {
+    const tipKey = BADGE_TIPS[badgeType] || DEFAULT_TIP
+    return t(tipKey)
+  }
+
+  const getTranslatedBadgeDescription = (badgeType: string): string => {
+    const descriptionKey = BADGE_DESCRIPTION[badgeType] || DEFAULT_TIP
+    return t(descriptionKey)
+  }
+
   // Fetch badges from API
   const fetchBadges = async () => {
     setIsLoading(true);
@@ -843,7 +807,7 @@ const EarnBadge = () => {
               awardedAt: "",
               badge: {
                 createdAt: "",
-                description: getBadgeDescription(badgeType),
+                description: getTranslatedBadgeDescription(badgeType),
                 title: formatBadgeTitle(badgeType),
                 type: badgeType,
               },
@@ -881,7 +845,7 @@ const EarnBadge = () => {
               awardedAt: "",
               badge: {
                 createdAt: "",
-                description: getBadgeDescription(badgeType),
+                description: getTranslatedBadgeDescription(badgeType),
                 title: formatBadgeTitle(badgeType),
                 type: badgeType,
               },
@@ -935,14 +899,14 @@ const EarnBadge = () => {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={20} color="black" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Hall of Fame</Text>
+        <Text style={styles.headerTitle}>{t('earnBagdes.hallOfFame')}</Text>
         <View style={{ width: 20 }} />
       </View>
 
       {/* Badge count display */}
       <View style={styles.badgeCountContainer}>
         <Text style={styles.badgeCountText}>
-          Badges Earned{" "}
+          {t('earnBagdes.badgesEarned')}{" "}
           <Text style={styles.badgeCountNumber}>{earnedBadges}</Text>
         </Text>
       </View>
@@ -1395,3 +1359,5 @@ const styles = StyleSheet.create({
     color: "#7B7B7B",
   },
 });
+
+

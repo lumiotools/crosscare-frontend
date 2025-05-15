@@ -17,10 +17,12 @@ import { Camera } from "expo-camera";
 import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 
 export default function editphoto() {
   const user = useSelector((state: any) => state.user); // Assuming you have a Redux store set up
   const params = useLocalSearchParams();
+  const {t}= useTranslation();
 
   // Parse the params.item (which is likely a string)
   const item = typeof params.item === "string" ? JSON.parse(params.item) : null;
@@ -131,11 +133,11 @@ export default function editphoto() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={handleCancel}>
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={styles.cancelText}>{t('cancel')}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerText}>New Entry</Text>
+        <Text style={styles.headerText}>{t('new_entry')}</Text>
         <TouchableOpacity onPress={handleSave}>
-          <Text style={styles.createText}>Create</Text>
+          <Text style={styles.createText}>{t('create')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -178,13 +180,13 @@ export default function editphoto() {
             )}
 
             <TouchableOpacity style={styles.addPhotoButton} onPress={pickImage}>
-              <Text style={styles.addPhotoText}>Change Photo</Text>
+              <Text style={styles.addPhotoText}>{t('changephoto')}</Text>
             </TouchableOpacity>
           </View>
 
           <TextInput
             style={styles.titleInput}
-            placeholder="Add a title"
+            placeholder={t('journal.addtitle')}
             value={title}
             onChangeText={setTitle}
             placeholderTextColor="#E5E5E5"

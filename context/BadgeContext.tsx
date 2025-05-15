@@ -16,6 +16,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import LottieView from "lottie-react-native"; // Add Lottie import
 import { Dimensions } from "react-native";
 import { usePathname } from "expo-router";
+import { useTranslation } from "react-i18next";
 
 // Import your badge images
 const BADGE_IMAGES: Record<string, any> = {
@@ -92,6 +93,7 @@ const EXCLUDED_ROUTES = ["/login", "/signup", "/forget-password",]
 export const BadgeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const {t} = useTranslation();
   const [visible, setVisible] = useState(false);
   const [currentBadge, setCurrentBadge] = useState<Badge | null>(null);
   const [scale] = useState(new Animated.Value(0.5));
@@ -504,7 +506,7 @@ export const BadgeProvider: React.FC<{ children: React.ReactNode }> = ({
                   <Animated.View style={[ styles.contentContainer, { opacity: contentOpacity }]}>
 
                   <View style={styles.badgeTextContainer}>
-  <Text style={styles.badgeText}>New Badge Unlocked</Text>
+  <Text style={styles.badgeText}>{t('badgeText')}</Text>
 </View>
                   <TouchableOpacity
                     style={{
@@ -535,7 +537,7 @@ export const BadgeProvider: React.FC<{ children: React.ReactNode }> = ({
                         end={{ x: 0.5, y: 1 }}
                         style={styles.gradientFill}
                       >
-                        <Text style={styles.buttonText}>CLAIM</Text>
+                        <Text style={styles.buttonText}>{t('buttonText')}</Text>
                       </LinearGradient>
                     </LinearGradient>
                   </TouchableOpacity>

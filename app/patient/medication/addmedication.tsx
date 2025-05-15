@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 
 interface MedicationState {
   setMedicationName: string;
@@ -183,6 +184,8 @@ export default function addmedication() {
       alert("Something went wrong!");
     }
   };
+
+  const {t} = useTranslation();
   
 
   return (
@@ -195,17 +198,17 @@ export default function addmedication() {
         >
           <Ionicons name="chevron-back" size={20} color="black" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add new medication</Text>
+        <Text style={styles.headerTitle}>{t('addNewMedication')}</Text>
         <View style={{ width: 25, height: 1 }} />
       </View>
 
       <ScrollView style={styles.content}>
         <View style={{ flexDirection: "column", gap: 36 }}>
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Medicine Name</Text>
+            <Text style={styles.sectionTitle}>{t('medicationName')}</Text>
             <TextInput
               placeholderTextColor={"#7B7B7B"}
-              placeholder="Medicine Name"
+              placeholder={t('medicationName')}
               style={styles.input}
               value={state.setMedicationName}
               onChangeText={(text) =>
@@ -218,7 +221,7 @@ export default function addmedication() {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Start and End Date</Text>
+            <Text style={styles.sectionTitle}>{t('startAndEndDate')}</Text>
             <View style={styles.dateContainer}>
               <TouchableOpacity
                 style={styles.dateButton}
@@ -230,7 +233,7 @@ export default function addmedication() {
                     !state.startDate && styles.dateButtonPlaceholder,
                   ]}
                 >
-                  {state.startDate ? formatDate(state.startDate) : "Start Date"}
+                  {state.startDate ? formatDate(state.startDate) : t('startDate')}
                 </Text>
                 <Ionicons name="calendar-outline" size={16} color="#00A884" />
               </TouchableOpacity>
@@ -243,9 +246,9 @@ export default function addmedication() {
                   style={[
                     styles.dateButtonText,
                     !state.endDate && styles.dateButtonPlaceholder,
-                  ]}
+                  ]} numberOfLines={1}
                 >
-                  {state.endDate ? formatDate(state.endDate) : "End Date"}
+                  {state.endDate ? formatDate(state.endDate) :  t('endDate')}
                 </Text>
                 <Ionicons name="calendar-outline" size={16} color="#00A884" />
               </TouchableOpacity>
@@ -274,7 +277,7 @@ export default function addmedication() {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Days</Text>
+            <Text style={styles.sectionTitle}>{t('days')}</Text>
             <View style={styles.daysContainer}>
               {days.map((day) => (
                 <Pressable
@@ -301,7 +304,7 @@ export default function addmedication() {
 
           {/* Time Selection */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Time</Text>
+            <Text style={styles.sectionTitle}>{t('time')}</Text>
 
             {state.selectedTimes.length === 0 ? (
               // Show this when no times are added
@@ -312,7 +315,7 @@ export default function addmedication() {
                 }
               >
                 <Ionicons name="add" size={16} color="#00A991" />
-                <Text style={styles.addTimeText}>Add Time</Text>
+                <Text style={styles.addTimeText}>{t('addTime')}</Text>
               </TouchableOpacity>
             ) : (
               // Show this when times are added
@@ -355,7 +358,7 @@ export default function addmedication() {
             style={styles.addMedicationButton}
             onPress={handleSubmit}
           >
-            <Text style={styles.addMedicationText}>Save & Continue</Text>
+            <Text style={styles.addMedicationText}>{t('saveAndContinue')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

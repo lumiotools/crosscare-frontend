@@ -17,6 +17,7 @@ import SunIcon from "@/assets/images/Svg/SunIcon";
 import { width } from "../../constants/helper";
 import MoonIcon from "@/assets/images/Svg/MoonIcon";
 import { useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 
 // Handle time change
 interface TimeChangeEvent {
@@ -35,6 +36,7 @@ const bedtime = () => {
   const [showSleepPicker, setShowSleepPicker] = useState(false);
 
   const user = useSelector((state:any)=>state.user);
+  const {t} = useTranslation();
   // Format time to display in the button
 
   const formatTime: FormatTime = (date) => {
@@ -79,7 +81,7 @@ const bedtime = () => {
         >
           <Ionicons name="chevron-back" size={20} color="white" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Track Sleep</Text>
+        <Text style={styles.headerTitle}>{t('sleepScreen.trackSleep')}</Text>
         <TouchableOpacity style={styles.menuButton}>
           <Feather name="more-vertical" size={20} color="#E5E5E5" />
         </TouchableOpacity>
@@ -125,15 +127,15 @@ const bedtime = () => {
         </View>
 
         {/* Welcome Text */}
-        <Text style={styles.greeting}>Hi {user.user_name}!</Text>
+        <Text style={styles.greeting}>{t('sleepScreen.hi')} {user.user_name}!</Text>
         <Text style={styles.welcomeText}>
-          Welcome to your bedtime calculator, pick a time to get started.
+          {t('sleepScreen.welcomeText')}
         </Text>
 
         {/* Time Selection */}
         <View style={styles.timeSelectionContainer}>
           <View>
-            <Text style={styles.timeLabel}>I want to wake up at...</Text>
+            <Text style={styles.timeLabel}>{t('sleepScreen.timeToWakeUp')}</Text>
             <View
               style={{
                 flexDirection: "row",
@@ -196,9 +198,9 @@ const bedtime = () => {
             </View>
           </View>
 
-          <Text style={styles.orText}>Or</Text>
+          <Text style={styles.orText}>{t('sleepScreen.or')}</Text>
           <View>
-            <Text style={styles.timeLabel}>I want to sleep up at...</Text>
+            <Text style={styles.timeLabel}>{t('sleepScreen.timeToSleep')}</Text>
             <View
               style={{
                 flexDirection: "row",

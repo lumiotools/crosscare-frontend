@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   StyleSheet,
   View,
@@ -57,15 +58,17 @@ export default function NewNotes() {
     router.back();
   };
 
+  const { t }  = useTranslation();
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={handleCancel}>
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={styles.cancelText}>{t('cancel')}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerText}>New Entry</Text>
+        <Text style={styles.headerText}>{t('new_entry')}</Text>
         <TouchableOpacity onPress={handleSave}>
-          <Text style={styles.saveText}>Save</Text>
+          <Text style={styles.saveText}>{t('save')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -76,7 +79,7 @@ export default function NewNotes() {
         <ScrollView>
           <TextInput
             style={styles.titleInput}
-            placeholder="Title"
+            placeholder={t('journal.title')}
             multiline
             autoFocus
             value={title}
@@ -85,7 +88,7 @@ export default function NewNotes() {
           />
           <TextInput
             style={styles.contentInput}
-            placeholder="Start writing ..."
+            placeholder={t('journal.start_writing')}
             value={content}
             onChangeText={setContent}
             placeholderTextColor="#E5E5E5"

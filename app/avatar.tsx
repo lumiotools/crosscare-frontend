@@ -22,6 +22,7 @@ import { setUser } from "@/store/userSlice";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAvatarStore } from "@/zustandStore/contentfulStores/avatarStore";
 import Lock from "@/assets/images/Svg/Lock";
+import { useTranslation } from "react-i18next";
 
 // List of regular badge types
 const REGULAR_BADGE_TYPES = [
@@ -124,6 +125,8 @@ export default function AvatarSelectionScreen() {
   const [badgeData, setBadgeData] = useState<Badge[]>([]);
   const [earnedBadges, setEarnedBadges] = useState<string[]>([]);
   const [unlockResult, setUnlockResult] = useState<UnlockResult | null>(null);
+
+  const {t} = useTranslation();
   
   // Track image URLs
   const [previewFaceImageUrl, setPreviewFaceImageUrl] = useState<string | null>(null);
@@ -668,9 +671,9 @@ export default function AvatarSelectionScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.cancelButton}>Cancel</Text>
+          <Text style={styles.cancelButton}>{t('cancel')}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Avatar Selection</Text>
+        <Text style={styles.headerTitle}> {t('customize.avatar')}</Text>
         <TouchableOpacity
           onPress={handleDonePress}
           disabled={isAnySelectedItemLocked()}
@@ -681,7 +684,7 @@ export default function AvatarSelectionScreen() {
               isAnySelectedItemLocked() && styles.disabledButton,
             ]}
           >
-            Done
+            {t('customize.done')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -721,7 +724,7 @@ export default function AvatarSelectionScreen() {
             )}
             {isPreviewLocked() && (
               <View style={styles.levelUpContainer}>
-                <Text style={styles.levelUpText}>Level Up to Unlock</Text>
+                <Text style={styles.levelUpText}> {t('customize.levelUpToUnlock')}</Text>
               </View>
             )}
           </Animated.View>
@@ -740,7 +743,7 @@ export default function AvatarSelectionScreen() {
               activeTab === "Hairstyle" && styles.activeTabText,
             ]}
           >
-            Hairstyle
+             {t('customize.hairstyle')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -753,7 +756,7 @@ export default function AvatarSelectionScreen() {
               activeTab === "Outfit" && styles.activeTabText,
             ]}
           >
-            Outfit
+            {t('customize.outfit')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -887,7 +890,7 @@ export default function AvatarSelectionScreen() {
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Your Avatar</Text>
+          <Text style={styles.modalTitle}> {t('customize.title')}</Text>
 
           {/* Hidden ViewShot for capturing the avatar with face */}
           <View style={styles.hiddenViewShot}>
@@ -945,7 +948,7 @@ export default function AvatarSelectionScreen() {
               onPress={() => setShowPreviewModal(false)}
               disabled={isSaving}
             >
-              <Text style={styles.modalButtonText}>Edit</Text>
+              <Text style={styles.modalButtonText}>{t('customize.edit')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -954,9 +957,9 @@ export default function AvatarSelectionScreen() {
               disabled={isSaving || !finalFaceImageUrl}
             >
               {isSaving ? (
-                <Text style={styles.saveButtonText}>Saving...</Text>
+                <Text style={styles.saveButtonText}>{t('customize.saving')}</Text>
               ) : (
-                <Text style={styles.saveButtonText}>Save</Text>
+                <Text style={styles.saveButtonText}>{t('customize.save')}</Text>
               )}
             </TouchableOpacity>
           </View>

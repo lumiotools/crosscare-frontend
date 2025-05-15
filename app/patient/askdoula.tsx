@@ -33,6 +33,7 @@ import { width, height } from '../../constants/helper';
 import ProfileIcon from "@/assets/images/Svg/ProfileIcon";
 import Person from "@/assets/images/Svg/Person";
 import User from "@/assets/images/Svg/User";
+import { useTranslation } from "react-i18next";
 
 
 interface Message {
@@ -109,6 +110,8 @@ function isIncrementalRequest(query: string) {
 export default function askdoula() {
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const { t, i18n } = useTranslation()
+  const currentLanguage = i18n.language
   
   
   const [messages, setMessages] = useState<Message[]>([]);
@@ -488,6 +491,16 @@ export default function askdoula() {
 
   const systemPrompt = `${systemPrompts}`;
 
+  const getLanguageName = (langCode: string) => {
+    const languages = {
+      en: "English",
+      es: "Spanish",
+      pt: "Portuguese",
+      ht: "Haitian Creole",
+    }
+    return languages[langCode as keyof typeof languages] || "English"
+  }
+
   const fetchHealthData = async () => {
     if (user && user.user_id) {
       try {
@@ -804,6 +817,72 @@ export default function askdoula() {
     }
   };
 
+
+const generateTranslation = async (text: string, targetLanguage: string) => {
+  const apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+  const apiKey = "AIzaSyD0ISmMWP4_yDqEvlrjpNJB8TnuJBkhZPs"; // Replace with your actual API key
+
+  // Prepare the request body for translation
+  const requestBody = {
+    contents: [
+      {
+        parts: [
+          {
+            text: `Translate the following text into ${targetLanguage}: "${text}"`,  // Adjust the structure of the prompt
+          },
+        ],
+      },
+    ],
+    generationConfig: {
+      temperature: 0.0, // Ensuring deterministic output
+      topK: 40,
+      topP: 0.95,
+      maxOutputTokens: 1000,
+    },
+  };
+
+  // Use fetch instead of axios
+  try {
+    const response = await fetch(`${apiUrl}?key=${apiKey}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept-Language": targetLanguage, // Use target language here
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error("API Error:", errorData);
+      throw new Error(
+        `Failed to send message to Gemini API: ${response.status}`
+      );
+    }
+
+    const data = await response.json();
+
+    // Extract the response text from Gemini's response format
+    let responseText =
+      data.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "I'm sorry, I couldn't process your request at this time.";
+
+    responseText = responseText.replace(/\*/g, ""); // Clean up unwanted characters
+    console.log('Response Text:', responseText);
+
+    return {
+      response: responseText,
+    };
+  } catch (error) {
+    console.error("Error sending message to Gemini API:", error);
+    return {
+      response:
+        "I'm having trouble connecting right now. Please try again later.",
+    };
+  }
+};
+
+
   const sendToAPI = async (
     messageContent: string,
     messageType: "text" | "audio"
@@ -815,6 +894,8 @@ export default function askdoula() {
 
       // Your API key should be stored in an environment variable in production
       const apiKey = "AIzaSyD0ISmMWP4_yDqEvlrjpNJB8TnuJBkhZPs"; // Replace with your actual API key
+
+      // const currentLanguage = ;
 
       // Create enhanced prompt with health data if available
       let enhancedPrompt = systemPrompt;
@@ -917,6 +998,7 @@ export default function askdoula() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Accept-Language": currentLanguage,
         },
         body: JSON.stringify(requestBody),
       });
@@ -937,6 +1019,7 @@ export default function askdoula() {
         "I'm sorry, I couldn't process your request at this time.";
 
       responseText = responseText.replace(/\*/g, "");
+      console.log('Response Text', responseText)
       return {
         response: responseText,
       };
@@ -2124,11 +2207,16 @@ export default function askdoula() {
 
     // Try to use RAG service first
     try {
-      const ragResponse = await callRagService(query, recentMessages);
+        const ragResponse = await callRagService(query, recentMessages);
       
       if (ragResponse && ragResponse.success) {
         // Use the response from RAG service
         const assistantMessage = ragResponse.response;
+
+        // console.log(`Generating translation to ${currentLanguage}`);
+        // assistantMessage = await generateTranslation(assistantMessage, currentLanguage);
+
+        console.log('Akks', assistantMessage);
         speakResponse(assistantMessage);
 
         // Add the response to messages
@@ -2447,7 +2535,7 @@ export default function askdoula() {
               <Ionicons name="chevron-back" size={20} color="#434343" />
             </TouchableOpacity>
             {/* )} */}
-            <Text style={styles.headerTitle}>Ask Your Doula</Text>
+            <Text style={styles.headerTitle}>{t('askDoula.title')}</Text>
             </View>
             <View style={{ flexDirection: "row" }}>{}
               <TouchableOpacity
@@ -2489,16 +2577,16 @@ export default function askdoula() {
               </View>
 
               <Text style={styles.greeting}>
-                <Text>👋 Hi, </Text>
+                <Text>👋 {t('askDoula.hi')}, </Text>
                 <Text style={styles.name}>{user.user_name}</Text>
                 <Text>!</Text>
               </Text>
 
               <Text style={styles.title}>
-                I'm your Digital <Text style={styles.highlight}>Doula</Text>
+                {t('askDoula.description')} <Text style={styles.highlight}>Doula</Text>
               </Text>
 
-              <Text style={styles.subtitle}>How can I assist you today?</Text>
+              <Text style={styles.subtitle}>{t('askDoula.subtitle')}</Text>
             </View>
           ) : (
             <View style={styles.messagesContainer}>
@@ -2596,10 +2684,10 @@ export default function askdoula() {
           >
             <TouchableOpacity
               style={styles.optionButton}
-              onPress={() => handleOptionPress("Show my health stats")}
+              onPress={() => handleOptionPress(t('options.healthStats1'))}
               disabled={isAssistantResponding}
             >
-              <Text style={styles.optionText}>Health Stats</Text>
+              <Text style={styles.optionText}>{t('options.healthStats')}</Text>
             </TouchableOpacity>
 
             {/* Standard advice options */}
@@ -2607,37 +2695,37 @@ export default function askdoula() {
               style={styles.optionButton}
               onPress={() =>
                 handleOptionPress(
-                  "What foods should I eat during my third trimester?"
+                  t('options.nutritionAdvice1')
                 )
               }
               disabled={isAssistantResponding}
             >
-              <Text style={styles.optionText}>Nutrition Advice</Text>
+              <Text style={styles.optionText}>{t('options.nutritionAdvice')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.optionButton}
               onPress={() =>
-                handleOptionPress("What exercises are safe during pregnancy?")
+                handleOptionPress(t('options.exerciseTips1'))
               }
               disabled={isAssistantResponding}
             >
-              <Text style={styles.optionText}>Exercise Tips</Text>
+              <Text style={styles.optionText}>{t('options.exerciseTips')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.optionButton}
-              onPress={() => handleOptionPress("How do I create a birth plan?")}
+              onPress={() => handleOptionPress(t('options.birthPlanning1'))}
               disabled={isAssistantResponding}
             >
-              <Text style={styles.optionText}>Birth Planning</Text>
+              <Text style={styles.optionText}>{t('options.birthPlanning')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.optionButton}
               onPress={() =>
-                handleOptionPress("Is it safe to travel during pregnancy?")
+                handleOptionPress(t('options.travelSafety1'))
               }
               disabled={isAssistantResponding}
             >
-              <Text style={styles.optionText}>Travel Safety</Text>
+              <Text style={styles.optionText}>{t('options.travelSafety')}</Text>
             </TouchableOpacity>
           </ScrollView>
 
@@ -2645,7 +2733,7 @@ export default function askdoula() {
             <View style={styles.inputWrapper}>
               <TextInput
                 style={styles.input}
-                placeholder="Ask me anything or log your health data..."
+                placeholder={t('inputPlaceholder')}
                 placeholderTextColor="#999"
                 value={inputText}
                 onChangeText={(text) => setInputText(text)}

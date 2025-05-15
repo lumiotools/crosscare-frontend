@@ -4,8 +4,12 @@ import JournalIcon from "@/assets/images/Svg/JournalIcon";
 import ProfileIcon from "@/assets/images/Svg/ProfileIcon";
 import SelfCareIcon from "@/assets/images/Svg/SelfCareIcon";
 import { Tabs } from "expo-router";
+import { useTranslation } from "react-i18next";
 
 export default function TabLayout() {
+  
+  const {t} = useTranslation();
+
   return (
     <Tabs
       screenOptions={{
@@ -28,7 +32,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: "Home",
+          title: t('home.title'),
 
           tabBarIcon: ({ color }) => (
             <HomeIcon
@@ -43,7 +47,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="selfcare"
         options={{
-          title: "Self Care",
+          title: t('selfCare.title'),
 
           tabBarIcon: ({ color }) => (
             <SelfCareIcon
@@ -58,7 +62,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="journal"
         options={{
-          title: "Journal",
+          title: t('journals'),
 
           tabBarIcon: ({ color }) => (
             <JournalIcon
@@ -73,7 +77,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: t('profile.title'),
 
           tabBarIcon: ({ color }) => (
             <ProfileIcon

@@ -8,12 +8,14 @@ import {
   Animated,
 } from "react-native";
 import { Audio } from "expo-av";
+import * as FileSystem from 'expo-file-system';
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import * as Speech from "expo-speech";
 import axios from "axios";
 import { systemPrompts } from "@/constants/systemPrompts";
 import { useSelector } from "react-redux";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useTranslation } from "react-i18next";
 
 interface VoiceRecorderProps {
   onSendAudio: (
@@ -47,6 +49,12 @@ export default function VoiceRecorder({
   const [audioUri, setAudioUri] = useState("");
   const [femaleVoice, setFemaleVoice] = useState<Speech.Voice | null>(null);
   const [localMuted, setLocalMuted] = useState(false)
+  const [sound, setSound] = useState<Audio.Sound | null>(null)
+  const [useElevenLabs, setUseElevenLabs] = useState(true)
+
+
+    const { t, i18n } = useTranslation()
+    const currentLanguage = i18n.language
 
   // Use either external or local mute state
   const effectiveMuted = isMuted !== undefined ? isMuted : localMuted
@@ -317,6 +325,249 @@ export default function VoiceRecorder({
     }
   };
 
+  // const speakResponse = (text: string) => {
+  //   // Check if muted - if so, don't speak but still process
+  //   if (effectiveMuted) {
+  //     console.log("Voice is muted, not speaking response:", text)
+  //     setIsProcessing(false)
+  //     return
+  //   }
+
+  //   // If speech is already happening, stop it before starting new speech
+  //   if (isSpeaking) {
+  //     Speech.stop()
+  //     console.log("Speech interrupted.")
+  //   }
+
+  //   setIsSpeaking(true)
+
+  //   // Use Eleven Labs if enabled, otherwise use device TTS
+  //   if (useElevenLabs) {
+  //     generateAndPlayElevenLabsAudio(text).catch((error) => {
+  //       console.error("Error with Eleven Labs, falling back to device TTS:", error)
+  //       fallbackToDeviceTTS(text)
+  //     })
+  //   } else {
+  //     fallbackToDeviceTTS(text)
+  //   }
+  // }
+
+  // const fallbackToDeviceTTS = (text: string) => {
+  //   // Create speech options with the female voice if available
+  //   const speechOptions: Speech.SpeechOptions = {
+  //     language: currentLanguage,
+  //     pitch: 1.0,
+  //     rate: 0.9,
+  //     onDone: () => {
+  //       setIsSpeaking(false)
+  //       setIsProcessing(false)
+  //     },
+  //     onStopped: () => {
+  //       setIsSpeaking(false)
+  //       setIsProcessing(false)
+  //     },
+  //     onError: (error) => {
+  //       console.error("Speech error:", error)
+  //       setIsSpeaking(false)
+  //       setIsProcessing(false)
+  //     },
+  //   }
+
+  //   // Add the voice if we found a female one
+  //   if (femaleVoice) {
+  //     speechOptions.voice = femaleVoice.identifier
+  //   }
+
+  //   // Start speaking the text
+  //   Speech.speak(text, speechOptions)
+  // }
+
+  // const generateAndPlayElevenLabsAudio = async (text: string) => {
+  //   try {
+  //     setIsSpeaking(true)
+
+  //     // Replace with your Eleven Labs API key
+  //     const apiKey = "sk_db1991883b2abe5401ed25c8fe0d9e82d69f251467b0909e"
+
+  //     // Validate text is not empty
+  //     if (!text || text.trim() === "") {
+  //       throw new Error("Cannot generate audio for empty text")
+  //     }
+
+  //     // Define verified voice IDs from Eleven Labs for different languages
+  //    // Define verified voice IDs from Eleven Labs for different languages
+  //     const voiceMap: Record<string, string> = {
+  //       en: "21m00Tcm4TlvDq8ikWAM", // Rachel (female English)
+  //       es: "EXAVITQu4vr4xnSDxMaL", // Nicole (Spanish female)
+  //       fr: "jsCqWAovK2LkecY7zXl4", // Piaf (French female)
+  //       pt: "TxGEqnHWrfWFTfGW9XjX", // Luana (Portuguese female)
+  //       de: "mXhBjGSy3mMDSNrNwwYP", // Freya (German female)
+  //       it: "Knk5QlQkSAd4CUlQHbWV", // Bella (Italian female)
+  //       pl: "uWG77CZTYfPZutKWEgwk", // Zofia (Polish female)
+  //       hi: "pNInz6obpgDQGcFmaJgB", // Elli (Hindi female)
+  //       ja: "VR6AewLTigWG4xSOukaG", // Oren (Japanese female)
+  //       ko: "z9fAnlkpzviPz146aGWa", // Gam (Korean female)
+  //     }
+
+  //     // Get the voice ID based on language, default to English if not found
+  //     const languageCode = currentLanguage.split("-")[0]
+
+  //     const voiceId =  "21m00Tcm4TlvDq8ikWAM"// Default to English Rachel voice if language not found
+
+
+  //     // Log detailed information for debugging
+  //     console.log(`Language setting: "${currentLanguage}, ${languageCode}"`)
+  //     console.log(`Voice map:`, JSON.stringify(voiceMap))
+  //     console.log(`Selected voice ID: "${voiceId}"`)
+  //     console.log(
+  //       `Text to be spoken (length: ${text.length}): "${text}${text.length > 50 ? "..." : ""}"`,
+  //     )
+
+  //     // Prepare request data
+  //     const requestData = {
+  //       text,
+  //       model_id: "eleven_multilingual_v2", // Use multilingual model for better language support
+  //       voice_settings: {
+  //         stability: 0.5,
+  //         similarity_boost: 0.75,
+  //       },
+  //     }
+
+  //     console.log("Sending request to Eleven Labs API...")
+  //     console.log("Request data:", JSON.stringify(requestData, null, 2))
+
+  //     const response = await axios({
+  //       method: "POST",
+  //       url: `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         "xi-api-key": apiKey,
+  //       },
+  //       data: requestData,
+  //       responseType: "arraybuffer",
+  //       validateStatus: (status) => status < 500, // Don't throw on 4xx errors so we can log them
+  //     })
+
+  //     // Check for error responses
+  //     if (response.status !== 200) {
+  //       // Convert arraybuffer to text for error messages
+  //       const errorText = new TextDecoder().decode(response.data)
+  //       console.error(`Eleven Labs API error (${response.status}):`, errorText)
+
+  //       let errorMessage = "Error generating audio"
+
+  //       // Try to parse the error message if it's JSON
+  //       try {
+  //         const errorJson = JSON.parse(errorText)
+  //         errorMessage = errorJson.detail?.message || errorJson.message || errorJson.error || errorText
+  //       } catch (e) {
+  //         // If not JSON, use the raw text
+  //         errorMessage = errorText
+  //       }
+
+  //       throw new Error(`Eleven Labs API error (${response.status}): ${errorMessage}`)
+  //     }
+
+  //     console.log("Received successful response from Eleven Labs API")
+
+  //     // Unload any existing sound
+  //     if (sound) {
+  //       await sound.unloadAsync()
+  //     }
+
+  //     // Create a file URI for the audio in the temporary directory
+  //     const fileUri = `${FileSystem.cacheDirectory}temp_audio_${Date.now()}.mp3`
+
+  //     // Write the audio data to a file
+  //     await FileSystem.writeAsStringAsync(fileUri, arrayBufferToBase64(response.data), {
+  //       encoding: FileSystem.EncodingType.Base64,
+  //     })
+
+  //     // Create and play the sound
+  //     const { sound: newSound } = await Audio.Sound.createAsync({ uri: fileUri }, { shouldPlay: true })
+
+  //     setSound(newSound)
+
+  //     // Add event listener for when playback finishes
+  //     newSound.setOnPlaybackStatusUpdate((status) => {
+  //       if (status.isLoaded && status.didJustFinish) {
+  //         setIsSpeaking(false)
+  //         setIsProcessing(false)
+  //       }
+  //     })
+  //   } catch (error) {
+  //     console.error("Error generating or playing Eleven Labs audio:", error)
+
+  //     // More detailed error logging
+  //     if (axios.isAxiosError(error)) {
+  //       if (error.response) {
+  //         // The request was made and the server responded with a status code
+  //         // that falls out of the range of 2xx
+  //         console.error("Eleven Labs API error response status:", error.response.status)
+
+  //         // Try to get more details from the response
+  //         if (error.response.data) {
+  //           if (typeof error.response.data === "string") {
+  //             console.error("Error response data:", error.response.data)
+  //           } else if (error.response.data instanceof ArrayBuffer) {
+  //             // Convert ArrayBuffer to string
+  //             const decoder = new TextDecoder()
+  //             const errorText = decoder.decode(error.response.data)
+  //             console.error("Error response data (ArrayBuffer):", errorText)
+
+  //             // Try to parse as JSON
+  //             try {
+  //               const errorJson = JSON.parse(errorText)
+  //               console.error("Parsed error data:", errorJson)
+  //             } catch (e) {
+  //               // Not JSON, already logged as text
+  //             }
+  //           } else {
+  //             console.error("Error response data:", JSON.stringify(error.response.data, null, 2))
+  //           }
+  //         }
+
+  //         // Check for specific error conditions
+  //         if (error.response.status === 400) {
+  //           console.error("Bad request to Eleven Labs API. Common causes include:")
+  //           console.error("- Invalid API key")
+  //           console.error("- Invalid voice ID")
+  //           console.error("- Text content issues (empty, too long, or contains unsupported characters)")
+  //           console.error("- Invalid model ID")
+  //         } else if (error.response.status === 401) {
+  //           console.error("Unauthorized. Check your Eleven Labs API key.")
+  //         } else if (error.response.status === 404) {
+  //           console.error("Voice ID not found. Check your voice ID.")
+  //         }
+  //       } else if (error.request) {
+  //         // The request was made but no response was received
+  //         console.error("No response received from Eleven Labs API:", error.request)
+  //       } else {
+  //         // Something happened in setting up the request that triggered an Error
+  //         console.error("Error setting up Eleven Labs API request:", error.message)
+  //       }
+  //     }
+
+  //     setIsSpeaking(false)
+  //     setIsProcessing(false)
+
+  //     // Fallback to device TTS if Eleven Labs fails
+  //     console.log("Falling back to device TTS...")
+  //     fallbackToDeviceTTS(text)
+  //   }
+  // }
+
+  // // Helper function to convert ArrayBuffer to Base64
+  // const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+  //   let binary = ""
+  //   const bytes = new Uint8Array(buffer)
+  //   const len = bytes.byteLength
+  //   for (let i = 0; i < len; i++) {
+  //     binary += String.fromCharCode(bytes[i])
+  //   }
+  //   return btoa(binary)
+  // }
+
   const wordToNumberMap = {
     "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
     "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17,
@@ -390,6 +641,22 @@ const processUserInput = async (userText: string) => {
     }
 };
 
+const getSystemPrompt = (language: string) => {
+    // Map language codes to full language names
+    const languageNames: Record<string, string> = {
+      'en': 'English',
+      'es': 'Spanish',
+      'pt': 'Portuguese',
+      'ht': 'Haitian creole'
+    };
+    
+    // Get base language code (e.g., 'es' from 'es-ES')
+    const baseLanguage = language.split('-')[0];
+    const languageName = languageNames[baseLanguage];
+    
+    return `${systemPrompt}\n\nPlease respond in ${languageName}. Your response should be natural and conversational in ${languageName}.`;
+  };
+
 const logData = async ({ category, value, unit }) => {
     const userId = user.user_id;
     const waterCount = value / 250;
@@ -422,6 +689,8 @@ const logData = async ({ category, value, unit }) => {
   const processUserQuery = async (query: string) => {
     try {
       console.log("Sending to Gemini API...");
+      const languagePrompt = getSystemPrompt(currentLanguage);
+      // console.log("Using language prompt:", languagePrompt);
 
       const response = await axios({
         method: "post",
@@ -435,7 +704,7 @@ const logData = async ({ category, value, unit }) => {
         data: {
           contents: [
             {
-              parts: [{ text: systemPrompt }, { text: query }],
+              parts: [{ text: languagePrompt }, { text: query }],
             },
           ],
           generationConfig: {
@@ -496,7 +765,7 @@ const logData = async ({ category, value, unit }) => {
 
     // Create speech options with the female voice if available
     const speechOptions: Speech.SpeechOptions = {
-      language: "en",
+      language: currentLanguage,
       pitch: 1.0,
       rate: 0.9,
       onDone: () => {
