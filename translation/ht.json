@@ -628,5 +628,12 @@
   "noNotesSearch": "Pa gen okenn nòt ki matche ak rechèch ou an",
   "noNotesDefault": "Pa gen nòt ankò. Klike sou 'Ajoute nouvo' pou kreye premye nòt ou.",
   "noPhotosSearch": "Pa gen imaj ki matche ak rechèch ou an",
-  "noPhotosDefault": "Pa gen imaj ankò. Klike sou 'Ajoute imaj' pou telechaje premye foto ou."
+  "noPhotosDefault": "Pa gen imaj ankò. Klike sou 'Ajoute imaj' pou telechaje premye foto ou.",
+   "title": "Inite & Mezi",
+    "sectionTitle": "Pwa",
+    "kg": "Kilogram (kg)",
+    "lbs": "Liv (lbs)",
+     "sectionTitle2": "Volim",
+    "ml": "Mililit (ml)",
+    "flOz": "Ons likid Ameriken (fl.oz)"
 }

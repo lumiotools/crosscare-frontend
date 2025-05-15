@@ -5,8 +5,11 @@ import { StatusBar } from "react-native";
 import { router } from "expo-router";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useTranslation } from "react-i18next";
 
 const weightunit = () => {
+
+  const {t} = useTranslation();
 
     const [selectedUnit, setSelectedUnit] = useState('kg');
 
@@ -47,21 +50,21 @@ const weightunit = () => {
         >
           <Ionicons name="chevron-back" size={20} color="black" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Units & Measurements</Text>
+        <Text style={styles.headerTitle}>{t('title')}</Text>
         <TouchableOpacity onPress={handleSave}>
-            <Text>Save</Text>
+            <Text>{t('save')}</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.sectionTitle}>Weight</Text>
+        <Text style={styles.sectionTitle}>{t('sectionTitle')}</Text>
         
         <View style={styles.optionsContainer}>
           <TouchableOpacity 
             style={styles.optionRow}
             onPress={() => setSelectedUnit('kg')}
           >
-            <Text style={styles.optionText}>Kilogrmas (kg)</Text>
+            <Text style={styles.optionText}>{t('kg')}</Text>
             {selectedUnit === 'kg' && (
               <Ionicons name="checkmark" size={16} color="#E89545" />
             )}
@@ -73,7 +76,7 @@ const weightunit = () => {
             style={styles.optionRow}
             onPress={() => setSelectedUnit('lbs')}
           >
-            <Text style={styles.optionText}>Pounds (lbs)</Text>
+            <Text style={styles.optionText}>{t('lbs')}</Text>
             {selectedUnit === 'lbs' && (
               <Ionicons name="checkmark" size={16} color="#E89545" />
             )}

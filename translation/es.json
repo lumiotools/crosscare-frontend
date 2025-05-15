@@ -631,5 +631,12 @@
    "noNotesSearch": "No hay notas que coincidan con tu búsqueda",
   "noNotesDefault": "Aún no hay notas. Haz clic en 'Agregar nueva' para crear tu primera nota.",
   "noPhotosSearch": "Ninguna imagen coincide con tu búsqueda",
-  "noPhotosDefault": "Aún no hay imágenes. Haz clic en 'Agregar imagen' para subir tu primera foto."
+  "noPhotosDefault": "Aún no hay imágenes. Haz clic en 'Agregar imagen' para subir tu primera foto.",
+      "title": "Unidades y Medidas",
+    "sectionTitle": "Peso",
+    "kg": "Kilogramos (kg)",
+    "lbs": "Libras (lbs)",
+    "sectionTitle2": "Volumen",
+    "ml": "Mililitros (ml)",
+    "flOz": "Onzas líquidas estadounidenses (fl.oz)"
 }
