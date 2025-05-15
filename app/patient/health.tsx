@@ -12,51 +12,9 @@ import StepsIcon from '@/assets/images/Svg/StepsIcon';
 import SleepIcon from '@/assets/images/Svg/SleepIcon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSelector } from 'react-redux';
+import i18n from 'i18next';
+import { useTranslation } from 'react-i18next';
 
-const trackingOptions = [
-  { 
-    id: 'food', 
-    title: 'Food', 
-    icon: <FoodIcon width={24} height={24}  />,
-    onPress: ()=> router.push('/patient/meals')
-  },
-  { 
-    id: 'heart-rate', 
-    title: 'Heart-rate', 
-    icon: <HeartIcon width={24} height={24}  />,
-    onPress: () => router.push('/patient/heart'),
-  },
-  { 
-    id: 'medication', 
-    title: 'Medication', 
-    icon: <MedicationIcon width={24} height={24}  />,
-    onPress: ()=> router.push('/patient/medication/medications')
-  },
-  { 
-    id: 'weight', 
-    title: 'Weight', 
-    icon: <WeightIcon width={24} height={24}  />,
-    onPress: ()=> router.push('/patient/weight')
-  },
-  { 
-    id: 'water', 
-    title: 'Water', 
-    icon: <WaterIcon width={24} height={24}  />,
-    onPress : () => router.push('/patient/water'),
-  },
-  { 
-    id: 'steps', 
-    title: 'Steps', 
-    icon: <StepsIcon width={24} height={24}  />,
-    onPress : () => router.push('/patient/steps'),
-  },
-  { 
-    id: 'sleep', 
-    title: 'Sleep', 
-    icon: <SleepIcon width={24} height={24}  />,
-    onPress : () => router.push('/patient/sleep'),
-  },
-];
 
 
 
@@ -64,6 +22,8 @@ const TrackingOptionsScreen = () => {
 
   const user = useSelector((state:any) => state.user);
   const userId = user?.user_id;
+  
+  const {t} = useTranslation();
 
   useEffect(() => {
     const setHealthVisited = async () => {
@@ -72,6 +32,52 @@ const TrackingOptionsScreen = () => {
     
     setHealthVisited();
   }, [userId]);
+
+  const trackingOptions = [
+  { 
+    id: 'food', 
+    title: t('food'), 
+    icon: <FoodIcon width={24} height={24}  />,
+    onPress: ()=> router.push('/patient/meals')
+  },
+  { 
+    id: 'heart-rate', 
+    title: t('heartRate'), 
+    icon: <HeartIcon width={24} height={24}  />,
+    onPress: () => router.push('/patient/heart'),
+  },
+  { 
+    id: 'medication', 
+    title: t('medication'), 
+    icon: <MedicationIcon width={24} height={24}  />,
+    onPress: ()=> router.push('/patient/medication/medications')
+  },
+  { 
+    id: 'weight', 
+    title: t('weight'),  
+    icon: <WeightIcon width={24} height={24}  />,
+    onPress: ()=> router.push('/patient/weight')
+  },
+  { 
+    id: 'water', 
+    title: t('water'),   
+    icon: <WaterIcon width={24} height={24}  />,
+    onPress : () => router.push('/patient/water'),
+  },
+  { 
+    id: 'steps', 
+    title: t('steps'), 
+    icon: <StepsIcon width={24} height={24}  />,
+    onPress : () => router.push('/patient/steps'),
+  },
+  { 
+    id: 'sleep', 
+    title: t('sleep'),  
+    icon: <SleepIcon width={24} height={24}  />,
+    onPress : () => router.push('/patient/sleep'),
+  },
+];
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -88,7 +94,7 @@ const TrackingOptionsScreen = () => {
       </View>
       
       {/* Title */}
-      <Text style={styles.title}>What Would You Like To Track?</Text>
+      <Text style={styles.title}>{t('track_title')}</Text>
       
       {/* Tracking Options List */}
       <View style={styles.optionsContainer}>

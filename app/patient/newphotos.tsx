@@ -17,12 +17,14 @@ import { Camera } from "expo-camera";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 
 export default function NewPhotos() {
   const [title, setTitle] = useState("");
   const [imageUri, setImageUri] = useState<string | null>(null); // To store the selected image URI
   const [hasPermission, setHasPermission] = useState<boolean | null>(null); // For camera permission
   const user = useSelector((state: any) => state.user); // Assuming you have a Redux store set up
+  const {t} = useTranslation();
 
   // Request permission to use the camera and image picker
   useEffect(() => {
@@ -123,11 +125,11 @@ export default function NewPhotos() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={handleCancel}>
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={styles.cancelText}>{t('cancel')}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerText}>New Entry</Text>
+        <Text style={styles.headerText}>{t('new_entry')}</Text>
         <TouchableOpacity onPress={handleSave}>
-          <Text style={styles.createText}>Create</Text>
+          <Text style={styles.createText}>{t('create')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -170,13 +172,13 @@ export default function NewPhotos() {
             )}
 
             <TouchableOpacity style={styles.addPhotoButton} onPress={pickImage}>
-              <Text style={styles.addPhotoText}>Add Photo</Text>
+              <Text style={styles.addPhotoText}>{t('journal.add_photo')}</Text>
             </TouchableOpacity>
           </View>
 
           <TextInput
             style={styles.titleInput}
-            placeholder="Add a title"
+            placeholder={t('journal.addtitle')}
             value={title}
             onChangeText={setTitle}
             placeholderTextColor="#E5E5E5"

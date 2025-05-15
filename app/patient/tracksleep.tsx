@@ -28,6 +28,7 @@ import { useSelector } from "react-redux";
 import { ActivityIndicator } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFitbit } from "@/zustandStore/useFitbitStore";
+import { useTranslation } from "react-i18next";
 
 const { width } = Dimensions.get("window");
 const BAR_WIDTH = 20;
@@ -70,12 +71,6 @@ type TimeRangeOption = {
   label: string;
 };
 
-const timeRangeOptions: TimeRangeOption[] = [
-  { id: "today", label: "Today" },
-  { id: "week", label: "Last 7 Days" },
-  { id: "month", label: "This Month" },
-  { id: "lastMonth", label: "Last Month" },
-];
 
 const sleepData: SleepEntry[] = [
   {
@@ -122,6 +117,15 @@ export default function tracksleep() {
   const [lastResetDate, setLastResetDate] = useState<Date | null>(null);
   const [timeRange, setTimeRange] = useState("week"); // "today", "week", "month", "lastMonth"
   const [filteredData, setFilteredData] = useState<ChartDataEntry[]>([]);
+  const {t} = useTranslation();
+
+  const timeRangeOptions: TimeRangeOption[] = [
+  { id: "today", label: t('sleepScreen.today') },
+  { id: "week", label:  t('sleepScreen.week') },
+  { id: "month", label:  t('sleepScreen.month') },
+  { id: "lastMonth", label:  t('sleepScreen.lastMonth') },
+];
+
 
   // Dropdown state
   const [dropdownVisible, setDropdownVisible] = useState(false);
@@ -386,7 +390,7 @@ export default function tracksleep() {
         {
           id: `today-${todayStr}`,
           date: todayStr,
-          day: "Today",
+          day:  t('sleepScreen.today'),
           hours: 0,
         },
       ];
@@ -632,7 +636,7 @@ export default function tracksleep() {
           {
             id: `today-${todayStr}`,
             date: todayStr,
-            day: "Today",
+            day:  t('sleepScreen.today'),
             hours: todayData.hours || 0,
           },
         ];
@@ -1084,7 +1088,7 @@ export default function tracksleep() {
         {isSelected && hasData && (
           <Animated.View style={[styles.tooltip, { opacity: tooltipAnim }]}>
             <View style={styles.tooltipContent}>
-              <Text style={styles.tooltipTitle}>SLEEP</Text>
+              <Text style={styles.tooltipTitle}>{t('sleep')}</Text>
               <Text style={styles.tooltipWeight}>
                 ~{item.hours.toFixed(1)}{" "}
                 <Text
@@ -1118,7 +1122,7 @@ export default function tracksleep() {
           >
             <Ionicons name="chevron-back" size={20} color="white" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Track Sleep</Text>
+          <Text style={styles.headerTitle}>{t('sleepScreen.trackSleep')}</Text>
           <TouchableOpacity style={styles.menuButton}>
             <Feather name="more-vertical" size={20} color="#E5E5E5" />
           </TouchableOpacity>
@@ -1149,7 +1153,7 @@ export default function tracksleep() {
                 fontFamily: "Inter600",
               }}
             >
-              Hi {user.user_name}!
+              {t('sleepScreen.hi')} {user.user_name}!
             </Text>
 
             {logAdded ? (
@@ -1162,7 +1166,7 @@ export default function tracksleep() {
                     textAlign: "center",
                   }}
                 >
-                  Logs added
+                  {t('sleepScreen.logAdded')}
                 </Text>
               </View>
             ) : (
@@ -1184,7 +1188,7 @@ export default function tracksleep() {
                       fontSize: 14,
                     }}
                   >
-                    Did you sleep at 11:30 PM?
+                    {t('sleepScreen.didYouSleepAt11_30PM')}
                   </Text>
                   <Text
                     style={{
@@ -1193,7 +1197,7 @@ export default function tracksleep() {
                       fontSize: 14,
                     }}
                   >
-                    Did you wake up at 07:30 AM?
+                   {t('sleepScreen.didYouWakeUpAt07_30AM')}
                   </Text>
                 </View>
 
@@ -1225,7 +1229,7 @@ export default function tracksleep() {
                         fontSize: 14,
                       }}
                     >
-                      Edit
+                      {t('customize.edit')}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -1247,7 +1251,7 @@ export default function tracksleep() {
                         fontSize: 14,
                       }}
                     >
-                      Yes
+                      {t('yes')}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1278,7 +1282,7 @@ export default function tracksleep() {
                   fontSize: 16,
                 }}
               >
-                My Sleep
+                {t('sleepScreen.mySleep')}
               </Text>
               <TouchableOpacity
                 style={{
@@ -1304,7 +1308,7 @@ export default function tracksleep() {
                     fontFamily: "Inter500",
                   }}
                 >
-                  Add Log
+                  {t('sleepScreen.addLog')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1412,7 +1416,7 @@ export default function tracksleep() {
                           color: "white",
                         }}
                       >
-                        Sleep
+                        {t('sleepScreen.sleep')}
                       </Text>
                       <Text
                         style={{
@@ -1458,7 +1462,7 @@ export default function tracksleep() {
 
           {/* Connect to Application */}
           <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Connect to Application</Text>
+            <Text style={styles.sectionTitle}>{t('sleepScreen.connectToApplication')}</Text>
             <View style={styles.connectItem}>
               <Image
                 source={require("../../assets/images/applehealth.png")}
@@ -1466,14 +1470,14 @@ export default function tracksleep() {
               />
               <Text style={styles.connectText}>{Platform.OS === 'ios' ? 'Health App' : 'Samsung Health'}</Text>
               <TouchableOpacity>
-                <Text style={styles.connectButton}>CONNECT</Text>
+                <Text style={styles.connectButton}>{t('sleepScreen.connect')}</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Connect to Device Section */}
           <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Connect to Device</Text>
+            <Text style={styles.sectionTitle}>{t('sleepScreen.connectToDevice')}</Text>
             <View style={styles.connectItem}>
               <Image
                 source={require("../../assets/images/fitbit.png")}
@@ -1483,12 +1487,12 @@ export default function tracksleep() {
               <TouchableOpacity onPress={handleFitbitConnection}>
                 <Text style={styles.connectButton}>
                   {!initialCheckDone
-                    ? "CHECKING..."
+                    ? t('sleepScreen.checkConnection')
                     : fitbitLoading
                     ? "CONNECTING..."
                     : isConnected
-                    ? "DISCONNECT"
-                    : "CONNECT"}
+                    ? t('sleepScreen.disconnect')
+                    : t('sleepScreen.connect')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1499,7 +1503,7 @@ export default function tracksleep() {
             <View style={styles.analysisHeader}>
               <View style={styles.analysisTab}>
                 <MaterialIcons name="bar-chart" size={18} color="#547698" />
-                <Text style={styles.analysisTabText}>Analysis</Text>
+                <Text style={styles.analysisTabText}>{t('Analysis')}</Text>
               </View>
               <TouchableOpacity
                 ref={periodSelectorRef}
@@ -1617,9 +1621,9 @@ export default function tracksleep() {
           {/* Bottom Message */}
           <View style={styles.bottomContainer}>
             <View style={styles.messageContainer}>
-              <Text style={styles.messageTitle}>Get a good night's sleep</Text>
-              <Text style={styles.messageSubtitle}>
-                Set a reminder and stay on track.
+              <Text style={styles.messageTitle} numberOfLines={1}>{t('sleepScreen.getGoodSleepTitle')}</Text>
+              <Text style={styles.messageSubtitle} numberOfLines={1}>
+                {t('sleepScreen.setReminderText')}
               </Text>
             </View>
             <TouchableOpacity
@@ -1632,7 +1636,7 @@ export default function tracksleep() {
               }
             >
               <Ionicons name="alarm" size={16} color="#FEF8FD" />
-              <Text style={styles.reminderButtonText}>Set Reminder</Text>
+              <Text style={styles.reminderButtonText} numberOfLines={1}>{t('sleepScreen.setReminderButton')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -2056,6 +2060,7 @@ const styles = StyleSheet.create({
   reminderButtonText: {
     color: "#FEF8FD",
     marginLeft: 8,
+    maxWidth:130,
     fontSize: 12,
     fontFamily: "Inter500",
   },

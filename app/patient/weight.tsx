@@ -22,6 +22,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import WeightModal from "./modal/weightmodal"
 import { useSelector } from "react-redux"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { useTranslation } from "react-i18next"
 
 const { width } = Dimensions.get("window")
 const BAR_WIDTH = 20
@@ -53,12 +54,7 @@ type TimeRangeOption = {
   label: string
 }
 
-const timeRangeOptions: TimeRangeOption[] = [
-  { id: "today", label: "Today" },
-  { id: "week", label: "Last 7 Days" },
-  { id: "month", label: "This Month" },
-  { id: "lastMonth", label: "Last Month" },
-]
+
 
 // Default empty chart data
 const emptyChartData = [
@@ -103,7 +99,16 @@ const WeightScreen = () => {
   const [filteredData, setFilteredData] = useState<DataItem[]>([])
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 })
   const [weightUnit, setWeightUnit] = useState("kg")
-  const [lastKnownUnit, setLastKnownUnit] = useState("kg")
+  const [lastKnownUnit, setLastKnownUnit] = useState("kg");
+
+  const {t} = useTranslation();
+
+  const timeRangeOptions: TimeRangeOption[] = [
+  { id: "today", label: t('today') },
+  { id: "week", label: t('last7Days')  },
+  { id: "month", label: t('thisMonth')  },
+  { id: "lastMonth", label: t('lastMonth')  },
+]
 
   const userId = user?.user_id;
     useEffect(() => {
@@ -400,7 +405,7 @@ const WeightScreen = () => {
           {
             id: `today-${todayStr}`,
             date: todayStr,
-            day: "Today",
+            day: t('stepScreen.today'),
             weight: todayData.weight || 0,
           },
         ]
@@ -866,7 +871,7 @@ const WeightScreen = () => {
         {isSelected && hasWeight && (
           <Animated.View style={[styles.tooltip, { opacity: tooltipAnim }]}>
             <View style={styles.tooltipContent}>
-              <Text style={styles.tooltipTitle}>WEIGHT</Text>
+              <Text style={styles.tooltipTitle}>{t('weight')}</Text>
               <Text style={styles.tooltipWeight}>
                 {item.weight.toFixed(1)}{" "}
                 <Text
@@ -896,7 +901,7 @@ const WeightScreen = () => {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={20} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Weight</Text>
+        <Text style={styles.headerTitle}>{t('weight')}</Text>
         <TouchableOpacity onPress={() => router.push("/patient/weightunit")}>
           <Feather name="more-vertical" size={20} color="#E5E5E5" />
         </TouchableOpacity>
@@ -921,7 +926,7 @@ const WeightScreen = () => {
                       fontFamily: "Inter500",
                     }}
                   >
-                    {weightUnit}
+                    {t('weightUnit')}
                   </Text>
                 </>
               ) : (
@@ -936,13 +941,13 @@ const WeightScreen = () => {
           <View style={styles.lastLoggedIcon}>
             <WeightIcon />
           </View>
-          <Text style={styles.lastLoggedText}>{currentWeight ? "Last logged weight" : "No logs yet"}</Text>
+          <Text style={styles.lastLoggedText}>{currentWeight ? t('lastLoggedWeight') : t('noLogsYet')}</Text>
         </View>
 
         {/* Add Log Button */}
         <TouchableOpacity style={styles.addLogButton} onPress={() => setModalVisible(true)}>
           <Ionicons name="add" size={14} color="#fff" />
-          <Text style={styles.addLogText}>Add Log</Text>
+          <Text style={styles.addLogText}>{t('addLog')}</Text>
         </TouchableOpacity>
 
         {/* Timeline Section */}
@@ -950,7 +955,7 @@ const WeightScreen = () => {
           <View style={styles.timelineHeader}>
             <View style={styles.timelineIconContainer}>
               <MaterialIcons name="bar-chart" size={18} color="#F9A826" />
-              <Text style={styles.timelineTitle}>Timeline</Text>
+              <Text style={styles.timelineTitle}>{t('timeline')}</Text>
             </View>
 
             <TouchableOpacity
@@ -1049,12 +1054,15 @@ const WeightScreen = () => {
         {/* Bottom Section */}
         <View style={styles.bottomContainer}>
           <View style={styles.messageContainer}>
-            <Text style={styles.messageTitle}>Track Your Weight Progress</Text>
-            <Text style={styles.messageSubtitle}>Set a reminder and stay on track.</Text>
+            <Text style={styles.messageTitle} numberOfLines={1}>{t('trackYourWeightProgress')}</Text>
+            <Text style={styles.messageSubtitle} numberOfLines={1}>{t('setReminderAndStayOnTrack')}</Text>
           </View>
-          <TouchableOpacity style={styles.reminderButton}>
+          <TouchableOpacity style={styles.reminderButton} onPress={()=>router.push({
+                        pathname: '/patient/settings/reminder',
+                        params: { type: 'weight' }
+                      })}>
             <Ionicons name="alarm" size={16} color="white" />
-            <Text style={styles.reminderButtonText}>Set Reminder</Text>
+            <Text style={styles.reminderButtonText} numberOfLines={1}>{t('setReminder')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -1400,6 +1408,7 @@ const styles = StyleSheet.create({
   reminderButtonText: {
     color: "#FEF8FD",
     marginLeft: 8,
+    maxWidth:130,
     fontSize: 12,
     fontFamily: "Inter500",
   },

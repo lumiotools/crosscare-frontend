@@ -1,9 +1,11 @@
 import { router } from "expo-router";
+import i18next from "i18next";
+import { useTranslation } from "react-i18next";
 
 export const onBoardingData: onBoardingDataType[] = [
   {
     id: 1,
-    title: "Empower Your Pregnancy Journey",
+    title: i18next.t('cards.askDoula'),
     description:
       "Personalized health tracking, expert insights, and emotional support — all in one place.",
     image: require("../assets/images/onboarding1.png"),
@@ -24,39 +26,7 @@ export const onBoardingData: onBoardingDataType[] = [
   },
 ];
 
-export const cardData = [
-  {
-    id: '1',
-    title: "Ask Your Doula",
-    description: "Personalised to your pregnancy",
-    bg1: "#FBBBE9", // Light pink
-    bg2: "#E162BC", // Deep pink
-    image1: require("../assets/images/hairs/h1/face/c1.png"),
-    onPress: () => {
-      router.push({
-        pathname: "/patient/askdoula",
-        params: { from_modal: "true" },
-      });
-    },
-  },
-  {
-    id: '2',
-    title: "Your Calendar",
-    description: "Track your appointments",
-    bg1: "#FFE5B0", // Light yellow
-    bg2: "#FFAA00", // Bright orange
-    image1: require("../assets/images/calendra.png"),
-  },
-  {
-    id: '3',
-    title: "MotherCare",
-    description: "Track health, vitals & more",
-    bg1: "#ACF3FF", // Light blue
-    bg2: "#64C4D4", // Turquoise
-    image1: require("../assets/images/mother.png"),
-    onPress: () => router.push("/patient/health"),
-  },
-];
+
 
 /**
  * Utility functions for sleep calculations

@@ -1,5 +1,3 @@
-//
-
 import BananaIcon from "@/assets/images/Svg/FruitsIcons/BananaIcon"
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
@@ -40,6 +38,7 @@ import Durian from "@/assets/images/Svg/FruitsIcons/Durian";
 import HoneyDewMelon from "@/assets/images/Svg/FruitsIcons/HoneyDewMelon";
 import SwissChard from "@/assets/images/Svg/FruitsIcons/SwissChard";
 import Pumpkin from "@/assets/images/Svg/FruitsIcons/Pumpkin";
+import { useTranslation } from "react-i18next";
 
 interface WeekSelectorProps {
   onWeekChange?: (week: string, fruitData: FruitData) => void
@@ -66,241 +65,241 @@ const WeekSelector: React.FC<WeekSelectorProps> = ({
   // Mapping of weeks to fruits/vegetables with their data
   const weekToFruitMap: Record<string, FruitData> = {
     "1": {
-      name: "Poppy seed",
+      name: "poppySeed",
       imageUrl: <PoppySeedIcon width={40} height={40}/>,
       weight: "<1g",
       length: "0.1cm",
     },
     "2": {
-      name: "Sesame seed",
+      name: "sesameSeed",
       imageUrl: <SesameSeedIcon width={42} height={42}/>,
       weight: "<1g",
       length: "0.1cm",
     },
     "3": {
-      name: "Lentil seed",
+      name: "lentilSeed",
       imageUrl: <LentilIcon width={44} height={44}/>,
       weight: "<1g",
       length: "0.1cm",
     },
     "4": {
-      name: "Poppy seed",
+      name: "poppySeed",
       imageUrl: <PoppySeedIcon width={46} height={46}/>,
       weight: "<1g",
       length: "0.1cm",
     },
     "5": {
-      name: "Apple Seed",
+      name: "appleSeed",
       imageUrl: <AppleSeedIcon width={48} height={48}/>,
       weight: "<1g",
       length: "0.2cm",
     },
     "6": {
-      name: "Pea",
+      name: "pea",
       imageUrl: <PeaIcon width={50} height={50}/>,
       weight: "<1g",
       length: "0.4cm",
     },
     "7": {
-      name: "Blueberry",
+      name: "blueberry",
       imageUrl: <BlueBerryIcon width={52} height={52}/>,
       weight: "<1g",
       length: "1cm",
     },
     "8": {
-      name: "Raspberry",
+      name: "raspberry",
       imageUrl: <RaspBerryIcon width={54} height={54}/>,
       weight: "1g",
       length: "1.6cm",
     },
     "9": {
-      name: "Grape",
+      name: "grape",
       imageUrl: <GrapesIcon width={56} height={56}/>,
       weight: "2g",
       length: "2.3cm",
     },
     "10": {
-      name: "Kumquat",
+      name: "kumquat",
       imageUrl: <Kumquat width={58} height={58}/>,
       weight: "5g",
       length: "3.1cm",
     },
     "11": {
-      name: "Lime",
+      name: "lime",
       imageUrl: <LimeIcon width={60} height={60}/>,
       weight: "14g",
       length: "5.4cm",
     },
     "12": {
-      name: "Plum",
+      name: "plum",
       imageUrl: <PlumIcon width={62} height={62}/>,
       weight: "14g",
       length: "5.4cm",
     },
     "13": {
-      name: "Peach",
+      name: "peach",
       imageUrl: <PeachIcon width={64} height={64}/>,
       weight: "23g",
       length: "7.4cm",
     },
     "14": {
-      name: "Lemon",
+      name: "lemon",
       imageUrl: <LemonIcon width={66} height={66}/>,
       weight: "43g",
       length: "8.7cm",
     },
     "15": {
-      name: "Apple",
+      name: "apple",
       imageUrl: <AppleIcons width={68} height={68}/>,
       weight: "70g",
       length: "10.1cm",
     },
     "16": {
-      name: "Avocado",
+      name: "avocado",
       imageUrl: <AvocadoIcon width={70} height={70}/>,
       weight: "100g",
       length: "11.6cm",
     },
     "17": {
-      name: "Pear",
+      name: "pear",
       imageUrl: <PearIcon width={72} height={72}/>,
       weight: "140g",
       length: "13cm",
     },
     "18": {
-      name: "Sweet Potato",
+      name: "sweetPotato",
       imageUrl: <SweetPotato width={74} height={74}/>,
       weight: "190g",
       length: "14.2cm",
     },
     "19": {
-      name: "Mango",
+      name: "mango",
       imageUrl: <MangoIcon width={76} height={76}/>,
       weight: "240g",
       length: "15.3cm",
     },
     "20": {
-      name: "Banana",
+      name: "banana",
       imageUrl: <BananaIcon width={78} height={78} />,
       weight: "300g",
       length: "16.4cm",
     },
     "21": {
-      name: "Pomegranate",
+      name: "pomegranate",
       imageUrl: <PomegranateIcon width={80} height={80}/>,
       weight: "360g",
       length: "26.7cm",
     },
     "22": {
-      name: "Papaya",
+      name: "papaya",
       imageUrl: <Papaya width={83} height={83}/>,
       weight: "430g",
       length: "27.8cm",
     },
     "23": {
-      name: "Grapefruit",
+      name: "grapefruit",
       imageUrl: <GrapesFruitIcon width={86} height={86}/>,
       weight: "500g",
       length: "28.9cm",
     },
     "24": {
-      name: "Cantaloupe",
+      name: "cantaloupe",
       imageUrl: <Cantaloupe width={89} height={89}/>,
       weight: "600g",
       length: "30cm",
     },
     "25": {
-      name: "Cauliflower",
+      name: "cauliflower",
       imageUrl: <Cauliflower width={92} height={92}/>,
       weight: "660g",
       length: "34.6cm",
     },
     "26": {
-      name: "Lettuce",
+      name: "lettuce",
       imageUrl: <Lettuce width={95} height={95}/>,
       weight: "760g",
       length: "35.6cm",
     },
     "27": {
-      name: "Eggplant",
+      name: "eggplant",
       imageUrl: <Eggplant width={98} height={98}/>,
       weight: "875g",
       length: "36.6cm",
     },
     "28": {
-      name: "Coconut",
+      name: "coconut",
       imageUrl: <CoconutIcon width={102} height={102}/>,
       weight: "1kg",
       length: "37.6cm",
     },
     "29": {
-      name: "Butternut Squash",
+      name: "butternutSquash",
       imageUrl: <ButterSquash width={105} height={105}/>,
       weight: "1.15kg",
       length: "38.6cm",
     },
     "30": {
-      name: "Cabbage",
+      name: "cabbage",
       imageUrl: <Cucumber width={108} height={108}/>,
       weight: "1.3kg",
       length: "39.9cm",
     },
     "31": {
-      name: "Pineapple",
+      name: "pineapple",
       imageUrl: <PineAppleIcon width={111} height={111}/>,
       weight: "1.5kg",
       length: "41.1cm",
     },
     "32": {
-      name: "Squash",
+      name: "squash",
       imageUrl: <ButterSquash width={114} height={114}/>,
       weight: "1.7kg",
       length: "42.4cm",
     },
     "33": {
-      name: "Durian",
+      name: "durian",
       imageUrl: <Durian width={117} height={117}/>,
       weight: "1.9kg",
       length: "43.7cm",
     },
     "34": {
-      name: "HoneyDew Melon",
+      name: "honeyDewMelon",
       imageUrl: <HoneyDewMelon width={125} height={125}/>,
       weight: "2.1kg",
       length: "45cm",
     },
     "35": {
-      name: "Coconut",
+      name: "coconut",
       imageUrl: <CoconutIcon width={130} height={130}/>,
       weight: "2.4kg",
       length: "46.2cm",
     },
     "36": {
-      name: "Watermelon",
+      name: "watermelon",
       imageUrl: <WaterMelonIcon width={135} height={135}/>,
       weight: "2.6kg",
       length: "47.4cm",
     },
     "37": {
-      name: "Swiss Chard",
+      name: "swissChard",
       imageUrl: <SwissChard width={140} height={140}/>,
       weight: "2.9kg",
       length: "48.6cm",
     },
     "38": {
-      name: "Pumpkin",
+      name: "pumpkin",
       imageUrl: <Pumpkin width={145} height={145}/>,
       weight: "3.1kg",
       length: "49.8cm",
     },
     "39": {
-      name: "Watermelon",
+      name: "watermelon",
       imageUrl: <WaterMelonIcon width={150} height={150}/>,
       weight: "3.3kg",
       length: "50.7cm",
     },
     "40": {
-      name: "Small Pumpkin",
+      name: "smallPumpkin",
       imageUrl: <Pumpkin width={155} height={155}/>,
       weight: "3.5kg",
       length: "51.2cm",
@@ -359,11 +358,13 @@ const WeekSelector: React.FC<WeekSelectorProps> = ({
     }
   }
 
+  const {t} = useTranslation();
+
   return (
     <View style={styles.container}>
       <View style={styles.fruitInfoContainer}>
       {getFruitForWeek(selectedWeek).imageUrl}
-        <Text style={styles.fruitText}>Your baby is the size of a {getFruitForWeek(selectedWeek).name}!</Text>
+        <Text style={styles.fruitText}> {t("fruitText", { fruit: t(`fruits.${getFruitForWeek(selectedWeek).name}`) })}</Text>
       </View>
       <ScrollView
         ref={scrollViewRef}

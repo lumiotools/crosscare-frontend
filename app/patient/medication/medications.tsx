@@ -1,5 +1,3 @@
-"use client"
-
 import React, { useEffect, useState } from "react"
 import { StyleSheet, Text, View, StatusBar, TouchableOpacity, ScrollView, ActivityIndicator } from "react-native"
 import { Feather, Ionicons } from "@expo/vector-icons"
@@ -10,6 +8,7 @@ import DateRangePicker from "@/components/DateRangePicker"
 import DateRangeButton from "@/components/DateRangeButton"
 import { useSelector } from "react-redux"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { useTranslation } from "react-i18next"
 
 // First, let's update the interfaces to include dates
 interface MedicationTime {
@@ -127,6 +126,8 @@ export default function medications() {
   const user = useSelector((state: any) => state.user)
   const [isLoading, setIsLoading] = useState(true)
   const userId = user?.user_id;
+  const {t} = useTranslation();
+
   useEffect(() => {
     const setMedicationVisited = async () => {
       await AsyncStorage.setItem('medication_3', 'true');
@@ -293,8 +294,8 @@ export default function medications() {
             color={time.isCompleted ? "#00A991" : "#666666"}
             style={styles.checkIcon}
           />
-          <Text style={[styles.completionText, time.isCompleted ? styles.completedText : styles.incompleteText]}>
-            {time.isCompleted ? "Completed" : "Mark as Complete"}
+          <Text style={[styles.completionText, time.isCompleted ? styles.completedText : styles.incompleteText]} numberOfLines={1}>
+            {time.isCompleted ? t('completed') : t('markAsCompleteButton')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -530,6 +531,7 @@ export default function medications() {
     ))
   }
 
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -539,7 +541,7 @@ export default function medications() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={20} color="black" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Medications</Text>
+        <Text style={styles.headerTitle}>{t('medication')}</Text>
         <TouchableOpacity style={styles.menuButton}>
           <Feather name="more-vertical" size={20} color="#E5E5E5" />
         </TouchableOpacity>
@@ -559,7 +561,7 @@ export default function medications() {
         <View style={styles.addButtonContainer}>
           <TouchableOpacity onPress={() => router.push("/patient/medication/addmedication")} style={styles.addButton}>
             <Ionicons name="add" size={20} color="white" />
-            <Text style={styles.addButtonText}>Add New Medication</Text>
+            <Text style={styles.addButtonText}>{t('addNewMedication')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -585,13 +587,13 @@ export default function medications() {
             style={[styles.tab, activeTab === "All" && styles.activeTab]}
             onPress={() => setActiveTab("All")}
           >
-            <Text style={[styles.tabText, activeTab === "All" && styles.activeTabText]}>All</Text>
+            <Text style={[styles.tabText, activeTab === "All" && styles.activeTabText]}>{t('all')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tab, activeTab === "Missed" && styles.activeTab]}
             onPress={() => setActiveTab("Missed")}
           >
-            <Text style={[styles.tabText, activeTab === "Missed" && styles.activeTabText]}>Missed</Text>
+            <Text style={[styles.tabText, activeTab === "Missed" && styles.activeTabText]}>{t('missed')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -631,7 +633,7 @@ export default function medications() {
                     </View>
                   ))
                 ) : (
-                  <Text style={styles.emptyText}>No medications found</Text>
+                  <Text style={styles.emptyText}>{t('emptyText')}</Text>
                 )}
               </View>
             )}
@@ -667,7 +669,7 @@ export default function medications() {
                     </View>
                   ))
                 ) : (
-                  <Text style={styles.emptyText}>No missed medications</Text>
+                  <Text style={styles.emptyText}>{t('noMissedMedications')}</Text>
                 )}
               </View>
             )}
@@ -678,8 +680,8 @@ export default function medications() {
       {/* Footer */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          Reminder On By Default.
-          <Text style={styles.footerLink}> Turn Off Reminder</Text>
+          {t('reminderOnByDefault')}
+          <Text style={styles.footerLink}> {t('turnOffReminder')}</Text>
         </Text>
       </View>
 

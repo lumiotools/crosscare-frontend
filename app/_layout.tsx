@@ -20,13 +20,16 @@ import { FloatingProvider } from "@/context/FloatingContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BadgeProvider } from "@/context/BadgeContext";
 import { BadgeMonitor } from "@/context/BadgeMonitor";
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
+import '../translation/i18next'
+import { loadSavedLanguage } from "@/translation/i18next";
+import { setLanguage } from "@/store/languageSlice";
+// Prevent the splash screen from a@/translation/i18nextfore asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 const RootLayoutNav = () => {
   const dispatch = useDispatch();
   const user = useSelector((state: any) => state.user);
+  const currentLanguage = useSelector((state: any) => state.language.current)
 
   const router = useRouter();
   const colorScheme = useColorScheme();
@@ -58,6 +61,7 @@ const RootLayoutNav = () => {
       try {
         const token = await AsyncStorage.getItem("userToken");
         const storedUser = await AsyncStorage.getItem("user");
+        const savedLanguage = await AsyncStorage.getItem("userLanguage")
         if (token) {
           dispatch(setToken(token));
         }
@@ -68,12 +72,18 @@ const RootLayoutNav = () => {
             dispatch(setUser(parsedUser));
           }
         }
+
+        if (currentLanguage) {
+          dispatch(setLanguage(currentLanguage));
+        }
+        loadSavedLanguage()
       } catch (error) {
         console.error("Error checking token:", error);
       }
     };
     checkToken();
   }, [dispatch]);
+  
 
   // Hide the splash screen once fonts are loaded
   useEffect(() => {

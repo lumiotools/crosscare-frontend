@@ -28,6 +28,7 @@ import {
   getAllScheduledNotifications,
 } from '../../../utils/NotificationManager';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 export default function RemindersScreen() {
   const params = useLocalSearchParams<{ type?: string }>();
@@ -39,6 +40,7 @@ export default function RemindersScreen() {
   const [newReminderType, setNewReminderType] = useState<ReminderSettings['type']>(
     (params.type as any) || 'water'
   );
+  const {t} = useTranslation();
   const [newReminderMessage, setNewReminderMessage] = useState('');
   const [activeFilter, setActiveFilter] = useState<ReminderSettings['type'] | 'all'>(
     (params.type as any) || 'all'
@@ -57,8 +59,8 @@ export default function RemindersScreen() {
       const hasPermission = await requestNotificationPermissions();
       if (!hasPermission) {
         Alert.alert(
-          'Permission Required',
-          'Please allow notifications to set up reminders',
+          t('permissionRequired'),
+          t('allowNotifications'),
           [{ text: 'OK' }]
         );
       }
@@ -173,15 +175,15 @@ export default function RemindersScreen() {
   
   async function deleteReminder(id: string) {
     Alert.alert(
-      'Delete Reminder',
-      'Are you sure you want to delete this reminder?',
+      t('deleteReminder'),
+      t('deleteConfirmation'),
       [
         {
-          text: 'Cancel',
+          text: t('cancel'),
           style: 'cancel',
         },
         {
-          text: 'Delete',
+          text: t('delete'),
           onPress: async () => {
             const updatedReminders = reminders.filter(reminder => reminder.id !== id);
             setReminders(updatedReminders);
@@ -205,15 +207,16 @@ export default function RemindersScreen() {
   // Get reminder title
   function getReminderTitle(type: string) {
     switch(type) {
-      case 'water': return '💧 Water Intake';
-      case 'steps': return '👟 Steps';
-      case 'weight': return '⚖️ Weight';
-      case 'sleep': return '😴 Sleep';
-      case 'heart': return '❤️ Heart Rate';
-      case 'medication': return '💊 Medication';
-      default: return 'Health Tracking';
+      case 'water': return t('reminder.water');
+case 'steps': return t('reminder.steps');
+case 'weight': return t('reminder.weight');
+case 'sleep': return t('reminder.sleep');
+case 'heart': return t('reminder.heart');
+case 'medication': return t('reminder.medication');
+default: return t('reminder.healthTracking');
     }
   }
+
   
   // Get icon for reminder type
   function getIconForType(type: string) {
@@ -227,6 +230,7 @@ export default function RemindersScreen() {
       default: return 'notifications-outline';
     }
   }
+  
   
   // Get color for reminder type
   function getColorForType(type: string): string {
@@ -247,8 +251,8 @@ export default function RemindersScreen() {
     console.log('All scheduled notifications:', JSON.stringify(scheduledNotifications, null, 2));
     
     Alert.alert(
-      'Scheduled Notifications',
-      `Found ${scheduledNotifications.length} scheduled notifications.`,
+      t('scheduledNotifications'),
+      t('foundScheduledNotifications', {count: scheduledNotifications.length}),
       [{ text: 'OK' }]
     );
   }
@@ -300,30 +304,31 @@ export default function RemindersScreen() {
   );
   
   // Render filter buttons
-  const renderFilterButton = (type: 'all' | ReminderSettings['type'], label: string) => (
-    <TouchableOpacity
+ const renderFilterButton = (type: 'all' | ReminderSettings['type'], labelKey: string) => (
+  <TouchableOpacity
+    style={[
+      styles.filterButton,
+      activeFilter === type && { 
+        backgroundColor: type === 'all' ? '#F3F3F3' : `${getColorForType(type)}20`,
+        borderColor: type === 'all' ? '#DDD' : getColorForType(type),
+      }
+    ]}
+    onPress={() => setActiveFilter(type)}
+  >
+    <Text 
       style={[
-        styles.filterButton,
+        styles.filterButtonText, 
         activeFilter === type && { 
-          backgroundColor: type === 'all' ? '#F3F3F3' : `${getColorForType(type)}20`,
-          borderColor: type === 'all' ? '#DDD' : getColorForType(type),
+          color: type === 'all' ? '#333' : getColorForType(type),
+          fontWeight: '600'
         }
       ]}
-      onPress={() => setActiveFilter(type)}
     >
-      <Text 
-        style={[
-          styles.filterButtonText, 
-          activeFilter === type && { 
-            color: type === 'all' ? '#333' : getColorForType(type),
-            fontWeight: '600'
-          }
-        ]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
+      {t(labelKey)} {/* This dynamically loads the translated label */}
+    </Text>
+  </TouchableOpacity>
+);
+
   
   return (
     <SafeAreaView style={styles.container}>
@@ -331,7 +336,7 @@ export default function RemindersScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color="#434343" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Health Reminders</Text>
+        <Text style={styles.headerTitle}>{t('healthReminders')}</Text>
         <TouchableOpacity onPress={() => {
           displayTestNotification();
           showAllScheduledNotifications();
@@ -343,20 +348,20 @@ export default function RemindersScreen() {
       {/* Filter buttons */}
       <View style={styles.filterContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {renderFilterButton('all', 'All')}
-          {renderFilterButton('water', 'Water')}
-          {renderFilterButton('steps', 'Steps')}
-          {renderFilterButton('sleep', 'Sleep')}
-          {renderFilterButton('heart', 'Heart Rate')}
-          {renderFilterButton('weight', 'Weight')}
-          {renderFilterButton('medication', 'Medication')}
+         {renderFilterButton('all', 'all')}
+{renderFilterButton('water', 'water')}
+{renderFilterButton('steps', 'steps')}
+{renderFilterButton('sleep', 'sleep')}
+{renderFilterButton('heart', 'heart')}
+{renderFilterButton('weight', 'weight')}
+{renderFilterButton('medication', 'medication')}
         </ScrollView>
       </View>
       
       {loading ? (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color="#E162BC" />
-          <Text style={styles.loaderText}>Loading reminders...</Text>
+          <Text style={styles.loaderText}>{t('loadingReminders')}</Text>
         </View>
       ) : (
         <>
@@ -367,8 +372,8 @@ export default function RemindersScreen() {
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No reminders found.</Text>
-                <Text style={styles.emptySubtext}>Tap the + button to create one!</Text>
+                <Text style={styles.emptyText}>{t('noRemindersFound')}</Text>
+                <Text style={styles.emptySubtext}>{t('tapAddButton')}</Text>
               </View>
             }
           />
@@ -407,9 +412,9 @@ export default function RemindersScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Create New Reminder</Text>
+            <Text style={styles.modalTitle}>{t('createNewReminder')}</Text>
             
-            <Text style={styles.modalLabel}>Reminder Type</Text>
+            <Text style={styles.modalLabel}>{t('reminderType')}</Text>
             <View style={styles.typeButtons}>
               {['water', 'steps', 'sleep', 'heart', 'weight', 'medication'].map((type) => (
                 <TouchableOpacity
@@ -428,36 +433,34 @@ export default function RemindersScreen() {
                     size={24} 
                     color={getColorForType(type)} 
                   />
-                  <Text style={styles.typeButtonText}>
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  <Text numberOfLines={1} style={styles.typeButtonText}>
+                    {t(type)}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
             
-            <Text style={styles.modalLabel}>Custom Message (Optional)</Text>
             <TextInput
               style={styles.messageInput}
               value={newReminderMessage}
-              onChangeText={setNewReminderMessage}
-              placeholder={`Time to track your ${newReminderType}!`}
+              onChangeText={(text: string) => setNewReminderMessage(text)}
+             placeholder={t('newremainder', { type: t(newReminderType) })}
               placeholderTextColor="#999"
               multiline
             />
-            
             <View style={styles.modalButtons}>
               <TouchableOpacity 
                 style={styles.cancelButton}
                 onPress={() => setShowAddModal(false)}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
                 style={[styles.createButton, { backgroundColor: getColorForType(newReminderType) }]}
                 onPress={addNewReminder}
               >
-                <Text style={styles.createButtonText}>Create</Text>
+                <Text style={styles.createButtonText}>{t('create')}</Text>
               </TouchableOpacity>
             </View>
           </View>

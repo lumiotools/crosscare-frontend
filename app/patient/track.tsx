@@ -15,6 +15,7 @@ import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import WeekSelector from "@/components/WeekSelector";
+import { useTranslation } from "react-i18next";
 
 interface Section {
   id: number
@@ -32,6 +33,7 @@ interface FruitData {
 
 export default function track() {
   const router = useRouter();
+  const {t} = useTranslation();
 
   const [selectedWeek, setSelectedWeek] = useState<string | undefined>(undefined);
   const [babyData, setBabyData] = useState<FruitData>({
@@ -88,28 +90,25 @@ export default function track() {
   const sections = [
     {
       id: 1,
-      title: `${selectedWeek} weeks and 1 days`,
+      title: `${selectedWeek} ${t("weeksRemaining")}`,
       backgroundColor: "#6ED7E9",
     },
     {
       id: 2,
-      title: "Baby",
-      content:
-        "In week 8 the embryo looks more and more like a human, instead of an alien. The head is about half of the entire body length.",
+      title: t('baby'),
+      content: t('babyDescription'),
       backgroundColor: "#F989D9", // Pink background for Baby section
     },
     {
       id: 3,
-      title: "Mom",
-      content:
-        "In week 8, people around you still won’t notice your growing belly, but you might find yourself having trouble buttoning your favorite jeans.",
+      title: t('mom'),
+      content: t('momDescription'),
       backgroundColor: "#6ED7E9", // Teal background for Mom section
     },
     {
       id: 4,
-      title: "Fun Fact",
-      content:
-        "A baby’s heart starts beating as early as 5-6 weeks, and by week 10, they already have tiny fingers.",
+      title: t('funFact'),
+      content: t('funFactDescription'),
       backgroundColor: "#F989D9", // White background for Fun Fact section
     },
   ];
@@ -188,17 +187,17 @@ export default function track() {
           <View style={styles.statsContainer}>
             <View style={styles.statBox}>
               <Text style={styles.statValue}>{babyData.weight}</Text>
-              <Text style={styles.statLabel}>weight</Text>
+              <Text style={styles.statLabel}>{t("weight")}</Text>
             </View>
 
             <View style={styles.statBox1}>
               <Text style={styles.statValue}>{babyData.length}</Text>
-              <Text style={styles.statLabel}>length</Text>
+              <Text style={styles.statLabel}>{t("length")}</Text>
             </View>
           </View>
 
           <WeekSelector onWeekChange={handleWeekChange} initialWeek={selectedWeek} />
-          <Text style={styles.currentWeekText}>Current week</Text>
+          <Text style={styles.currentWeekText}>{t("currentWeek")}</Text>
 
           <FlatList
             data={sections}
@@ -217,11 +216,11 @@ export default function track() {
                     >
                       <Text style={styles.progressText}>{item.title}</Text>
                       <Text style={styles.trimesterText}>
-                        {Number.parseInt(selectedWeek ?? "0") <= 13
-                          ? "1st trimester"
+                          {Number.parseInt(selectedWeek ?? "0") <= 13
+                          ? t("trimester1")
                           : Number.parseInt(selectedWeek ?? "0") <= 26
-                            ? "2nd trimester"
-                            : "3rd trimester"}
+                          ? t("trimester2")
+                          : t("trimester3")}
                       </Text>
                     </View>
                     {renderCustomProgressBar({ progressValue: progress })}
@@ -234,7 +233,7 @@ export default function track() {
                       }}
                     >
                       <Text style={styles.dueDate}>
-                        Date of labor {calculateDueDate(Number(selectedWeek ?? "0"))}
+                        {t('dateOfLabor')} {calculateDueDate(Number(selectedWeek ?? "0"))}
                       </Text>
                       <Text style={styles.timeLeft}>
                       {calculateWeeksRemaining(Number.parseInt(selectedWeek ?? "0"))}

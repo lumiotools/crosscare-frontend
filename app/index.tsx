@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { removeToken, setToken } from "../store/userSlice";
 import {jwtDecode} from "jwt-decode";
+import '../translation/i18next'
 
 const Index = () => {
   const dispatch = useDispatch();

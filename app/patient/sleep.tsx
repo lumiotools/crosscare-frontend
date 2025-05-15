@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import MoonIcon1 from "@/assets/images/Svg/MoonIcon1";
 import { useSelector } from "react-redux";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useTranslation } from "react-i18next";
 
 const SleepScreen = () => {
   const user = useSelector((state: any) => state.user);
@@ -29,6 +30,7 @@ const SleepScreen = () => {
 
     setsleepVisited();
   }, [userId]);
+  const {t} = useTranslation();
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#001F3E" />
@@ -41,7 +43,7 @@ const SleepScreen = () => {
         >
           <Ionicons name="chevron-back" size={20} color="white" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Sleep</Text>
+        <Text style={styles.headerTitle}>{t('sleepScreen.sleep')}</Text>
         <TouchableOpacity style={styles.menuButton}>
           <Feather name="more-vertical" size={20} color="#E5E5E5" />
         </TouchableOpacity>
@@ -54,14 +56,14 @@ const SleepScreen = () => {
           style={styles.button}
           onPress={() => router.push("/patient/tracksleep")}
         >
-          <Text style={styles.buttonText}>Track Sleep</Text>
+          <Text style={styles.buttonText}>{t('sleepScreen.trackSleep')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.button}
           onPress={() => router.push("/patient/bedtime")}
         >
-          <Text style={styles.buttonText}>Bed Time Calculator</Text>
+          <Text style={styles.buttonText} numberOfLines={1}>{t('sleepScreen.bedTimeCalculator')}</Text>
         </TouchableOpacity>
       </View>
 
