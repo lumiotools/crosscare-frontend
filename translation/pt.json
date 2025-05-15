@@ -187,7 +187,14 @@
     "hi": "Oi",
     "description": "Eu sou sua Digital",
     "doula": "Doula",
-    "subtitle": "Como posso ajudar você hoje?"
+    "subtitle": "Como posso ajudar você hoje?",
+    "title1": "Histórico de Conversa Limpo",
+    "message": "Seu histórico de conversa foi excluído. Deseja iniciar o questionário de saúde agora?",
+    "yes": "Sim",
+    "no": "Agora não",
+    "errorTitle": "Erro",
+    "errorMessage": "Falha ao limpar o histórico de conversa. Por favor, tente novamente."
+  
   },
   "options": {
     "healthStats": "Estatísticas de Saúde",

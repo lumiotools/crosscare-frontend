@@ -187,7 +187,13 @@
     "hi": "Bonjou",
     "description": "Mwen se Digital ou",
     "doula": "Doula",
-    "subtitle": "Kijan mwen ka ede ou jodi a?"
+    "subtitle": "Kijan mwen ka ede ou jodi a?",
+     "title1": "Istwa Chat Efase",
+    "message": "Istwa konvèsasyon ou efase. Èske ou ta renmen kòmanse kesyonè sante a kounye a?",
+    "yes": "Wi",
+    "no": "Pa kounye a",
+    "errorTitle": "Erè",
+    "errorMessage": "Echwe pou efase istwa chat la. Tanpri eseye ankò."
   },
   "options": {
     "healthStats": "Estatistik Sante",

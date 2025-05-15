@@ -140,7 +140,13 @@
     "hi": "Hola",
     "description": "Yo soy tu digital",
     "doula": "Doula",
-    "subtitle": "¿Cómo puedo ayudarte hoy?"
+    "subtitle": "¿Cómo puedo ayudarte hoy?",
+       "title1": "Historial de Chat Borrado",
+    "message": "Tu historial de conversación ha sido eliminado. ¿Te gustaría comenzar el cuestionario de salud ahora?",
+    "yes": "Sí",
+    "no": "Ahora no",
+    "errorTitle": "Error",
+    "errorMessage": "No se pudo borrar el historial de chat. Por favor, inténtalo de nuevo."
   },
   "options": {
     "healthStats": "Estadísticas de salud",

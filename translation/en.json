@@ -187,7 +187,13 @@
     "hi": "Hi",
     "description": "I'm your Digital",
     "doula": "Doula",
-    "subtitle": "How can I assist you today?"
+    "subtitle": "How can I assist you today?",
+     "title1": "Chat History Cleared",
+    "message": "Your conversation history has been deleted. Would you like to start the health questionnaire now?",
+    "yes": "Yes",
+    "no": "Not now",
+    "errorTitle": "Error",
+    "errorMessage": "Failed to clear chat history. Please try again."
   },
   "options": {
     "healthStats": "Health Stats",

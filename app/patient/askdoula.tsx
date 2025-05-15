@@ -2378,17 +2378,17 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
 
       // Show confirmation to the user with option to start questionnaire
       Alert.alert(
-        "Chat History Cleared",
-        "Your conversation history has been deleted. Would you like to start the health questionnaire now?",
+        t('askDoula.title1'),
+        t('askDoula.message'),
         [
           {
-            text: "Yes",
+            text: t('askDoula.yes'),
             onPress: () => {
               // Start the questionnaire
               questionnaireManager.startQuestionnaire();
             },
           },
-          { text: "Not now" },
+          { text: t('askDoula.no') },
         ]
       );
     } catch (error) {
