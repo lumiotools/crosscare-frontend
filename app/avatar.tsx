@@ -550,7 +550,7 @@ export default function AvatarSelectionScreen() {
       }
 
       // Show success message
-      Alert.alert("Success", "Avatar saved successfully!");
+      // Alert.alert("Success", "Avatar saved successfully!");
 
       // Close the modal
       setShowPreviewModal(false);

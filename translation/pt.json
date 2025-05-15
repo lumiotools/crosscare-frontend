@@ -634,5 +634,53 @@
   "lbs": "Libras (lbs)",
   "sectionTitle2": "Volume",
     "ml": "Mililitros (ml)",
-    "flOz": "Onças líquidas americanas (fl.oz)"
+    "flOz": "Onças líquidas americanas (fl.oz)",
+     "meals": {
+      "headerTitle": "Comida",
+      "caloriesConsumed": "de {{displayCalorieGoal}} Cal Consumidas",
+      "edit": "Editar",
+      "today": "Hoje",
+      "mealTitles": {
+        "Breakfast": "Café da manhã",
+        "Lunch": "Almoço",
+        "Snacks": "Lanches",
+        "Dinner": "Jantar"
+      },
+      "mealDescriptions": {
+        "Breakfast": "Energize-se com um café da manhã matinal",
+        "Lunch": "Não perca o almoço, é hora de uma refeição saborosa",
+        "Snacks": "Reabasteça seu corpo com um lanche delicioso à noite",
+        "Dinner": "Um jantar cedo pode ajudar a dormir melhor"
+      },
+      "mealCalories": "{{totalCalories}} de {{goalCalories}} Cal",
+      "add": "Adicionar",
+      "saveAsMeal": "Salvar como Refeição",
+      "delete": "Excluir",
+      "analysis": "Análise",
+      "last7Days": "Últimos 7 Dias",
+      "calories": "CALORIAS",
+      "kcal": "kcal",
+      "trackWeightProgress": "Acompanhe Seu Progresso de Peso",
+      "setReminder": "Defina um lembrete e mantenha o foco.",
+      "setReminderButton": "Definir Lembrete",
+      "reminder": "Lembrete",
+      "popupMenuDelete": "Excluir",
+      "setNewGoal": "Definir Nova Meta",
+    "caloriePlaceholder": "-- Cal",
+    "cancel": "Cancelar",
+    "saveContinue": "Salvar e Continuar",
+       "searchPlaceholder": "Buscar comida",
+    "sectionTitle": "Alimentos Frequentemente Monitorados",
+    "macroLabels": {
+      "Protein": "Proteína",
+      "Carbs": "Carboidratos",
+      "Fat": "Gordura"
+    },
+    "categoryLabel": "Categoria:",
+    "caloriesUnit": "Cal",
+    "errorNoResults": "Nenhum resultado encontrado",
+    "errorGeneric": "Erro ao buscar comida",
+    "checkmarkAria": "Selecionado",
+    "addAria": "Adicionar"
+    }
 }

@@ -638,5 +638,53 @@
     "lbs": "Libras (lbs)",
     "sectionTitle2": "Volumen",
     "ml": "Mililitros (ml)",
-    "flOz": "Onzas líquidas estadounidenses (fl.oz)"
+    "flOz": "Onzas líquidas estadounidenses (fl.oz)",
+    "meals": {
+      "headerTitle": "Comida",
+      "caloriesConsumed": " de {{displayCalorieGoal}} Cal Consumidas",
+      "edit": "Editar",
+      "today": "Hoy",
+      "mealTitles": {
+        "Breakfast": "Desayuno",
+        "Lunch": "Almuerzo",
+        "Snacks": "Bocadillos",
+        "Dinner": "Cena"
+      },
+      "mealDescriptions": {
+        "Breakfast": "Energízate con un desayuno matutino",
+        "Lunch": "No te pierdas el almuerzo, es hora de una comida sabrosa",
+        "Snacks": "Recarga tu cuerpo con un delicioso snack nocturno",
+        "Dinner": "Una cena temprana puede ayudarte a dormir mejor"
+      },
+      "mealCalories": "{{totalCalories}} de {{goalCalories}} Cal",
+      "add": "Agregar",
+      "saveAsMeal": "Guardar como Comida",
+      "delete": "Eliminar",
+      "analysis": "Análisis",
+      "last7Days": "Últimos 7 Días",
+      "calories": "CALORÍAS",
+      "kcal": "kcal",
+      "trackWeightProgress": "Sigue tu progreso de peso",
+      "setReminder": "Configura un recordatorio y mantente en el camino.",
+      "setReminderButton": "Establecer Recordatorio",
+      "reminder": "Recordatorio",
+      "popupMenuDelete": "Eliminar",
+      "setNewGoal": "Establecer Nueva Meta",
+    "caloriePlaceholder": "-- Cal",
+    "cancel": "Cancelar",
+    "saveContinue": "Guardar y Continuar",
+    "searchPlaceholder": "Buscar comida",
+    "sectionTitle": "Alimentos Seguidores Frecuentes",
+    "macroLabels": {
+      "Protein": "Proteína",
+      "Carbs": "Carbohidratos",
+      "Fat": "Grasa"
+    },
+    "categoryLabel": "Categoría:",
+    "caloriesUnit": "Cal",
+    "errorNoResults": "No se encontraron resultados",
+    "errorGeneric": "Error al buscar comida",
+    "checkmarkAria": "Seleccionado",
+    "addAria": "Agregar"
+    }
 }

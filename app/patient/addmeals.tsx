@@ -16,6 +16,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AntDesign, Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams, router } from "expo-router";
+import { useTranslation } from "react-i18next";
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -51,6 +52,8 @@ interface FoodApiResponse {
 const API_KEY = "snfzY15agSASht2DEL9fJF5HhAxRntErPycnZvYq";
 
 const addmeals = () => {
+
+  const {t} = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams();
   const mealType = params.mealType as string;
@@ -421,7 +424,7 @@ const addmeals = () => {
                   }
                 ]}
               >
-                <Text style={styles.macroLabel}>Protein</Text>
+                <Text style={styles.macroLabel}>{t('meals.macroLabels.Protein')}</Text>
                 <Text style={styles.macroValue}>{protein}g</Text>
               </Animated.View>
               
@@ -442,7 +445,7 @@ const addmeals = () => {
                   }
                 ]}
               >
-                <Text style={styles.macroLabel}>Carbs</Text>
+                <Text style={styles.macroLabel}>{t('meals.macroLabels.Carbs')}</Text>
                 <Text style={styles.macroValue}>{carbs}g</Text>
               </Animated.View>
               
@@ -463,7 +466,7 @@ const addmeals = () => {
                   }
                 ]}
               >
-                <Text style={styles.macroLabel}>Fat</Text>
+                <Text style={styles.macroLabel}>{t('meals.macroLabels.Fat')}</Text>
                 <Text style={styles.macroValue}>{fat}g</Text>
               </Animated.View>
             </View>
@@ -485,7 +488,7 @@ const addmeals = () => {
                 }
               ]}
             >
-              <Text style={styles.categoryLabel}>Category:</Text>
+              <Text style={styles.categoryLabel}>{t('meals.categoryLabel')}</Text>
               <Text style={styles.categoryValue}>{item.category}</Text>
             </Animated.View>
           </Animated.View>
@@ -515,7 +518,7 @@ const addmeals = () => {
           />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search for food"
+            placeholder={t('meals.searchPlaceholder')}
             placeholderTextColor="#666666"
             value={searchQuery}
             onChangeText={(text) => {
@@ -547,7 +550,7 @@ const addmeals = () => {
           keyExtractor={(item) => item.fdcId.toString()}
           contentContainerStyle={styles.listContainer}
           ListHeaderComponent={
-            <Text style={styles.sectionTitle}>Frequently Tracked Foods</Text>
+            <Text style={styles.sectionTitle}>{t('meals.sectionTitle')}</Text>
           }
           showsVerticalScrollIndicator={false}
         />

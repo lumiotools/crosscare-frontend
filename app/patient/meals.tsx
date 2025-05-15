@@ -15,6 +15,7 @@ import DateTimePicker from "@react-native-community/datetimepicker"
 import { Platform } from "react-native"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useSelector } from "react-redux"
+import { useTranslation } from "react-i18next"
 
 const MAX_HEIGHT = 200
 const BAR_WIDTH = 20
@@ -79,6 +80,7 @@ const FoodItem = ({ name, portion, calories, onDelete }: Food & { onDelete: () =
     }
   }, [menuVisible])
 
+  const {t} = useTranslation();
   
 
   return (
@@ -111,7 +113,7 @@ const FoodItem = ({ name, portion, calories, onDelete }: Food & { onDelete: () =
                   setMenuVisible(false)
                 }}
               >
-                <Text style={styles.popupMenuItemTextDelete}>Delete</Text>
+                <Text style={styles.popupMenuItemTextDelete}>{t('meals.popupMenuDelete')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -132,16 +134,18 @@ const MealItem = ({
   onAddPress: (mealType: string) => void
   onDeleteFood: (mealType: string, foodIndex: number) => void
 }) => {
+  const {t} = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false)
   const hasFoods = meal.foods && meal.foods.length > 0
 
   return (
     <View style={[styles.mealItem, index !== 0 && styles.mealItemWithBorder]}>
       <TouchableOpacity style={styles.mealHeader} onPress={() => setIsExpanded(!isExpanded)} activeOpacity={0.7}>
-        <Text style={styles.mealTitle}>{meal.title}</Text>
+        <Text style={styles.mealTitle}>{t(meal.title)}</Text>
         <View style={styles.mealCaloriesContainer}>
           <Text style={styles.mealCalories}>
-            {meal.totalCalories} of {meal.goalCalories} Cal
+            {/* {meal.totalCalories} of {meal.goalCalories} Cal */}
+            {t('meals.mealCalories',{totalCalories: meal.totalCalories, goalCalories: meal.goalCalories})}
           </Text>
           <TouchableOpacity style={styles.addButton} onPress={() => onAddPress(meal.title)}>
             <Ionicons name="add-circle" size={20} color="#38C472" />
@@ -152,7 +156,7 @@ const MealItem = ({
       {/* Show description by default if no foods */}
       {!hasFoods && (
         <View style={styles.descriptionContainer}>
-          <Text style={styles.mealDescription}>{meal.description}</Text>
+          <Text style={styles.mealDescription}>{t(meal.description)}</Text>
         </View>
       )}
 
@@ -169,7 +173,7 @@ const MealItem = ({
             />
           ))}
           <TouchableOpacity style={styles.saveAsMealButton}>
-            <Text style={styles.saveAsMealText}>Save as Meal</Text>
+            <Text style={styles.saveAsMealText}>{t('meals.saveAsMeal')}</Text>
             <Ionicons name="chevron-forward" size={16} color="#434343" />
           </TouchableOpacity>
         </View>
@@ -209,32 +213,32 @@ const meals = () => {
   // Initialize meal data
   const [mealData, setMealData] = useState<Meal[]>([
     {
-      title: "Breakfast",
+      title: "meals.mealTitles.Breakfast",
       goalCalories: 169,
       totalCalories: 0,
       foods: [],
-      description: "Get energized by grabbing a morning breakfast",
+      description: "meals.mealDescriptions.Breakfast",
     },
     {
-      title: "Lunch",
+      title: "meals.mealTitles.Lunch",
       goalCalories: 169,
       totalCalories: 0,
       foods: [],
-      description: "Don't miss the lunch it's time to get a tasty meal",
+      description: "meals.mealDescriptions.Lunch",
     },
     {
-      title: "Snacks",
+      title: "meals.mealTitles.Snacks",
       goalCalories: 169,
       totalCalories: 0,
       foods: [],
-      description: "Refuel your body with a delicious evening snack",
+      description: "meals.mealDescriptions.Snacks",
     },
     {
-      title: "Dinner",
+      title: "meals.mealTitles.Dinner",
       goalCalories: 338,
       totalCalories: 0,
       foods: [],
-      description: "An early dinner can help you sleep better",
+      description: "meals.mealDescriptions.Dinner",
     },
   ])
 
@@ -472,7 +476,7 @@ const meals = () => {
         {isSelected && (
           <Animated.View style={[styles.tooltip, { opacity: tooltipAnim }]}>
             <View style={styles.tooltipContent}>
-              <Text style={styles.tooltipTitle}>CALORIES</Text>
+              <Text style={styles.tooltipTitle}>{t('meals.calories')}</Text>
               <Text style={styles.tooltipWeight}>
                 {formatToKcal(item.calories)}
                 <Text
@@ -521,6 +525,8 @@ const meals = () => {
     }
   }
 
+  const {t} = useTranslation();
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -530,7 +536,7 @@ const meals = () => {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={20} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Food</Text>
+        <Text style={styles.headerTitle}>{t('food')}</Text>
         <TouchableOpacity>
           <Feather name="more-vertical" size={20} color="#E5E5E5" />
         </TouchableOpacity>
@@ -557,7 +563,7 @@ const meals = () => {
                   fontFamily: "Inter400",
                 }}
               >
-                of {displayCalorieGoal} Cal Consumed
+                {t('meals.caloriesConsumed',{displayCalorieGoal: displayCalorieGoal})}
               </Text>
             </Text>
             <TouchableOpacity style={styles.editButton} onPress={handleOpenGoalModal}>
@@ -605,10 +611,10 @@ const meals = () => {
           <View style={styles.analysisHeader}>
             <View style={styles.analysisTab}>
               <MaterialIcons name="bar-chart" size={18} color="#A3E4BE" />
-              <Text style={styles.analysisTabText}>Analysis</Text>
+              <Text style={styles.analysisTabText}>{t('meals.analysis')}</Text>
             </View>
             <TouchableOpacity style={styles.periodSelector}>
-              <Text style={styles.periodText}>Last 7 Days</Text>
+              <Text style={styles.periodText}>{t('meals.last7Days')}</Text>
               <Ionicons name="chevron-down" size={14} color="#38C472" />
             </TouchableOpacity>
           </View>
@@ -642,12 +648,12 @@ const meals = () => {
 
         <View style={styles.bottomContainer}>
           <View style={styles.messageContainer}>
-            <Text style={styles.messageTitle}>Track Your Weight Progress</Text>
-            <Text style={styles.messageSubtitle}>Set a reminder and stay on track.</Text>
+            <Text style={styles.messageTitle} numberOfLines={1}>{t('meals.trackWeightProgress')}</Text>
+            <Text style={styles.messageSubtitle} numberOfLines={1}>{t('meals.setReminder')}</Text>
           </View>
           <TouchableOpacity style={styles.reminderButton}>
             <Ionicons name="alarm" size={16} color="white" />
-            <Text style={styles.reminderButtonText}>Set Reminder</Text>
+            <Text style={styles.reminderButtonText}>{t('meals.setReminderButton')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -674,7 +680,7 @@ const meals = () => {
   )
 }
 
-export default meals
+export default meals;
 
 const styles = StyleSheet.create({
   container: {
@@ -1071,6 +1077,7 @@ const styles = StyleSheet.create({
     color: "#FEF8FD",
     marginLeft: 8,
     fontSize: 12,
+    maxWidth:130,
     fontFamily: "Inter500",
   },
   popupMenuOverlay: {

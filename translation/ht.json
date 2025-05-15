@@ -635,5 +635,53 @@
     "lbs": "Liv (lbs)",
      "sectionTitle2": "Volim",
     "ml": "Mililit (ml)",
-    "flOz": "Ons likid Ameriken (fl.oz)"
+    "flOz": "Ons likid Ameriken (fl.oz)",
+      "meals": {
+      "headerTitle": "Manje",
+      "caloriesConsumed": " nan {{displayCalorieGoal} Kalori Konsome",
+      "edit": "Modifye",
+      "today": "Jodi a",
+      "mealTitles": {
+        "Breakfast": "Dejene",
+        "Lunch": "Manje midi",
+        "Snacks": "Goute",
+        "Dinner": "Dine"
+      },
+      "mealDescriptions": {
+        "Breakfast": "Jwenn enèji nan yon dejene maten",
+        "Lunch": "Pa rate manje midi, li lè pou yon bon repa",
+        "Snacks": "Rechaje kò ou ak yon goute aswè",
+        "Dinner": "Yon dine bonè ka ede ou dòmi pi byen"
+      },
+      "mealCalories": "{{totalCalories}} nan {{goalCalories}} Kalori",
+      "add": "Ajoute",
+      "saveAsMeal": "Sove kòm Repas",
+      "delete": "Efase",
+      "analysis": "Analiz",
+      "last7Days": "7 Dènye Jou yo",
+      "calories": "KALORI",
+      "kcal": "kcal",
+      "trackWeightProgress": "Swiv Pwogrè Pwa Ou",
+      "setReminder": "Mete yon rapèl epi rete sou tras la.",
+      "setReminderButton": "Mete Rapèl",
+      "reminder": "Rapèl",
+      "popupMenuDelete": "Efase",
+       "setNewGoal": "Mete Nouvo Objektif",
+    "caloriePlaceholder": "-- Kal",
+    "cancel": "Anile",
+    "saveContinue": "Sove & Kontinye",
+     "searchPlaceholder": "Chèche manje",
+    "sectionTitle": "Manje ki souvan swiv",
+    "macroLabels": {
+      "Protein": "Pwoteyin",
+      "Carbs": "Idrat kabòn",
+      "Fat": "Grès"
+    },
+    "categoryLabel": "Kategori:",
+    "caloriesUnit": "Kal",
+    "errorNoResults": "Pa gen rezilta jwenn",
+    "errorGeneric": "Erè pandan wap chèche manje",
+    "checkmarkAria": "Chwazi",
+    "addAria": "Ajoute"
+    }
 }
