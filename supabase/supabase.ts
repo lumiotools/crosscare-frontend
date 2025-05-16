@@ -5,11 +5,10 @@ import { AppState } from 'react-native';
 
 // Replace these with your actual Supabase URL and Anon Key from your Supabase dashboard
 const SUPABASE_URL = 'https://jgpjbgkjttaztoaztxht.supabase.co';
-const SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpncGpiZ2tqdHRhenRvYXp0eGh0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzMjc5MzgsImV4cCI6MjA1MTkwMzkzOH0.6QIId7T60Clx-s3PeSEelBwP5GrBHgS1Htw66Bw3--M';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || undefined;
 
 // Create a Supabase client
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY!, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
