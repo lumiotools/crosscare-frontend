@@ -18,7 +18,7 @@ interface FormatTimeProps {
 export default function VoiceRecorder({
   onSendAudio,
   systemPrompt,
-  apiKey = "AIzaSyD0ISmMWP4_yDqEvlrjpNJB8TnuJBkhZPs",
+  apiKey = process.env.DEEPGRAM_API,
 }: VoiceRecorderProps) {
   const [recording, setRecording] = useState<Audio.Recording | null>(null)
   const [isRecording, setIsRecording] = useState(false)

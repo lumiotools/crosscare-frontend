@@ -79,7 +79,6 @@ const Login: FC = () => {
     setLoading(true);
 
     try {
-      // console.log(`${process.env.DATABASE_URL}`);
       const response = await fetch(
         `https://crosscare-backends.onrender.com/api/login`,
         {

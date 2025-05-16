@@ -307,7 +307,7 @@ export default function askdoula() {
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
       // Your API key should be stored in an environment variable in production
-      const apiKey = "AIzaSyD0ISmMWP4_yDqEvlrjpNJB8TnuJBkhZPs"; // Replace with your actual API key
+      const apiKey = process.env.GEMINI_API; // Replace with your actual API key
 
       // Create enhanced prompt with health data if available
       let enhancedPrompt = systemPrompt;
