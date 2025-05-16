@@ -77,38 +77,6 @@ const QuestionnaireManager = ({
     saveQuestionnaireState()
   }, [state])
 
-  // Replace the checkIfIntroShown function with this improved version
-  const checkIfIntroShown = async () => {
-    try {
-      console.log("Checking if intro has been shown for user:", userId)
-      const introShown = await AsyncStorage.getItem(`intro_shown_${userId}`)
-      console.log("Intro shown value from AsyncStorage:", introShown)
-
-      if (introShown === "true") {
-        console.log("User has already seen intro, skipping to questions")
-        setHasSeenIntro(true)
-
-        // Skip intro by setting the step to 4
-        setIntroStep(4)
-
-        // Important: Mark questionnaire as started
-        setHasStartedQuestionnaire(true)
-
-        // Set the questionnaire to active state if it wasn't already
-        setState((prevState) => ({
-          ...prevState,
-          isActive: true,
-        }))
-
-        return true // Return true to indicate intro has been shown
-      }
-      return false // Return false to indicate intro has not been shown
-    } catch (error) {
-      console.error("Error checking if intro has been shown:", error)
-      return false
-    }
-  }
-
   // Map domain IDs to badge numbers for the API
   const awardTriviaBadge = async (userId: string): Promise<any> => {
     try {
@@ -1629,7 +1597,7 @@ const QuestionnaireManager = ({
       return completedStatus === "true"
     } catch (error) {
       console.error("Error checking questionnaire completion status:", error)
-      return false
+      // return false
     }
   }
 

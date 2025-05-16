@@ -100,9 +100,10 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
         flag: "Housing insecurity",
         options: ["Yes", "No"],
         followUp: {
-          Yes: "q1-smoke", // Continue to smoke questions if "YES"
-          No: "q1-smoke", // Continue to smoke questions if "NO"
-        },
+          "Yes": "q1-smoke", 
+          "No": "q1-smoke",
+          "*": "q1-smoke"
+        }
       },
       {
         id:"q1-smoke",
@@ -335,7 +336,7 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
       },
       {
         id: "q2-10",
-        text: "If transportation is unreliable, she has to walk or take the bus ask if she has a plan to do something differently when the baby comes",
+        text: "If transportation is unreliable, do you have a plan to do something differently when the baby comes?",
         flag: "Transportation support needed",
         followUp:{
           "*": "q2-11",
@@ -345,14 +346,6 @@ export const QUESTIONNAIRE_DOMAINS: QuestionnaireDomain[] = [
         id: "q2-11",
         text:"Are there any traditions or beliefs about pregnancy in your culture?",
         flag: "Cultural beliefs",
-        followUp:{
-          "*":"q2-12",
-        }
-      },
-      {
-        id: "q2-12",
-        text: "Activities that you should or should not do during pregnancy",
-        flag: "Pregnancy education",
         followUp:{
           "*":"q2-13",
         }

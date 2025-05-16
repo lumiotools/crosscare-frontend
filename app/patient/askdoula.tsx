@@ -28,12 +28,12 @@ import {
 } from "@/constants/questionaireData";
 import QuestionnaireManager from "@/components/QuestionaireManager";
 import { useLocalSearchParams } from "expo-router";
-import name from './profile-setting/name';
-import { width, height } from '../../constants/helper';
-import ProfileIcon from "@/assets/images/Svg/ProfileIcon";
-import Person from "@/assets/images/Svg/Person";
 import User from "@/assets/images/Svg/User";
-
+import { fetchHealthData, type HealthStats, type HealthData } from "@/utils/DoulaChatUtils/fetchHealthData";
+import { detectAndHandleLogRequest } from "@/utils/DoulaChatUtils/detectAndHandleLogRequest";
+import { detectAndHandleGoalRequest } from "@/utils/DoulaChatUtils/detectAndHandleGoalRequest";
+import { processUserQuery } from "@/utils/DoulaChatUtils/processUserQuery";
+import ConversationalQuestionnaire from "@/components/ConversationalQuestionnaire";
 
 interface Message {
   id: string;
@@ -43,76 +43,13 @@ interface Message {
   content: string; // text content or audio URI
 }
 
-// Define regex patterns for more advanced pattern matching
-const LOG_PATTERNS = {
-  water: [
-    /(?:log|record|track|add|drank|had|consumed).*?(\d+(?:\.\d+)?).*?(?:glass|glasses|cup|cups|ml|milliliters|millilitres)/i,
-    /(?:track|log|record|add)\s+(\d+(?:\.\d+)?)\s+(?:glass|glasses|cup|cups|ml|milliliters|millilitres).*?water/i,
-    /my water intake (?:today|now|just now) (?:is|was)\s+(\d+(?:\.\d+)?)\s+(?:glass|glasses|cup|cups|ml|milliliters|millilitres)/i,
-    /(?:i\s+)?(?:drank|had|took|consumed)\s+(\d+(?:\.\d+)?)\s+(?:glass|glasses|cup|cups|ml|milliliters|millilitres)(?:\s+of water)?/i,
-    // New patterns for incremental logging
-    /(?:i\s+)?(?:drank|had|took|consumed)\s+(\d+(?:\.\d+)?)\s+(?:more|additional|extra)\s+(?:glass|glasses|cup|cups|ml|milliliters|millilitres)(?:\s+of water)?/i,
-    /(?:add|log|record|track)\s+(\d+(?:\.\d+)?)\s+(?:more|additional|extra)\s+(?:glass|glasses|cup|cups|ml|milliliters|millilitres)(?:\s+of water)?/i,
-    /(?:i\s+)?(?:just|now|recently)\s+(?:drank|had|took|consumed)\s+(?:another|an additional|an extra)\s+(\d+(?:\.\d+)?)\s+(?:glass|glasses|cup|cups|ml|milliliters|millilitres)(?:\s+of water)?/i,
-  ],
-  weight: [
-    /(?:log|record|track|add|weigh|measure).*?(\d+(?:\.\d+)?).*?(?:kg|kgs|kilograms?|lbs?|pounds?)/i,
-    /(?:track|log|record|add)\s+(\d+(?:\.\d+)?)\s+(?:kg|kgs|kilograms?|lbs?|pounds?).*?weight/i,
-    /my weight (?:today|now|just now) (?:is|was)\s+(\d+(?:\.\d+)?)\s+(?:kg|kgs|kilograms?|lbs?|pounds?)/i,
-    /(?:i\s+)?(?:weigh|am|measure)\s+(\d+(?:\.\d+)?)\s+(?:kg|kgs|kilograms?|lbs?|pounds?)/i,
-  ],
-  steps: [
-    /(?:log|record|track|add|walk|measure).*?(\d+(?:\.\d+)?).*?(?:steps?|walked)/i,
-    /(?:track|log|record|add)\s+(\d+(?:\.\d+)?)\s+steps/i,
-    /(?:my steps?|my step count) (?:today|now|just now) (?:is|was)\s+(\d+(?:\.\d+)?)/i,
-    /(?:i\s+)?(?:walked|did|took)\s+(\d+(?:\.\d+)?)\s+steps/i,
-  ],
-  heartRate: [
-    /(?:log|record|track|add|measured).*?(\d+(?:\.\d+)?).*?(?:bpm|beats per minute|heart rate|pulse)/i,
-    /(?:track|log|record|add)\s+(\d+(?:\.\d+)?)\s+(?:bpm|beats per minute).*?(?:heart|pulse)/i,
-    /my (?:heart rate|pulse) (?:today|now|just now) (?:is|was)\s+(\d+(?:\.\d+)?)/i,
-    /(?:i\s+)?(?:have|had|measured)\s+(?:a\s+)?(?:heart rate|pulse|HR) of\s+(\d+(?:\.\d+)?)/i,
-  ],
-  sleep: [
-    /(?:log|record|track|add).*?sleep.*?from\s+(\d+(?::\d+)?\s*(?:am|pm)?).*?to\s+(\d+(?::\d+)?\s*(?:am|pm)?)/i,
-    /(?:i\s+)?(?:slept|sleep).*?from\s+(\d+(?::\d+)?\s*(?:am|pm)?).*?to\s+(\d+(?::\d+)?\s*(?:am|pm)?)/i,
-    /(?:i\s+)?(?:went to bed|fell asleep).*?(?:at|around)\s+(\d+(?::\d+)?\s*(?:am|pm)?).*?(?:woke up|got up).*?(?:at|around)\s+(\d+(?::\d+)?\s*(?:am|pm)?)/i,
-    /my sleep (?:yesterday|last night) was from\s+(\d+(?::\d+)?\s*(?:am|pm)?).*?to\s+(\d+(?::\d+)?\s*(?:am|pm)?)/i,
-  ],
-};
-
-const GOAL_PATTERNS = {
-  water: [
-    /(?:set|update|change).*?(?:water|hydration).*?goal.*?(\d+(?:\.\d+)?).*?(?:glass|glasses|cup|cups|ml|milliliters|millilitres)/i,
-    /(?:goal|target) (?:is|to drink|for|of).*?(\d+(?:\.\d+)?).*?(?:glass|glasses|cup|cups|ml|milliliters|millilitres)/i,
-    /(?:want|aim|going) to drink\s+(\d+(?:\.\d+)?)\s+(?:glass|glasses|cup|cups|ml|milliliters|millilitres)/i,
-    /my water goal (?:is|should be)\s+(\d+(?:\.\d+)?)\s+(?:glass|glasses|cup|cups|ml|milliliters|millilitres)/i,
-  ],
-  steps: [
-    /(?:set|update|change).*?(?:steps?).*?goal.*?(\d+(?:\.\d+)?).*?(?:steps?)/i,
-    /(?:step goal|step target|walking goal|walking target) (?:is|to reach|for|of).*?(\d+(?:\.\d+)?).*?(?:steps?)/i,
-    /(?:want|aim|going) to (?:walk|reach|do)\s+(\d+(?:\.\d+)?)\s+steps/i,
-    /my step goal (?:is|should be)\s+(\d+(?:\.\d+)?)/i,
-  ],
-};
-
-// Function to check if the request is for an incremental update
-function isIncrementalRequest(query: string) {
-  const incrementalPatterns = [
-    /(?:more|additional|extra|another)\s+(?:glass|glasses|cup|cups|ml|milliliters|millilitres)/i,
-    /(?:increase|increment|add to|on top of)/i,
-  ];
-
-  return incrementalPatterns.some((pattern) => pattern.test(query));
-}
 
 export default function askdoula() {
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const user = useSelector((state: any) => state.user);
-  const [healthData, setHealthData] = useState(null);
-  const [isRecording, setIsRecording] = useState(false);
+  const [healthData, setHealthData] = useState<HealthData | null>(null);
   const [healthStats, setHealthStats] = useState({
     water: { today: 0, weekly: 0, monthly: 0, avgWeekly: 0, avgMonthly: 0 },
     steps: { today: 0, weekly: 0, monthly: 0, avgWeekly: 0, avgMonthly: 0 },
@@ -131,20 +68,15 @@ export default function askdoula() {
   const params = useLocalSearchParams();
   const fromModal = params.from_modal === "true";
 
-  // Check if back button should be shown
-  // const shouldShowBackButton = !hideBackButtonPaths.includes(path);
-
   const [isAssistantResponding, setIsAssistantResponding] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const loadingAnimation = useRef(new Animated.Value(0)).current;
 
-  // Questionnaire state
-  const [showStartQuestionnaire, setShowStartQuestionnaire] = useState(false);
 
   // Initialize questionnaire manager
-  const questionnaireManager = QuestionnaireManager({
+  const questionnaireManager = ConversationalQuestionnaire({
     userId: user?.user_id,
     onQuestionReady: (question) => {
       // Add the question as a message from the assistant
@@ -160,43 +92,18 @@ export default function askdoula() {
       ]);
     },
     onQuestionnaireComplete: () => {
-      // Send a completion message
-      // setMessages((prevMessages) => [
-      //   ...prevMessages,
-      //   {
-      //     id: Date.now().toString(),
-      //     type: "text",
-      //     content:
-      //       "Thank you for sharing this information with me. Understanding these aspects of your life helps me provide better support and connect you with resources that can address any challenges you're facing. Remember, you're not alone, and there are organizations ready to assist you.",
-      //     isUser: false,
-      //     timestamp: new Date(),
-      //   },
-      // ])
+      // Questionnaire completion is handled internally by the ConversationalQuestionnaire
+      // Any additional actions can be added here
+      console.log("Questionnaire completed");
     },
     onResponseSaved: (response: QuestionnaireResponse) => {
       // You can do additional processing here if needed
       console.log("Response saved:", response);
     },
+    // You need to add your OpenAI API key here
+    openAIApiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY || ''
   });
 
-  // useEffect(() => {
-  //   if (messages.length === 0 && questionnaireManager.isActive) {
-  //     // Add welcome message
-  //     setMessages([
-  //       {
-  //         id: Date.now().toString(),
-  //         type: "text",
-  //         content: `Hello ${user?.user_name || "there"}!  as your doula, I'm here to support you not just physically, but also emotionally and socially throughout your pregnancy and postpartum journey.`,
-  //         isUser: false,
-  //         timestamp: new Date(),
-  //       },
-  //     ])
-  //   }
-  // }, [questionnaireManager.isActive, messages.length])
-
-  // Check if we should show the questionnaire option
-
-  // Replace the existing useEffect for checkQuestionnaireStatus with this:
 
   const checkQuestionnaireCompletionStatus = async () => {
     try {
@@ -209,117 +116,6 @@ export default function askdoula() {
       return false;
     }
   };
-
-  // Replace the existing useEffect for checkQuestionnaireStatus with this:
-  // useEffect(() => {
-  //   const checkQuestionnaireStatus = async () => {
-  //     try {
-  //       // First check if questionnaire is already completed
-  //       const isCompleted = await checkQuestionnaireCompletionStatus()
-  //       console.log("Questionnaire completed status:", isCompleted)
-
-  //       // If completed, don't do anything with the questionnaire
-  //       if (isCompleted) {
-  //         console.log("Questionnaire already completed, not starting again")
-
-  //         // If we have no messages yet, add a welcome message
-  //         if (messages.length === 0) {
-  //           setMessages([
-  //             {
-  //               id: Date.now().toString(),
-  //               type: "text",
-  //               content: `Hello ${user?.user_name || "there"}! How can I help you today?`,
-  //               isUser: false,
-  //               timestamp: new Date(),
-  //             },
-  //           ])
-  //         }
-  //         return
-  //       }
-
-  //       // Check if there's a paused questionnaire
-  //       const isPaused = await questionnaireManager.checkForPausedQuestionnaire()
-  //       console.log("Paused questionnaire status:", isPaused)
-
-  //       // If there's a paused questionnaire and no messages yet, ask if they want to continue
-  //       if (isPaused && messages.length === 0) {
-  //         console.log("Found paused questionnaire, asking to continue")
-
-  //         // Get domain information to provide context
-  //         try {
-  //           const savedState = await AsyncStorage.getItem(`questionnaire_state_${user?.user_id}`)
-  //           if (savedState) {
-  //             const parsedState = JSON.parse(savedState)
-
-  //             // Tell the user what domain we were in, and what's coming next
-  //             const currentDomain = QUESTIONNAIRE_DOMAINS[parsedState.currentDomainIndex]
-
-  //             // Check if we were at the end of the current domain
-  //             if (parsedState.currentQuestionIndex >= currentDomain.questions.length) {
-  //               const nextDomainIndex = parsedState.currentDomainIndex + 1
-  //               if (nextDomainIndex < QUESTIONNAIRE_DOMAINS.length) {
-  //                 const nextDomain = QUESTIONNAIRE_DOMAINS[nextDomainIndex]
-  //                 setMessages([
-  //                   {
-  //                     id: Date.now().toString(),
-  //                     type: "text",
-  //                     content: `Hey ${user?.user_name || "there"}, you have an unfinished questionnaire. We were about to start discussing ${nextDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
-  //                     isUser: false,
-  //                     timestamp: new Date(),
-  //                   },
-  //                 ])
-  //                 return
-  //               }
-  //             }
-
-  //             // If we weren't at the end, we were in the middle of a domain
-  //             if (currentDomain) {
-  //               setMessages([
-  //                 {
-  //                   id: Date.now().toString(),
-  //                   type: "text",
-  //                   content: `Hey ${user?.user_name || "there"}, you have an unfinished questionnaire about ${currentDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
-  //                   isUser: false,
-  //                   timestamp: new Date(),
-  //                 },
-  //               ])
-  //               return
-  //             }
-  //           }
-  //         } catch (error) {
-  //           console.error("Error getting saved questionnaire state:", error)
-  //         }
-
-  //         // Fallback message if we can't determine the domain
-  //         setMessages([
-  //           {
-  //             id: Date.now().toString(),
-  //             type: "text",
-  //             content: `Hey ${user?.user_name || "there"}, you have an unfinished questionnaire. Would you like to continue where you left off?`,
-  //             isUser: false,
-  //             timestamp: new Date(),
-  //           },
-  //         ])
-  //         return
-  //       }
-
-  //       // Only if NOT completed, NOT paused, and no messages, auto-start it
-  //       if (!isPaused && messages.length === 0) {
-  //         console.log("Starting new questionnaire")
-  //         questionnaireManager.startQuestionnaire()
-  //       }
-  //     } catch (error) {
-  //       console.error("Error checking questionnaire status:", error)
-  //     }
-  //   }
-
-  //   // Only run this effect if we have a user ID
-  //   if (user?.user_id) {
-  //     checkQuestionnaireStatus()
-  //   }
-  // }, [user?.user_id])
-
-  const userId = user?.user_id;
 
   useEffect(() => {
     const checkQuestionnaireStatus = async () => {
@@ -443,7 +239,7 @@ export default function askdoula() {
 
   // Fetch health data when component mounts
   useEffect(() => {
-    fetchHealthData();
+    fetchAndUpdateHealthData();
   }, []);
 
   // Auto-scroll to bottom when messages change or when typing indicator appears
@@ -484,316 +280,17 @@ export default function askdoula() {
 
   const systemPrompt = `${systemPrompts}`;
 
-  const fetchHealthData = async () => {
+  const fetchAndUpdateHealthData = async () => {
     if (user && user.user_id) {
       try {
-        // Use the specified endpoint format
-        const apiUrl = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}`;
-        console.log(`Making API call to: ${apiUrl}`);
-
-        // Make the API call
-        const response = await axios.get(apiUrl);
-        const apiData = response.data.activities 
-
-
-
-        // Process the data if we got a response
-        if (
-          apiData &&
-          Array.isArray(apiData) &&
-          apiData.length > 0
-        ) {
-          console.log(
-            "API data found. First record:",
-            JSON.stringify(apiData[0], null, 2)
-          );
-
-          // Sort by date (newest first)
-          const sortedRecords = [...apiData].sort(
-            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-          );
-
-
-          // Get the most recent record
-          const latestRecord = sortedRecords[0];
-
-          // Get the last 7 days of records for weekly stats
-          const last7Days = sortedRecords.slice(0, 7);
-
-          // Get the last 30 days of records for monthly stats
-          const last30Days = sortedRecords.slice(0, 30);
-
-          // Calculate sleep duration in hours for a record
-          const calculateSleepDuration = (record: any) => {
-            if (
-              record.details &&
-              record.details.sleep &&
-              record.details.sleep.start &&
-              record.details.sleep.end
-            ) {
-              const start = new Date(record.details.sleep.start);
-              const end = new Date(record.details.sleep.end);
-              return (end.getTime() - start.getTime()) / (1000 * 60 * 60); // Convert ms to hours
-            }
-            return 0;
-          };
-
-          // Create a new stats object to update state
-          const newHealthStats = {
-            water: {
-              today: 0,
-              weekly: 0,
-              monthly: 0,
-              avgWeekly: 0,
-              avgMonthly: 0,
-            },
-            steps: {
-              today: 0,
-              weekly: 0,
-              monthly: 0,
-              avgWeekly: 0,
-              avgMonthly: 0,
-            },
-            weight: {
-              today: 0,
-              weekly: 0,
-              monthly: 0,
-              avgWeekly: 0,
-              avgMonthly: 0,
-              unit: "kg",
-            },
-            heart: {
-              today: 0,
-              weekly: 0,
-              monthly: 0,
-              avgWeekly: 0,
-              avgMonthly: 0,
-            },
-            sleep: {
-              today: 0,
-              weekly: 0,
-              monthly: 0,
-              avgWeekly: 0,
-              avgMonthly: 0,
-            },
-          };
-
-          // TODAY'S STATS
-          newHealthStats.water.today = latestRecord.details?.water || 0;
-          newHealthStats.steps.today = latestRecord.details?.steps || 0;
-          newHealthStats.heart.today = latestRecord.details?.heart || 0;
-          newHealthStats.sleep.today = calculateSleepDuration(latestRecord);
-          if (latestRecord.details?.weight?.value) {
-            newHealthStats.weight.today = latestRecord.details.weight.value;
-            newHealthStats.weight.unit =
-              latestRecord.details.weight.unit || "kg";
-          }
-
-          // WEEKLY STATS
-          // Filter records with valid data for each metric
-          const weeklyWaterRecords = last7Days.filter(
-            (r) =>
-              r.details &&
-              typeof r.details.water === "number" &&
-              r.details.water > 0
-          );
-          const weeklyStepsRecords = last7Days.filter(
-            (r) =>
-              r.details &&
-              typeof r.details.steps === "number" &&
-              r.details.steps > 0
-          );
-          const weeklyHeartRecords = last7Days.filter(
-            (r) =>
-              r.details &&
-              typeof r.details.heart === "number" &&
-              r.details.heart > 0
-          );
-          const weeklySleepRecords = last7Days.filter(
-            (r) => calculateSleepDuration(r) > 0
-          );
-          const weeklyWeightRecords = last7Days.filter(
-            (r) =>
-              r.details &&
-              r.details.weight &&
-              typeof r.details.weight.value === "number" &&
-              r.details.weight.value > 0
-          );
-
-          // Calculate totals
-          newHealthStats.water.weekly = weeklyWaterRecords.reduce(
-            (sum, r) => sum + r.details.water,
-            0
-          );
-          newHealthStats.steps.weekly = weeklyStepsRecords.reduce(
-            (sum, r) => sum + r.details.steps,
-            0
-          );
-          newHealthStats.heart.weekly = weeklyHeartRecords.reduce(
-            (sum, r) => sum + r.details.heart,
-            0
-          );
-          newHealthStats.sleep.weekly = weeklySleepRecords.reduce(
-            (sum, r) => sum + calculateSleepDuration(r),
-            0
-          );
-          newHealthStats.weight.weekly = weeklyWeightRecords.reduce(
-            (sum, r) => sum + r.details.weight.value,
-            0
-          );
-
-          // Calculate averages
-          newHealthStats.water.avgWeekly =
-            weeklyWaterRecords.length > 0
-              ? newHealthStats.water.weekly / weeklyWaterRecords.length
-              : 0;
-          newHealthStats.steps.avgWeekly =
-            weeklyStepsRecords.length > 0
-              ? newHealthStats.steps.weekly / weeklyStepsRecords.length
-              : 0;
-          newHealthStats.heart.avgWeekly =
-            weeklyHeartRecords.length > 0
-              ? newHealthStats.heart.weekly / weeklyHeartRecords.length
-              : 0;
-          newHealthStats.sleep.avgWeekly =
-            weeklySleepRecords.length > 0
-              ? newHealthStats.sleep.weekly / weeklySleepRecords.length
-              : 0;
-          newHealthStats.weight.avgWeekly =
-            weeklyWeightRecords.length > 0
-              ? newHealthStats.weight.weekly / weeklyWeightRecords.length
-              : 0;
-
-          // MONTHLY STATS
-          // Filter records with valid data for each metric
-          const monthlyWaterRecords = last30Days.filter(
-            (r) =>
-              r.details &&
-              typeof r.details.water === "number" &&
-              r.details.water > 0
-          );
-          const monthlyStepsRecords = last30Days.filter(
-            (r) =>
-              r.details &&
-              typeof r.details.steps === "number" &&
-              r.details.steps > 0
-          );
-          const monthlyHeartRecords = last30Days.filter(
-            (r) =>
-              r.details &&
-              typeof r.details.heart === "number" &&
-              r.details.heart > 0
-          );
-          const monthlySleepRecords = last30Days.filter(
-            (r) => calculateSleepDuration(r) > 0
-          );
-          const monthlyWeightRecords = last30Days.filter(
-            (r) =>
-              r.details &&
-              r.details.weight &&
-              typeof r.details.weight.value === "number" &&
-              r.details.weight.value > 0
-          );
-
-          // Calculate totals
-          newHealthStats.water.monthly = monthlyWaterRecords.reduce(
-            (sum, r) => sum + r.details.water,
-            0
-          );
-          newHealthStats.steps.monthly = monthlyStepsRecords.reduce(
-            (sum, r) => sum + r.details.steps,
-            0
-          );
-          newHealthStats.heart.monthly = monthlyHeartRecords.reduce(
-            (sum, r) => sum + r.details.heart,
-            0
-          );
-          newHealthStats.sleep.monthly = monthlySleepRecords.reduce(
-            (sum, r) => sum + calculateSleepDuration(r),
-            0
-          );
-          newHealthStats.weight.monthly = monthlyWeightRecords.reduce(
-            (sum, r) => sum + r.details.weight.value,
-            0
-          );
-
-          // Calculate averages
-          newHealthStats.water.avgMonthly =
-            monthlyWaterRecords.length > 0
-              ? newHealthStats.water.monthly / monthlyWaterRecords.length
-              : 0;
-          newHealthStats.steps.avgMonthly =
-            monthlyStepsRecords.length > 0
-              ? newHealthStats.steps.monthly / monthlyStepsRecords.length
-              : 0;
-          newHealthStats.heart.avgMonthly =
-            monthlyHeartRecords.length > 0
-              ? newHealthStats.heart.monthly / monthlyHeartRecords.length
-              : 0;
-          newHealthStats.sleep.avgMonthly =
-            monthlySleepRecords.length > 0
-              ? newHealthStats.sleep.monthly / monthlySleepRecords.length
-              : 0;
-          newHealthStats.weight.avgMonthly =
-            monthlyWeightRecords.length > 0
-              ? newHealthStats.weight.monthly / monthlyWeightRecords.length
-              : 0;
-
-          // Create health data object with safer property access (for backward compatibility)
-          const newHealthData = {
-            steps: {
-              today: newHealthStats.steps.today,
-              weekly: newHealthStats.steps.weekly,
-            },
-            water: {
-              today: newHealthStats.water.today,
-              weekly: newHealthStats.water.weekly,
-            },
-            weight: {
-              current: latestRecord.details?.weight?.value || 0,
-              unit: latestRecord.details?.weight?.unit || "kg",
-              previous: 0,
-            },
-          };
-
-          // Find previous weight record for backward compatibility
-          const prevWeightRecord = sortedRecords.find(
-            (r) =>
-              r !== latestRecord &&
-              r.details &&
-              r.details.weight &&
-              typeof r.details.weight.value === "number" &&
-              r.details.weight.value > 0
-          );
-
-          if (
-            prevWeightRecord &&
-            prevWeightRecord.details &&
-            prevWeightRecord.details.weight
-          ) {
-            newHealthData.weight.previous =
-              prevWeightRecord.details.weight.value;
-          }
-
-          // Update state with the new health data
-          setHealthStats(newHealthStats);
-          setHealthData(newHealthData as any);
-          console.log(
-            "Health stats calculated successfully:",
-            JSON.stringify(newHealthStats, null, 2)
-          );
-        } else {
-          console.log("No valid data in API response");
-        }
-      } catch (error: any) {
-        console.error("API call error:", error.message);
-        if (error.response) {
-          console.error("API error response status:", error.response.status);
-          console.error(
-            "API error response data:",
-            JSON.stringify(error.response.data, null, 2)
-          );
-        }
+        const { healthStats: newHealthStats, healthData: newHealthData } = await fetchHealthData(user.user_id);
+        
+        // Update state with the new health data
+        setHealthStats(newHealthStats);
+        setHealthData(newHealthData);
+        console.log("Health stats fetched and updated successfully");
+      } catch (error) {
+        console.error("Error fetching health data:", error);
       }
     } else {
       console.log("No user ID available");
@@ -951,109 +448,6 @@ export default function askdoula() {
     console.log("Speaking response:", text);
   };
 
-  // Function to detect log requests using our more advanced patterns
-  function detectLogRequestWithPatterns(query: string) {
-    // Check for water intake logs
-    for (const pattern of LOG_PATTERNS.water) {
-      const match = query.match(pattern);
-      if (match && match[1]) {
-        const value = parseFloat(match[1]);
-        const isGlasses = /glass|glasses|cup|cups/i.test(query);
-        const isIncremental = isIncrementalRequest(query);
-
-        return {
-          type: "water",
-          value,
-          isGlasses,
-          isIncremental,
-        };
-      }
-    }
-
-    // Check for weight logs
-    for (const pattern of LOG_PATTERNS.weight) {
-      const match = query.match(pattern);
-      if (match && match[1]) {
-        const value = parseFloat(match[1]);
-        const unit = /\b(kg|kgs|kilograms)\b/i.test(query) ? "kg" : "lbs";
-        return {
-          type: "weight",
-          value,
-          unit,
-        };
-      }
-    }
-
-    // Check for steps logs
-    for (const pattern of LOG_PATTERNS.steps) {
-      const match = query.match(pattern);
-      if (match && match[1]) {
-        const value = parseInt(match[1], 10);
-        return {
-          type: "steps",
-          value,
-        };
-      }
-    }
-
-    // Check for heart rate logs
-    for (const pattern of LOG_PATTERNS.heartRate) {
-      const match = query.match(pattern);
-      if (match && match[1]) {
-        const value = parseInt(match[1], 10);
-        return {
-          type: "heart",
-          value,
-        };
-      }
-    }
-
-    // Check for sleep logs
-    for (const pattern of LOG_PATTERNS.sleep) {
-      const match = query.match(pattern);
-      if (match && match[1] && match[2]) {
-        // We need both start and end time
-        return {
-          type: "sleep",
-          sleepStart: match[1],
-          sleepEnd: match[2],
-        };
-      }
-    }
-
-    return null;
-  }
-
-  // Function to detect goal requests using our more advanced patterns
-  function detectGoalRequestWithPatterns(query: string) {
-    // Check for water intake goals
-    for (const pattern of GOAL_PATTERNS.water) {
-      const match = query.match(pattern);
-      if (match && match[1]) {
-        const value = parseFloat(match[1]);
-        const isGlasses = /glass|glasses|cup|cups/i.test(query);
-        return {
-          type: "water",
-          value,
-          isGlasses,
-        };
-      }
-    }
-
-    // Check for step goals
-    for (const pattern of GOAL_PATTERNS.steps) {
-      const match = query.match(pattern);
-      if (match && match[1]) {
-        const value = parseInt(match[1], 10);
-        return {
-          type: "steps",
-          value,
-        };
-      }
-    }
-
-    return null;
-  }
 
   const extractMetricFromText = (text: string, metricType: string) => {
     // Generic number extraction regex
@@ -1121,1073 +515,103 @@ export default function askdoula() {
     }
   };
 
-  const detectAndHandleLogRequest = async (query: string) => {
-    // First try pattern-based recognition
-    const patternMatch = detectLogRequestWithPatterns(query);
-
-    if (patternMatch) {
-      let endpoint = "";
-      let requestData = {};
-      let successMessage = "";
-
-      try {
-        if (patternMatch.type === "water") {
-          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/water`;
-
-          const waterValue = patternMatch.isGlasses
-            ? patternMatch.value
-            : Math.round((patternMatch.value ?? 0) / 250);
-
-          const isIncrement = patternMatch.isIncremental || false;
-
-          requestData = {
-            water: waterValue,
-            isIncrement: isIncrement,
-          };
-
-          const incrementText = isIncrement ? " more" : "";
-          successMessage = `I've logged ${
-            patternMatch.isGlasses
-              ? patternMatch.value + incrementText + " glasses"
-              : patternMatch.value + incrementText + "ml"
-          } of water for you.`;
-
-          console.log("Water logging request:", { waterValue, isIncrement });
-        } else if (patternMatch.type === "weight") {
-          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/weight`;
-          requestData = {
-            weight: patternMatch.value,
-            weight_unit: patternMatch.unit,
-          };
-          successMessage = `I've logged your weight of ${patternMatch.value} ${patternMatch.unit}.`;
-        } else if (patternMatch.type === "steps") {
-          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/steps`;
-          requestData = { steps: patternMatch.value };
-          successMessage = `I've logged ${patternMatch.value} steps for you.`;
-        } else if (patternMatch.type === "heart") {
-          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/heart`;
-          requestData = { heartRate: patternMatch.value };
-          successMessage = `I've logged your heart rate of ${patternMatch.value} bpm.`;
-        } else if (patternMatch.type === "sleep") {
-          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/sleep`;
-
-          // Format times to ensure they have AM/PM
-          const formatTime = (timeStr) => {
-            let formattedTime = timeStr.trim();
-
-            // Convert am/pm to uppercase AM/PM
-            if (formattedTime.toLowerCase().endsWith("am")) {
-              formattedTime = formattedTime.slice(0, -2) + "AM";
-            } else if (formattedTime.toLowerCase().endsWith("pm")) {
-              formattedTime = formattedTime.slice(0, -2) + "PM";
-            }
-            // Add AM/PM if missing
-            else if (
-              !formattedTime.toUpperCase().endsWith("AM") &&
-              !formattedTime.toUpperCase().endsWith("PM")
-            ) {
-              const hour = parseInt(formattedTime.split(":")[0]);
-              // Assume hours 7-11 are AM, 12 and 1-6 are PM, and others are AM
-              if (hour >= 7 && hour <= 11) {
-                formattedTime += " AM";
-              } else {
-                formattedTime += " PM";
-              }
-            }
-
-            return formattedTime;
-          };
-
-          const sleepStart = formatTime(patternMatch.sleepStart);
-          const sleepEnd = formatTime(patternMatch.sleepEnd);
-
-          // Get today's date in ISO format (YYYY-MM-DD)
-          const today = new Date().toISOString().split("T")[0];
-
-          requestData = {
-            date: today,
-            sleepStart: sleepStart,
-            sleepEnd: sleepEnd,
-          };
-          successMessage = `I've logged your sleep from ${sleepStart} to ${sleepEnd}.`;
-        }
-
-        // If we have valid data and an endpoint, make the API call
-        if (endpoint) {
-          console.log("Logging health metric:", { endpoint, requestData });
-
-          const response = await axios.post(endpoint, requestData);
-
-          if (response.status >= 200 && response.status < 300) {
-            // Success - refresh health data
-            await fetchHealthData();
-
-            // Add response message
-            setMessages((prevMessages) => [
-              ...prevMessages,
-              {
-                id: (Date.now() + 1).toString(),
-                type: "text",
-                content: successMessage,
-                isUser: false,
-                timestamp: new Date(),
-              },
-            ]);
-
-            return true;
-          } else {
-            throw new Error(`API returned status ${response.status}`);
-          }
-        }
-      } catch (error) {
-        console.error("Error logging health metric:", error);
-
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          {
-            id: (Date.now() + 1).toString(),
-            type: "text",
-            content:
-              "I'm sorry, I couldn't log that health information. Please try again or use the tracking screens.",
-            isUser: false,
-            timestamp: new Date(),
-          },
-        ]);
-      }
-
-      return true; // We had a pattern match, even if the API call failed
-    }
-
-    // If pattern matching failed, check if this is a log request with generic indicators
-    const isLogRequest = /log|record|track|add|set|update/i.test(query);
-
-    if (!isLogRequest) {
-      return false; // Not a log request
-    }
-
-    // Determine what metric is being logged
-    const isWaterLog = /water|hydration|glass|glasses|drink/i.test(query);
-    const isWeightLog = /weight|weigh/i.test(query);
-    const isStepsLog = /steps|walked|walking/i.test(query);
-    const isHeartLog = /heart|pulse|bpm/i.test(query);
-    const isSleepLog = /sleep|slept|bed time|bedtime|woke up/i.test(query);
-
-    // Extract the metric
-    let extractedData = null;
-    let endpoint = "";
-    let requestData = {};
-    let successMessage = "";
-
-    try {
-      if (isWaterLog) {
-        extractedData = extractMetricFromText(query, "water");
-
-        if (extractedData) {
-          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/water`;
-
-          // If the user specified glasses, send that value directly
-          // Otherwise, convert ml to glasses (assuming 250ml per glass)
-          const waterValue = extractedData.isGlasses
-            ? extractedData.value
-            : Math.round(extractedData.value ?? 0 / 250);
-
-          requestData = { water: waterValue };
-          successMessage = `I've logged ${
-            extractedData.isGlasses
-              ? extractedData.value + " glasses"
-              : extractedData.value + "ml"
-          } of water for you.`;
-        }
-      } else if (isWeightLog) {
-        extractedData = extractMetricFromText(query, "weight");
-
-        if (extractedData) {
-          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/weight`;
-          requestData = {
-            weight: extractedData.value,
-            weight_unit: extractedData.unit,
-          };
-          successMessage = `I've logged your weight of ${extractedData.value} ${extractedData.unit}.`;
-        }
-      } else if (isStepsLog) {
-        extractedData = extractMetricFromText(query, "steps");
-
-        if (extractedData) {
-          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/steps`;
-          requestData = { steps: extractedData.value };
-          successMessage = `I've logged ${extractedData.value} steps for you.`;
-        }
-      } else if (isHeartLog) {
-        extractedData = extractMetricFromText(query, "heart");
-
-        if (extractedData) {
-          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/heart`;
-          requestData = { heartRate: extractedData.value };
-          successMessage = `I've logged your heart rate of ${extractedData.value} bpm.`;
-        }
-      } else if (isSleepLog) {
-        extractedData = extractMetricFromText(query, "sleep");
-
-        if (extractedData) {
-          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/sleep`;
-
-          // Format times to ensure they have AM/PM
-          const formatTime = (timeStr: string) => {
-            // Ensure time has AM/PM
-            if (
-              !timeStr.toLowerCase().includes("am") &&
-              !timeStr.toLowerCase().includes("pm")
-            ) {
-              // Make assumption based on typical sleep patterns
-              const hour = parseInt(timeStr.split(":")[0]);
-              // Assume hours 7-11 are AM, 12 and 1-6 are PM, and after midnight is AM
-              if (hour >= 7 && hour <= 11) {
-                return timeStr + " AM";
-              } else {
-                return timeStr + " PM";
-              }
-            }
-            return timeStr;
-          };
-
-          const sleepStart = formatTime(extractedData.sleepStart || "");
-          const sleepEnd = formatTime(extractedData.sleepEnd || "");
-
-          // Get today's date in ISO format (YYYY-MM-DD)
-          const today = new Date().toISOString().split("T")[0];
-
-          requestData = {
-            date: today,
-            sleepStart: sleepStart,
-            sleepEnd: sleepEnd,
-          };
-          successMessage = `I've logged your sleep from ${sleepStart} to ${sleepEnd}.`;
-        } else {
-          // If we couldn't extract specific sleep times, provide guidance
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            {
-              id: (Date.now() + 1).toString(),
-              type: "text",
-              content:
-                "To log sleep, please specify your sleep start and end times. For example, 'I slept from 10:30 PM to 6:45 AM' or 'Log my sleep from 11 PM to 7 AM'.",
-              isUser: false,
-              timestamp: new Date(),
-            },
-          ]);
-          return true;
-        }
-      }
-
-      // If we have valid data and an endpoint, make the API call
-      if (extractedData && endpoint) {
-        console.log("Logging health metric:", { endpoint, requestData });
-
-        const response = await axios.post(endpoint, requestData);
-
-        if (response.status >= 200 && response.status < 300) {
-          // Success - refresh health data
-          await fetchHealthData();
-
-          // Add response message
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            {
-              id: (Date.now() + 1).toString(),
-              type: "text",
-              content: successMessage,
-              isUser: false,
-              timestamp: new Date(),
-            },
-          ]);
-
-          return true;
-        } else {
-          throw new Error(`API returned status ${response.status}`);
-        }
-      }
-    } catch (error) {
-      console.error("Error logging health metric:", error);
-
+  const handleLogRequest = async (query: string): Promise<boolean> => {
+    // Create a helper function to add messages to the chat
+    const addResponseMessage = (content: string) => {
       setMessages((prevMessages) => [
         ...prevMessages,
         {
           id: (Date.now() + 1).toString(),
           type: "text",
-          content:
-            "I'm sorry, I couldn't log that health information. Please try again or use the tracking screens.",
+          content,
           isUser: false,
           timestamp: new Date(),
         },
       ]);
-
-      return true;
-    }
-
-    return false; // Not handled as a log request
+    };
+  
+    // Call the utility function with the necessary parameters
+    const result = await detectAndHandleLogRequest(
+      query,
+      user.user_id,
+      extractMetricFromText,
+      fetchAndUpdateHealthData,
+      addResponseMessage
+    );
+  
+    return result.handled;
   };
 
-  const detectAndHandleGoalRequest = async (query: string) => {
-    // First try pattern-based recognition
-    const patternMatch = detectGoalRequestWithPatterns(query);
-
-    if (patternMatch) {
-      let endpoint = "";
-      let requestData = {};
-      let successMessage = "";
-
-      try {
-        if (patternMatch.type === "water") {
-          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/waterGoal`;
-
-          const waterGoal = patternMatch.isGlasses
-            ? patternMatch.value
-            : Math.round(patternMatch.value / 250);
-
-          requestData = { waterGoal: waterGoal };
-          successMessage = `I've set your water intake goal to ${waterGoal} glasses per day.`;
-        } else if (patternMatch.type === "steps") {
-          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/steps`;
-          requestData = { stepsGoal: patternMatch.value };
-          successMessage = `I've set your step goal to ${patternMatch.value} steps per day.`;
-        }
-
-        // If we have valid data and an endpoint, make the API call
-        if (endpoint) {
-          console.log("Setting health goal:", { endpoint, requestData });
-
-          const response = await axios.post(endpoint, requestData);
-
-          if (response.status >= 200 && response.status < 300) {
-            // Success - refresh health data
-            await fetchHealthData();
-
-            // Add response message
-            setMessages((prevMessages) => [
-              ...prevMessages,
-              {
-                id: (Date.now() + 1).toString(),
-                type: "text",
-                content: successMessage,
-                isUser: false,
-                timestamp: new Date(),
-              },
-            ]);
-
-            return true;
-          } else {
-            throw new Error(`API returned status ${response.status}`);
-          }
-        }
-      } catch (error) {
-        console.error("Error setting health goal:", error);
-
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          {
-            id: (Date.now() + 1).toString(),
-            type: "text",
-            content:
-              "I'm sorry, I couldn't set that health goal. Please try again or use the tracking screens.",
-            isUser: false,
-            timestamp: new Date(),
-          },
-        ]);
-      }
-
-      return true; // We had a pattern match, even if the API call failed
-    }
-
-    // Check if this is a goal setting request with generic indicators
-    const isGoalRequest = /goal|target|aim|set goal/i.test(query);
-
-    if (!isGoalRequest) {
-      return false; // Not a goal request
-    }
-
-    // Determine what type of goal is being set
-    const isWaterGoal = /water|hydration|glass|glasses/i.test(query);
-    const isStepsGoal = /steps|walking|step goal/i.test(query);
-
-    // Extract the goal value
-    let extractedData = null;
-    let endpoint = "";
-    let requestData = {};
-    let successMessage = "";
-
-    try {
-      if (isWaterGoal) {
-        extractedData = extractMetricFromText(query, "water");
-
-        if (extractedData) {
-          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/waterGoal`;
-
-          // If the user specified glasses, use that value directly
-          // Otherwise, convert ml to glasses (assuming 250ml per glass)
-          const waterGoal = extractedData.isGlasses
-            ? extractedData.value
-            : Math.round((extractedData.value ?? 0) / 250);
-
-          requestData = { waterGoal: waterGoal };
-          successMessage = `I've set your water intake goal to ${waterGoal} glasses per day.`;
-        }
-      } else if (isStepsGoal) {
-        extractedData = extractMetricFromText(query, "steps");
-
-        if (extractedData) {
-          endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/steps`;
-          requestData = { stepsGoal: extractedData.value };
-          successMessage = `I've set your step goal to ${extractedData.value} steps per day.`;
-        }
-      }
-
-      // If we have valid data and an endpoint, make the API call
-      if (extractedData && endpoint) {
-        console.log("Setting health goal:", { endpoint, requestData });
-
-        const response = await axios.post(endpoint, requestData);
-
-        if (response.status >= 200 && response.status < 300) {
-          // Success - refresh health data
-          await fetchHealthData();
-
-          // Add response message
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            {
-              id: (Date.now() + 1).toString(),
-              type: "text",
-              content: successMessage,
-              isUser: false,
-              timestamp: new Date(),
-            },
-          ]);
-
-          return true;
-        } else {
-          throw new Error(`API returned status ${response.status}`);
-        }
-      }
-    } catch (error) {
-      console.error("Error setting health goal:", error);
-
+  const handleGoalRequest = async (query: string): Promise<boolean> => {
+    // Create a helper function to add messages to the chat
+    const addResponseMessage = (content: string) => {
       setMessages((prevMessages) => [
         ...prevMessages,
         {
           id: (Date.now() + 1).toString(),
           type: "text",
-          content:
-            "I'm sorry, I couldn't set that health goal. Please try again or use the tracking screens.",
+          content,
           isUser: false,
           timestamp: new Date(),
         },
       ]);
-
-      return true;
-    }
-
-    return false; // Not handled as a goal request
+    };
+  
+    // Call the utility function with the necessary parameters
+    const result = await detectAndHandleGoalRequest(
+      query,
+      user.user_id,
+      extractMetricFromText,
+      fetchAndUpdateHealthData,
+      addResponseMessage
+    );
+  
+    return result.handled;
   };
 
-
-
-  const processUserQuery = async (query: string) => {
-    try {
-      console.log("processUserQuery started with:", query);
-      setIsProcessing(true);
-
-      // Check if this is a response to the "continue paused questionnaire" question
-      if (messages.length > 0 && !messages[messages.length - 1].isUser) {
-        // Look for specific continuation patterns
-        const lastMessage = messages[messages.length - 1].content;
-
-        // Check if the last message is asking about continuing
-        const continuationPrompts = [
-          /continue this conversation/i,
-          /continue where you left off/i,
-          /unfinished questionnaire/i,
-          /we can continue/i,
-          /ready. Just let me know/i,
-          /would you like to continue/i,
-        ];
-
-        const isContinuationPrompt = continuationPrompts.some((pattern) =>
-          pattern.test(lastMessage)
-        );
-
-        if (isContinuationPrompt) {
-          console.log("Detected continuation prompt response");
-
-          // Check for positive responses
-          const positiveResponses = [
-            /^yes$/i,
-            /^yeah$/i,
-            /^sure$/i,
-            /^ok$/i,
-            /^okay$/i,
-            /^continue$/i,
-            /^let's continue$/i,
-            /^ready$/i,
-            /^resume$/i,
-            /^let's go$/i,
-            /^go$/i,
-          ];
-
-          if (positiveResponses.some((pattern) => pattern.test(query.trim()))) {
-            console.log("User wants to resume questionnaire");
-
-            // Add user's message to the chat
-            const userMessage: Message = {
-              id: Date.now().toString(),
-              type: "text",
-              content: query,
-              isUser: true,
-              timestamp: new Date(),
-            };
-            setMessages((prevMessages) => [...prevMessages, userMessage]);
-
-            // Add a single confirmation message
-            const confirmationMessage: Message = {
-              id: (Date.now() + 1).toString(),
-              type: "text",
-              content: "Great! Let's pick up where we left off.",
-              isUser: false,
-              timestamp: new Date(),
-            };
-            setMessages((prevMessages) => [
-              ...prevMessages,
-              confirmationMessage,
-            ]);
-
-            // Use a slight delay before resuming
-            setTimeout(() => {
-              questionnaireManager.resumeQuestionnaire();
-            }, 800);
-
-            setIsProcessing(false);
-            return;
-          }
-        }
-      }
-
-      // First check if this is a questionnaire response
-      if (questionnaireManager.isActive) {
-        const wasHandledAsQuestionnaireResponse =
-          questionnaireManager.handleUserResponse(query);
-        if (wasHandledAsQuestionnaireResponse) {
-          setIsProcessing(false);
-          return;
-        }
-      }
-
-      // Check if this is a request to start the questionnaire
-      if (
-        /start questionnaire|begin questionnaire|take questionnaire|health assessment|assessment/i.test(
-          query
-        )
-      ) {
-        questionnaireManager.startQuestionnaire();
-        setIsProcessing(false);
-        return;
-      }
-
-      // First check if this is a log request
-      const wasHandledAsLogRequest = await detectAndHandleLogRequest(query);
-
-      if (wasHandledAsLogRequest) {
-        setIsProcessing(false);
-        return;
-      }
-
-      // Then check if this is a goal setting request
-      const wasHandledAsGoalRequest = await detectAndHandleGoalRequest(query);
-
-      if (wasHandledAsGoalRequest) {
-        setIsProcessing(false);
-        return;
-      }
-
-      // Check for different types of health stat queries
-      const isWaterQuery = /water|hydration/i.test(query);
-      const isWeightQuery = /weight/i.test(query);
-      const isStepsQuery = /steps|step count|walking/i.test(query);
-      const isHeartQuery = /heart|pulse|bpm/i.test(query);
-      const isSleepQuery = /sleep|slept/i.test(query);
-
-      // Check for time period queries
-      const isAverageQuery = /average|avg/i.test(query);
-      const isTodayQuery = /today|current/i.test(query);
-      const isWeeklyQuery = /week|weekly|7 days/i.test(query);
-      const isMonthlyQuery = /month|monthly|30 days/i.test(query);
-
-      // Check for comprehensive stats query
-      const isComprehensiveQuery =
-        /all stats|all metrics|health summary|overview/i.test(query) ||
-        (/avg|average/i.test(query) &&
-          /heart|water|steps|sleep|weight/i.test(query) &&
-          /heart|water|steps|sleep|weight/i.test(query) &&
-          /heart|water|steps|sleep|weight/i.test(query) &&
-          !/^what('s| is) (my |the )?(avg|average) weight/i.test(query) &&
-          !/^what('s| is) (my |the )?(avg|average) sleep/i.test(query) &&
-          !/^what('s| is) (my |the )?(avg|average) heart/i.test(query) &&
-          !/^what('s| is) (my |the )?(avg|average) water/i.test(query) &&
-          !/^what('s| is) (my |the )?(avg|average) steps/i.test(query) &&
-          !/sleep duration/i.test(query));
-
-      console.log("Query analysis:", {
-        isWaterQuery,
-        isWeightQuery,
-        isStepsQuery,
-        isHeartQuery,
-        isSleepQuery,
-        isAverageQuery,
-        isTodayQuery,
-        isWeeklyQuery,
-        isMonthlyQuery,
-        isComprehensiveQuery,
-      });
-
-      // Handle comprehensive health stats query
-      if (isComprehensiveQuery) {
-        console.log("Detected comprehensive health stats query");
-
-        // Format a comprehensive health stats response
-        let statsMessage = "Here's a summary of your health statistics:\n\n";
-
-        // Determine time period to report
-        let reportPeriod = "weekly"; // Default to weekly
-        if (isTodayQuery) reportPeriod = "today";
-        if (isMonthlyQuery) reportPeriod = "monthly";
-
-        // Water stats
-        if (reportPeriod === "today") {
-          statsMessage += `Water: ${healthStats.water.today} glasses today\n`;
-        } else if (reportPeriod === "weekly") {
-          statsMessage += `Water: ${healthStats.water.avgWeekly.toFixed(
-            1
-          )} glasses per day (weekly average)\n`;
+  const handleProcessUserQuery = async (query: string) => {
+    // Create a function for the RAG service call
+    const callRagService = async (query: string, conversationHistory: any[] = []) => {
+      try {
+        const RAG_SERVICE_URL = "https://crosscare-rag.onrender.com/api/chat";
+        
+        console.log(`Calling RAG service with query: "${query}"`);
+        
+        const response = await axios.post(`${RAG_SERVICE_URL}/${user?.user_id}`, {
+          query: query,
+          conversationHistory: conversationHistory
+        });
+        
+        if (response.status === 200 && response.data.success) {
+          console.log("RAG service responded successfully");
+          return response.data;
         } else {
-          statsMessage += `Water: ${healthStats.water.avgMonthly.toFixed(
-            1
-          )} glasses per day (monthly average)\n`;
-        }
-
-        // Steps stats
-        if (reportPeriod === "today") {
-          statsMessage += `Steps: ${healthStats.steps.today} steps today\n`;
-        } else if (reportPeriod === "weekly") {
-          statsMessage += `Steps: ${healthStats.steps.avgWeekly.toFixed(
-            0
-          )} steps per day (weekly average)\n`;
-        } else {
-          statsMessage += `Steps: ${healthStats.steps.avgMonthly.toFixed(
-            0
-          )} steps per day (monthly average)\n`;
-        }
-
-        // Weight stats
-        if (healthStats.weight.avgWeekly > 0) {
-          if (reportPeriod === "today") {
-            statsMessage += `Weight: ${healthStats.weight.today} ${healthStats.weight.unit} today\n`;
-          } else if (reportPeriod === "weekly") {
-            statsMessage += `Weight: ${healthStats.weight.avgWeekly.toFixed(
-              1
-            )} ${healthStats.weight.unit} (weekly average)\n`;
-          } else {
-            statsMessage += `Weight: ${healthStats.weight.avgMonthly.toFixed(
-              1
-            )} ${healthStats.weight.unit} (monthly average)\n`;
-          }
-        }
-
-        // Heart rate stats
-        if (healthStats.heart.avgWeekly > 0) {
-          if (reportPeriod === "today") {
-            statsMessage += `Heart rate: ${healthStats.heart.today} bpm today\n`;
-          } else if (reportPeriod === "weekly") {
-            statsMessage += `Heart rate: ${healthStats.heart.avgWeekly.toFixed(
-              0
-            )} bpm (weekly average)\n`;
-          } else {
-            statsMessage += `Heart rate: ${healthStats.heart.avgMonthly.toFixed(
-              0
-            )} bpm (monthly average)\n`;
-          }
-        }
-
-        // Sleep stats
-        if (healthStats.sleep.avgWeekly > 0) {
-          if (reportPeriod === "today") {
-            statsMessage += `Sleep: ${healthStats.sleep.today.toFixed(
-              1
-            )} hours today\n`;
-          } else if (reportPeriod === "weekly") {
-            statsMessage += `Sleep: ${healthStats.sleep.avgWeekly.toFixed(
-              1
-            )} hours per night (weekly average)\n`;
-          } else {
-            statsMessage += `Sleep: ${healthStats.sleep.avgMonthly.toFixed(
-              1
-            )} hours per night (monthly average)\n`;
-          }
-        }
-
-        // Add a note if some metrics are missing
-        if (
-          healthStats.heart.avgWeekly === 0 ||
-          healthStats.sleep.avgWeekly === 0
-        ) {
-          statsMessage +=
-            "\nSome metrics have no data. Regular tracking will provide more complete insights.";
-        }
-
-        // Speak the response
-        speakResponse(statsMessage);
-
-        // Add the response to messages
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          {
-            id: (Date.now() + 1).toString(),
-            type: "text",
-            content: statsMessage,
-            isUser: false,
-            timestamp: new Date(),
-          },
-        ]);
-
-        setIsProcessing(false);
-        return; // Exit early since we've handled this specific query
-      }
-
-      // Handle specific metric queries
-      if (isWaterQuery) {
-        let waterMessage = "";
-
-        if (isTodayQuery) {
-          waterMessage = `You've consumed ${healthStats.water.today} glasses of water today.`;
-        } else if (isWeeklyQuery || isAverageQuery) {
-          waterMessage = `Your average water consumption is ${healthStats.water.avgWeekly.toFixed(
-            1
-          )} glasses per day over the past week. Your total weekly consumption was ${
-            healthStats.water.weekly
-          } glasses.`;
-        } else if (isMonthlyQuery) {
-          waterMessage = `Your average water consumption is ${healthStats.water.avgMonthly.toFixed(
-            1
-          )} glasses per day over the past month. Your total monthly consumption was ${
-            healthStats.water.monthly
-          } glasses.`;
-        } else {
-          // Default to weekly if no time period specified
-          waterMessage = `Your average water consumption is ${healthStats.water.avgWeekly.toFixed(
-            1
-          )} glasses per day over the past week. Today you've had ${
-            healthStats.water.today
-          } glasses.`;
-        }
-
-        waterMessage += " Staying hydrated is important for your pregnancy!";
-        // Speak the response
-        speakResponse(waterMessage);
-
-        // Add the response to messages
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          {
-            id: (Date.now() + 1).toString(),
-            type: "text",
-            content: waterMessage,
-            isUser: false,
-            timestamp: new Date(),
-          },
-        ]);
-
-        setIsProcessing(false);
-        return;
-      }
-
-      if (
-        isWeightQuery &&
-        /^what('s| is) (my |the )?(avg|average) weight/i.test(query)
-      ) {
-        if (
-          healthStats.weight.avgWeekly === 0 &&
-          healthStats.weight.today === 0
-        ) {
-          const noDataMessage =
-            "I don't have enough weight data to calculate statistics. Please log your weight regularly to track your pregnancy progress.";
-          speakResponse(noDataMessage);
-
-          // Add the response to messages
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            {
-              id: (Date.now() + 1).toString(),
-              type: "text",
-              content: noDataMessage,
-              isUser: false,
-              timestamp: new Date(),
-            },
-          ]);
-
-          setIsProcessing(false);
-          return;
-        }
-
-        let weightMessage = "";
-
-        if (isMonthlyQuery) {
-          weightMessage = `Your average weight is ${healthStats.weight.avgMonthly.toFixed(
-            1
-          )} ${healthStats.weight.unit} over the past month.`;
-        } else {
-          // Default to weekly average for "what is avg weight" queries
-          weightMessage = `Your average weight is ${healthStats.weight.avgWeekly.toFixed(
-            1
-          )} ${healthStats.weight.unit} over the past week.`;
-        }
-
-        speakResponse(weightMessage);
-
-        // Add the response to messages
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          {
-            id: (Date.now() + 1).toString(),
-            type: "text",
-            content: weightMessage,
-            isUser: false,
-            timestamp: new Date(),
-          },
-        ]);
-
-        setIsProcessing(false);
-        return;
-      }
-
-      // Steps queries
-      if (isStepsQuery) {
-        let stepsMessage = "";
-
-        if (isTodayQuery) {
-          stepsMessage = `You've taken ${healthStats.steps.today} steps today.`;
-        } else if (isWeeklyQuery || isAverageQuery) {
-          stepsMessage = `Your average daily step count is ${healthStats.steps.avgWeekly.toFixed(
-            0
-          )} steps over the past week. Your total steps this week were ${
-            healthStats.steps.weekly
-          }.`;
-        } else if (isMonthlyQuery) {
-          stepsMessage = `Your average daily step count is ${healthStats.steps.avgMonthly.toFixed(
-            0
-          )} steps over the past month. Your total steps this month were ${
-            healthStats.steps.monthly
-          }.`;
-        } else {
-          // Default to weekly if no time period specified
-          stepsMessage = `Your average daily step count is ${healthStats.steps.avgWeekly.toFixed(
-            0
-          )} steps over the past week. Today you've taken ${
-            healthStats.steps.today
-          } steps.`;
-        }
-
-        stepsMessage +=
-          " Regular walking is excellent exercise during pregnancy!";
-
-        speakResponse(stepsMessage);
-
-        // Add the response to messages
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          {
-            id: (Date.now() + 1).toString(),
-            type: "text",
-            content: stepsMessage,
-            isUser: false,
-            timestamp: new Date(),
-          },
-        ]);
-
-        setIsProcessing(false);
-        return;
-      }
-
-      // Heart rate queries
-      if (isHeartQuery) {
-        if (
-          healthStats.heart.avgWeekly === 0 &&
-          healthStats.heart.today === 0
-        ) {
-          const noDataMessage =
-            "I don't have enough heart rate data to calculate statistics. Please log your heart rate regularly for better tracking.";
-          speakResponse(noDataMessage);
-
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            {
-              id: (Date.now() + 1).toString(),
-              type: "text",
-              content: noDataMessage,
-              isUser: false,
-              timestamp: new Date(),
-            },
-          ]);
-
-          setIsProcessing(false);
-          return;
-        }
-
-        let heartMessage = "";
-
-        if (isTodayQuery) {
-          heartMessage = `Your heart rate today is ${healthStats.heart.today} bpm.`;
-        } else if (isWeeklyQuery || isAverageQuery) {
-          heartMessage = `Your average heart rate is ${healthStats.heart.avgWeekly.toFixed(
-            0
-          )} bpm over the past week.`;
-        } else if (isMonthlyQuery) {
-          heartMessage = `Your average heart rate is ${healthStats.heart.avgMonthly.toFixed(
-            0
-          )} bpm over the past month.`;
-        } else {
-          heartMessage = `Your current heart rate is ${
-            healthStats.heart.today
-          } bpm, and your weekly average is ${healthStats.heart.avgWeekly.toFixed(
-            0
-          )} bpm.`;
-        }
-
-        speakResponse(heartMessage);
-
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          {
-            id: (Date.now() + 1).toString(),
-            type: "text",
-            content: heartMessage,
-            isUser: false,
-            timestamp: new Date(),
-          },
-        ]);
-
-        setIsProcessing(false);
-        return;
-      }
-
-      // New function to call the RAG service
-      const callRagService = async (query: string, conversationHistory: any[] = []) => {
-        try {
-          // Replace with your actual Render URL once deployed
-          const RAG_SERVICE_URL = "https://crosscare-rag.onrender.com/api/chat";
-          
-          console.log(`Calling RAG service with query: "${query}"`);
-          
-          const response = await axios.post(`${RAG_SERVICE_URL}/${user?.user_id}`, {
-            query: query,
-            conversationHistory: conversationHistory
-          });
-          
-          if (response.status === 200 && response.data.success) {
-            console.log("RAG service responded successfully");
-            return response.data;
-          } else {
-            console.error("RAG service error:", response.data);
-            return null;
-          }
-        } catch (error: any) {
-          console.error("Error calling RAG service:", error.message);
+          console.error("RAG service error:", response.data);
           return null;
         }
-      };
-      
-
-      // After checking for health-specific queries (like isWaterQuery, isStepsQuery etc.)
-      // Format conversation history for RAG
-      const recentMessages = messages
-      .slice(-6) // Last 6 messages for context
-      .filter(msg => msg.type === "text") // Only text messages
-      .map(msg => ({
-        role: msg.isUser ? "user" : "assistant",
-        content: msg.content
-      }));
-
-    // Try to use RAG service first
-    try {
-      const ragResponse = await callRagService(query, recentMessages);
-      
-      if (ragResponse && ragResponse.success) {
-        // Use the response from RAG service
-        const assistantMessage = ragResponse.response;
-        speakResponse(assistantMessage);
-
-        // Add the response to messages
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          {
-            id: (Date.now() + 1).toString(),
-            type: "text",
-            content: assistantMessage,
-            isUser: false,
-            timestamp: new Date(),
-          },
-        ]);
-      } else {
-        // Fall back to Gemini if RAG fails
-        console.log("RAG service failed, falling back to Gemini");
-        const apiResponse = await sendToAPI(query, "text");
-
-        if (apiResponse) {
-          const assistantMessage = apiResponse.response;
-          speakResponse(assistantMessage);
-
-          // Add the response to messages
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            {
-              id: (Date.now() + 1).toString(),
-              type: "text",
-              content: assistantMessage,
-              isUser: false,
-              timestamp: new Date(),
-            },
-          ]);
-        }
+      } catch (error: any) {
+        console.error("Error calling RAG service:", error.message);
+        return null;
       }
-    } catch (error) {
-      console.error("Error with RAG service, falling back to Gemini:", error);
-      // Fall back to Gemini API
-      const apiResponse = await sendToAPI(query, "text");
-      
-      if (apiResponse) {
-        const assistantMessage = apiResponse.response;
-        speakResponse(assistantMessage);
-
-        // Add the response to messages
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          {
-            id: (Date.now() + 1).toString(),
-            type: "text",
-            content: assistantMessage,
-            isUser: false,
-            timestamp: new Date(),
-          },
-        ]);
+    };
+  
+    // Call the utility function with all the necessary dependencies
+    await processUserQuery({
+      query,
+      userId: user.user_id,
+      messages,
+      healthStats,
+      questionnaireManager,
+      callbacks: {
+        setIsProcessing,
+        setMessages,
+        handleLogRequest,
+        handleGoalRequest,
+        speakResponse,
+        sendToAPI,
+        callRagService
       }
-    }
-
-    setIsProcessing(false);
-    } catch (error: any) {
-      console.error("Error in processUserQuery:", error.message);
-      console.error("Error stack:", error.stack);
-      setIsProcessing(false);
-      Alert.alert(
-        "Error",
-        "I couldn't process your request. Please try again."
-      );
-    }
+    });
   };
 
   const sendMessage = async (messageContent: string = inputText) => {
@@ -2208,8 +632,16 @@ export default function askdoula() {
       setIsTyping(true);
       setIsAssistantResponding(true);
 
+      if (questionnaireManager.isActive && !questionnaireManager.isCompleted) {
+        const handled = await questionnaireManager.handleUserResponse(messageContent);
+        if (handled) {
+          setIsTyping(false);
+          setIsAssistantResponding(false);
+          return; // Exit the function if the questionnaire handled the message
+        }
+      }
       // Process the query - our new implementation will check for log/goal requests first
-      await processUserQuery(messageContent);
+      await handleProcessUserQuery(messageContent);
       setIsTyping(false);
       setIsAssistantResponding(false);
     }
@@ -2247,10 +679,10 @@ export default function askdoula() {
 
       // Check for log/goal requests with the same processing logic as text
       // This ensures consistent handling between voice and text
-      processUserQuery(transcript).then(() => {
-        setIsTyping(false);
-        setIsAssistantResponding(false);
-      });
+      handleProcessUserQuery(transcript).then(() => {
+      setIsTyping(false);
+      setIsAssistantResponding(false);
+    });
     }
   };
 
@@ -2268,8 +700,10 @@ export default function askdoula() {
       setMessages([]);
 
       // Reset questionnaire state in AsyncStorage
+      await AsyncStorage.removeItem(`conversation_context_${user?.user_id}`);
       await AsyncStorage.removeItem(`questionnaire_completed_${user?.user_id}`);
       await AsyncStorage.removeItem(`questionnaire_state_${user?.user_id}`);
+      await AsyncStorage.removeItem(`last_question_${user?.user_id}`);
       await AsyncStorage.removeItem(`intro_shown_${user?.user_id}`);
 
       console.log("Chat history cleared successfully");
