@@ -37,7 +37,7 @@ import { useTranslation } from "react-i18next";
 const REGULAR_BADGE_TYPES = [
   "HYDRATED_QUEEN",
   "SNAPSHOT",
-  "TRIVIA_QUEEN",
+  "GETTING_TO_KNOW_YOU",
   "HEART_SCRIBE",
   "RESTED_DIVA",
   "EXPLORER",
@@ -85,7 +85,7 @@ const STREAK_BADGE_TYPES = [
 
 // Map of badge types to their earned badge images
 const BADGE_IMAGES: Record<string, any> = {
-  TRIVIA_QUEEN: require("../../../assets/images/badge/trivia.png"),
+  GETTING_TO_KNOW_YOU: require("../../../assets/images/badge/trivia.png"),
   HOT_MAMA: require("../../../assets/images/badge/Hot Mama.png"),
   SNAPSHOT: require("../../../assets/images/badge/snapshot queen.png"),
   HYDRATED_QUEEN: require("../../../assets/images/badge/Hydrated Queen.png"),
@@ -136,7 +136,7 @@ const NOT_EARNED_BADGE: Record<string, any> = {
   RESTED_DIVA: require("../../../assets/images/badge/diva locked.png"),
   HEART_SCRIBE: require("../../../assets/images/badge/heart locked.png"),
   HOT_MAMA: require("../../../assets/images/badge/Hot Mama(lock).png"),
-  TRIVIA_QUEEN: require("../../../assets/images/badge/trivia lcoked.png"),
+  GETTING_TO_KNOW_YOU: require("../../../assets/images/badge/trivia lcoked.png"),
   SNAPSHOT: require("../../../assets/images/badge/snapshot queen locked.png"),
   EXPLORER: require("../../../assets/images/badge/explorer locked.png"),
   SLEEP_WIZARD_I: require("../../../assets/images/badge/Sleep Wizard 1(lock).png"),
@@ -184,7 +184,7 @@ const BADGE_TIPS: Record<string, string> = {
   HYDRATED_QUEEN: "badgeTips.HYDRATED_QUEEN",
   RESTED_DIVA: "badgeTips.RESTED_DIVA",
   HEART_SCRIBE: "badgeTips.HEART_SCRIBE",
-  TRIVIA_QUEEN: "badgeTips.TRIVIA_QUEEN",
+  GETTING_TO_KNOW_YOU: "badgeTips.TRIVIA_QUEEN",
   SNAPSHOT: "badgeTips.SNAPSHOT",
   EXPLORER: "badgeTips.EXPLORER",
   SLEEP_WIZARD_I: "badgeTips.SLEEP_WIZARD_I",
@@ -230,7 +230,7 @@ const BADGE_DESCRIPTION: Record<string, string> = {
   HYDRATED_QUEEN: "badgeDescription.HYDRATED_QUEEN",
   RESTED_DIVA:"badgeDescription.RESTED_DIVA",
   HEART_SCRIBE:"badgeDescription.HEART_SCRIBE",
-  TRIVIA_QUEEN:"badgeDescription.TRIVIA_QUEEN",
+  GETTING_TO_KNOW_YOU:"badgeDescription.TRIVIA_QUEEN",
   SNAPSHOT:"badgeDescription.SNAPSHOT",
   EXPLORER:"badgeDescription.EXPLORER",
   SLEEP_WIZARD_I:"badgeDescription.SLEEP_WIZARD_I",
@@ -637,7 +637,7 @@ const BadgeCarousel: React.FC<BadgeCarouselProps> = ({
           </Text>
 
           <Text style={styles.badgeDescription}>
-            {currentBadge.badge.description}
+            {getTranslatedBadgeDescription(badgeType)}
           </Text>
 
           {!isEarned && (

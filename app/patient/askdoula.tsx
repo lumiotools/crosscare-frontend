@@ -13,6 +13,7 @@ import {
   Animated,
   Alert,
 } from "react-native";
+import Markdown from 'react-native-markdown-display';
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, usePathname } from "expo-router";
@@ -34,6 +35,7 @@ import ProfileIcon from "@/assets/images/Svg/ProfileIcon";
 import Person from "@/assets/images/Svg/Person";
 import User from "@/assets/images/Svg/User";
 import { useTranslation } from "react-i18next";
+import * as Speech from 'expo-speech';
 
 
 interface Message {
@@ -828,7 +830,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
       {
         parts: [
           {
-            text: `Translate the following text into ${targetLanguage}: "${text}"`,  // Adjust the structure of the prompt
+            text: `Translate the following text to ${getLanguageName(targetLanguage)} without any explanations or additional context. Only return the translated text:\n\n"${text}"`,  // Adjust the structure of the prompt
           },
         ],
       },
@@ -867,7 +869,9 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
       data.candidates?.[0]?.content?.parts?.[0]?.text ||
       "I'm sorry, I couldn't process your request at this time.";
 
-    responseText = responseText.replace(/\*/g, ""); // Clean up unwanted characters
+    responseText = responseText.replace(/^["']|["']$/g, '') // Remove surrounding quotes
+      .replace(/^Translation:?\s*/i, '') // Remove "Translation:" prefix
+      .trim();// Clean up unwanted characters
     console.log('Response Text:', responseText);
 
     return {
@@ -969,15 +973,15 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
         if (msg.type === "text") {
           parts.push({
             text: msg.isUser
-              ? `User: ${msg.content}`
-              : `Assistant: ${msg.content}`,
+              ? `${msg.content}`
+              : `${msg.content}`,
           });
         }
       }
 
       // Add the current message
       parts.push({
-        text: `User: ${messageContent}`,
+        text: `${messageContent} translate the text  into ${currentLanguage}`,
       });
 
       const requestBody = {
@@ -994,11 +998,13 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
         },
       };
 
+      console.log("Current Language: ", currentLanguage);
+
       const response = await fetch(`${apiUrl}?key=${apiKey}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Accept-Language": currentLanguage,
+          // "Accept-Language": currentLanguage,
         },
         body: JSON.stringify(requestBody),
       });
@@ -1032,15 +1038,76 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
     }
   };
 
+  // const speakResponse = (text: string) => {
+  //   // This function would normally use text-to-speech
+  //   // For now, we'll just log the response
+  //   if (!isMuted) {
+  //     console.log("Speaking response:", text)
+  //     // Here you would normally call your text-to-speech implementation
+  //   } else {
+  //     console.log("Voice is muted, not speaking response")
+  //   }
+  // }
+
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [femaleVoice, setFemaleVoice] = useState<Speech.Voice | null>(null);
+  const [localMuted, setLocalMuted] = useState(false)
+  const effectiveMuted = isMuted !== undefined ? isMuted : localMuted
+
+  useEffect(() => {
+    return () => {
+        // Cleanup speech when component unmounts
+        if (isSpeaking) {
+            Speech.stop();
+            setIsSpeaking(false);
+        }
+    };
+}, [isSpeaking]);
+
   const speakResponse = (text: string) => {
-    // This function would normally use text-to-speech
-    // For now, we'll just log the response
-    if (!isMuted) {
-      console.log("Speaking response:", text)
-      // Here you would normally call your text-to-speech implementation
-    } else {
-      console.log("Voice is muted, not speaking response")
-    }
+      // Check if muted - if so, don't speak but still process
+      if (effectiveMuted) {
+        console.log("Voice is muted, not speaking response:", text)
+        setIsProcessing(false)
+        setIsSpeaking(false);
+        return
+      }
+  
+      // If speech is already happening, stop it before starting new speech
+      if (isSpeaking) {
+        Speech.stop();
+        console.log("Speech interrupted.");
+      }
+  
+      setIsSpeaking(true)
+  
+      // Create speech options with the female voice if available
+      const speechOptions: Speech.SpeechOptions = {
+        language: currentLanguage,
+        pitch: 1.0,
+        rate: 0.9,
+        onDone: () => {
+          setIsSpeaking(false)
+          setIsProcessing(false)
+        },
+        onStopped: () => {
+          setIsSpeaking(false)
+          setIsProcessing(false)
+        },
+        onError: (error) => {
+          console.error("Speech error:", error)
+          setIsSpeaking(false)
+          setIsProcessing(false)
+        },
+      }
+  
+      // Add the voice if we found a female one
+      if (femaleVoice) {
+        speechOptions.voice = femaleVoice.identifier
+      }
+  
+      // Start speaking the text
+      Speech.speak(text, speechOptions)
   }
 
   // Function to detect log requests using our more advanced patterns
@@ -1683,10 +1750,10 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
 
 
 
-  const processUserQuery = async (query: string) => {
+  const processUserQuery = async (query: string, shouldSpeak:boolean) => {
     try {
       console.log("processUserQuery started with:", query);
-      setIsProcessing(true);
+     
 
       // Check if this is a response to the "continue paused questionnaire" question
       if (messages.length > 0 && !messages[messages.length - 1].isUser) {
@@ -2217,7 +2284,11 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
         // assistantMessage = await generateTranslation(assistantMessage, currentLanguage);
 
         console.log('Akks', assistantMessage);
-        speakResponse(assistantMessage);
+          if (shouldSpeak) {
+               setIsProcessing(true);
+          speakResponse(assistantMessage);
+        }
+
 
         // Add the response to messages
         setMessages((prevMessages) => [
@@ -2237,7 +2308,17 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
 
         if (apiResponse) {
           const assistantMessage = apiResponse.response;
+        
+
+          // const translationResult = await generateTranslation(assistantMessage, currentLanguage);
+          //   const translatedText = translationResult.response;
+          //   console.log(translatedText);
+          
+            if (shouldSpeak) {
+                 setIsProcessing(true);
           speakResponse(assistantMessage);
+
+        }
 
           // Add the response to messages
           setMessages((prevMessages) => [
@@ -2259,7 +2340,17 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
       
       if (apiResponse) {
         const assistantMessage = apiResponse.response;
-        speakResponse(assistantMessage);
+
+      //       const translationResult = await generateTranslation(assistantMessage, currentLanguage);
+      // const translatedText = translationResult.response;
+      // console.log(translatedText);
+
+          if (shouldSpeak) {
+               setIsProcessing(true);
+          speakResponse(assistantMessage);
+        }
+
+
 
         // Add the response to messages
         setMessages((prevMessages) => [
@@ -2273,18 +2364,27 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
           },
         ]);
       }
+      
     }
-
     setIsProcessing(false);
+
     } catch (error: any) {
       console.error("Error in processUserQuery:", error.message);
       console.error("Error stack:", error.stack);
+      if (shouldSpeak) {
       setIsProcessing(false);
+    }
       Alert.alert(
         "Error",
         "I couldn't process your request. Please try again."
       );
     }
+     finally {
+    // Only reset isProcessing if it was a voice input
+    if (shouldSpeak) {
+      setIsProcessing(false);
+    }
+  }
   };
 
   const sendMessage = async (messageContent: string = inputText) => {
@@ -2298,6 +2398,8 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
         timestamp: new Date(),
       };
 
+      Speech.stop();
+
       // Update messages state with the new message
       const updatedMessages = [...messages, userMessage];
       setMessages(updatedMessages as Message[]);
@@ -2306,13 +2408,13 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
       setIsAssistantResponding(true);
 
       // Process the query - our new implementation will check for log/goal requests first
-      await processUserQuery(messageContent);
+      await processUserQuery(messageContent, false);
       setIsTyping(false);
       setIsAssistantResponding(false);
     }
   };
 
-  const handleAudioSent = (
+  const handleAudioSent = async (
     audioUri: string,
     transcript?: string,
     assistantResponse?: string
@@ -2337,23 +2439,34 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
       ]);
     }
 
-    // if(assistantResponse){
-    //   speakResponse(assistantResponse);
-    // }
-
+ 
+   
 
     // Process the transcript if available
     if (transcript) {
       setIsTyping(true);
       setIsAssistantResponding(true);
+      setIsSpeaking(true);
 
-      // Check for log/goal requests with the same processing logic as text
-      // This ensures consistent handling between voice and text
-      processUserQuery(transcript).then(() => {
-        setIsTyping(false);
-        setIsAssistantResponding(false);
-      });
+      // await processUserQuery(transcript);
+
+      // Get the translation result
+      // const translationResult = await generateTranslation(transcript, currentLanguage);
+      // const translatedText = translationResult.response;
+      // console.log(translatedText);
+
+      // Process the translated text
+       try {
+            await processUserQuery(transcript, true);
+        } finally {
+            setIsTyping(false);
+            setIsAssistantResponding(false);
+        }
     }
+
+      if(assistantResponse){
+          speakResponse(assistantResponse);
+      }
   };
 
   const handleOptionPress = (optionText: string) => {
@@ -2508,9 +2621,17 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
     saveMuteState()
   }, [isMuted])
 
-  const toggleMute = () => {
-    setIsMuted(!isMuted)
-  }
+ const toggleMute = () => {
+    const newMuteState = !isMuted;
+    setIsMuted(newMuteState);
+    setIsProcessing(false);
+    
+    // Stop any ongoing speech when muting
+    if (newMuteState && isSpeaking) {
+        Speech.stop();
+        setIsSpeaking(false);
+    }
+}; 
 
   return (
     <KeyboardAvoidingView
@@ -2631,6 +2752,25 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
                       >
                         {message.content}
                       </Text>
+
+                       {/* {message.isUser ? (
+      <Text
+        style={[
+          styles.messageText,
+          styles.userMessageText,
+        ]}
+      >
+        {message.content}
+      </Text>
+          ) : (
+      <Markdown
+        style={{
+          body: styles.doulaMessageText, // Customize markdown text style
+        }}
+      >
+        {message.content}
+      </Markdown>
+    )} */}
                     </View>
                   ) : (
                     <AudioMessage
@@ -2744,6 +2884,10 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
                 onSendAudio={handleAudioSent}
                 systemPrompt={systemPrompt}
                 isMuted={isMuted}
+                isSpeaking={isSpeaking}
+                setIsSpeaking={setIsSpeaking}
+                isProcessing={isProcessing}
+                setIsProcessing={setIsProcessing}
               />
             </View>
 

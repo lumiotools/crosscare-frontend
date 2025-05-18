@@ -28,7 +28,7 @@ import { useTranslation } from "react-i18next";
 const REGULAR_BADGE_TYPES = [
   "HYDRATED_QUEEN",
   "SNAPSHOT",
-  "TRIVIA_QUEEN",
+  "GETTING_TO_KNOW_YOU",
   "HEART_SCRIBE",
   "RESTED_DIVA",
   "EXPLORER",

@@ -20,7 +20,7 @@ import { useTranslation } from "react-i18next";
 
 // Import your badge images
 const BADGE_IMAGES: Record<string, any> = {
-  TRIVIA_QUEEN: require("../assets/images/badge/trivia.png"),
+  GETTING_TO_KNOW_YOU: require("../assets/images/badge/trivia.png"),
   HOT_MAMA: require("../assets/images/badge/Hot Mama.png"),
   SNAPSHOT: require("../assets/images/badge/snapshot queen.png"),
   HYDRATED_QUEEN: require("../assets/images/badge/Hydrated Queen.png"),
