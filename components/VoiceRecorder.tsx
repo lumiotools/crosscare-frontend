@@ -21,7 +21,7 @@ interface VoiceRecorderProps {
   onSendAudio: (
     audioUri: string,
     transcript?: string,
-    assistantResponse?: string
+    // assistantResponse?: string
   ) => void;
   systemPrompt?: string;
   apiKey?: string;
@@ -584,27 +584,27 @@ export default function VoiceRecorder({
     "eighty": 80, "ninety": 90, "hundred": 100, "half": 0.5, "quarter": 0.25
 };
 
-const wordsToNumber = (words: string): number | null => {
-    const parts = words.split(/[-\s]+/); // Split by space or hyphen
-    let total = 0;
-    let current = 0;
+// const wordsToNumber = (words: string): number | null => {
+//     const parts = words.split(/[-\s]+/); // Split by space or hyphen
+//     let total = 0;
+//     let current = 0;
 
-    for (const word of parts) {
-        if (wordToNumberMap[word as keyof typeof wordToNumberMap] !== undefined) {
-            let num = wordToNumberMap[word as keyof typeof wordToNumberMap];
-            if (num === 100) {
-                current *= 100; // Handle "one hundred", "two hundred", etc.
-            } else {
-                current += num;
-            }
-        } else if (current > 0) {
-            total += current;
-            current = 0;
-        }
-    }
-    total += current;
-    return total > 0 ? total : null;
-};
+//     for (const word of parts) {
+//         if (wordToNumberMap[word as keyof typeof wordToNumberMap] !== undefined) {
+//             let num = wordToNumberMap[word as keyof typeof wordToNumberMap];
+//             if (num === 100) {
+//                 current *= 100; // Handle "one hundred", "two hundred", etc.
+//             } else {
+//                 current += num;
+//             }
+//         } else if (current > 0) {
+//             total += current;
+//             current = 0;
+//         }
+//     }
+//     total += current;
+//     return total > 0 ? total : null;
+// };
 
 // const convertWordsToNumbers = (text: string): string => {
 //     return text.replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|half|quarter)([-\s]?(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety))?\b/gi, (match) => {
@@ -800,8 +800,6 @@ const wordsToNumber = (words: string): number | null => {
 //     // Start speaking the text
 //     Speech.speak(text, speechOptions)
 // }
-
-
 
   return (
     <View style={styles.container}>

@@ -904,55 +904,58 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
       // Create enhanced prompt with health data if available
       let enhancedPrompt = systemPrompt;
 
+      // Add explicit language instruction at the beginning
+      enhancedPrompt = `IMPORTANT: Always respond in ${currentLanguage} language only with the specific and accurate response`
+
       if (healthData) {
-        enhancedPrompt += `\n\nUser's health data:\n`;
+        enhancedPrompt += `\n\n${t('healthData.userhealth')}\n`;
 
         if (healthStats.steps) {
-          enhancedPrompt += `- Steps: Today: ${
+          enhancedPrompt += `- ${t('steps')}: ${t('healthData.today1')}: ${
             healthStats.steps.today
-          }, Weekly average: ${healthStats.steps.avgWeekly.toFixed(
+          }, ${t('healthData.weekly_averages')}: ${healthStats.steps.avgWeekly.toFixed(
             0
-          )}, Monthly average: ${healthStats.steps.avgMonthly.toFixed(0)}\n`;
+          )}, ${t('healthData.monthly_averages')}: ${healthStats.steps.avgMonthly.toFixed(0)}\n`;
         }
 
         if (healthStats.water) {
-          enhancedPrompt += `- Water: Today: ${
+          enhancedPrompt += `- ${t('water')}: ${t('healthData.today1')}: ${
             healthStats.water.today
-          } glasses, Weekly average: ${healthStats.water.avgWeekly.toFixed(
+          } ${t('healthData.glasses')}, ${t('healthData.weekly_averages')}: ${healthStats.water.avgWeekly.toFixed(
             1
-          )} glasses, Monthly average: ${healthStats.water.avgMonthly.toFixed(
+          )} ${t('healthData.glasses')}, ${t('healthData.monthly_averages')}: ${healthStats.water.avgMonthly.toFixed(
             1
-          )} glasses\n`;
+          )} ${t('healthData.glasses')}\n`;
         }
 
         if (healthStats.weight && healthStats.weight.avgWeekly > 0) {
-          enhancedPrompt += `- Weight: Current: ${healthStats.weight.today} ${
+          enhancedPrompt += `- ${t('healthData.weight')}: ${t('healthData.current')}: ${healthStats.weight.today} ${
             healthStats.weight.unit
-          }, Weekly average: ${healthStats.weight.avgWeekly.toFixed(1)} ${
+          }, ${t('healthData.weekly_average')}: ${healthStats.weight.avgWeekly.toFixed(1)} ${
             healthStats.weight.unit
-          }, Monthly average: ${healthStats.weight.avgMonthly.toFixed(1)} ${
+          }, ${t('healthData.monthly_average1')}: ${healthStats.weight.avgMonthly.toFixed(1)} ${
             healthStats.weight.unit
           }\n`;
         }
 
         if (healthStats.heart && healthStats.heart.avgWeekly > 0) {
-          enhancedPrompt += `- Heart rate: Current: ${
+          enhancedPrompt += `- ${t('healthData.heart_rate')}: ${t('healthData.current')}: ${
             healthStats.heart.today
-          } bpm, Weekly average: ${healthStats.heart.avgWeekly.toFixed(
+          } bpm, ${t('healthData.weekly_averages')}: ${healthStats.heart.avgWeekly.toFixed(
             0
-          )} bpm, Monthly average: ${healthStats.heart.avgMonthly.toFixed(
+          )} bpm, ${t('healthData.monthly_averages')}: ${healthStats.heart.avgMonthly.toFixed(
             0
           )} bpm\n`;
         }
 
         if (healthStats.sleep && healthStats.sleep.avgWeekly > 0) {
-          enhancedPrompt += `- Sleep: Last night: ${healthStats.sleep.today.toFixed(
+          enhancedPrompt += `- ${t('healthData.sleep')}: ${t('healthData.last_night')}: ${healthStats.sleep.today.toFixed(
             1
-          )} hours, Weekly average: ${healthStats.sleep.avgWeekly.toFixed(
+          )} ${t('healthData.hours')}, ${t('healthData.weekly_averages')}: ${healthStats.sleep.avgWeekly.toFixed(
             1
-          )} hours, Monthly average: ${healthStats.sleep.avgMonthly.toFixed(
+          )} ${t('healthData.hours')}, ${t('healthData.monthly_averages')}: ${healthStats.sleep.avgMonthly.toFixed(
             1
-          )} hours\n`;
+          )} ${t('healthData.hours')}\n`;
         }
 
         enhancedPrompt += `\nPlease answer the user's question about their health metrics using this data. Be specific and encouraging.`;
@@ -973,7 +976,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
         if (msg.type === "text") {
           parts.push({
             text: msg.isUser
-              ? `${msg.content}`
+              ? `User ${msg.content}`
               : `${msg.content}`,
           });
         }
@@ -981,7 +984,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
 
       // Add the current message
       parts.push({
-        text: `${messageContent} translate the text  into ${currentLanguage}`,
+        text: `${messageContent}`
       });
 
       const requestBody = {
@@ -1110,8 +1113,66 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
       Speech.speak(text, speechOptions)
   }
 
+  const wordsToNumbers = (text: string): string => {
+  const numberWords: { [key: string]: number } = {
+    zero: 0,
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    nine: 9,
+    ten: 10,
+    eleven: 11,
+    twelve: 12,
+    thirteen: 13,
+    fourteen: 14,
+    fifteen: 15,
+    sixteen: 16,
+    seventeen: 17,
+    eighteen: 18,
+    nineteen: 19,
+    twenty: 20,
+    thirty: 30,
+    forty: 40,
+    fifty: 50,
+    sixty: 60,
+    seventy: 70,
+    eighty: 80,
+    ninety: 90,
+    hundred: 100,
+    thousand: 1000,
+  };
+
+  const tokens = text.toLowerCase().split(/\s+/);
+  let result = 0;
+  let current = 0;
+
+  tokens.forEach((token) => {
+    if (numberWords[token] !== undefined) {
+      current += numberWords[token];
+    } else if (token === "hundred" && current !== 0) {
+      current *= 100;
+    } else if (token === "thousand" && current !== 0) {
+      current *= 1000;
+      result += current;
+      current = 0;
+    } else {
+      result += current;
+      current = 0;
+    }
+  });
+
+  result += current;
+  return text.replace(/\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand)\b/gi, result.toString());
+};
+
   // Function to detect log requests using our more advanced patterns
   function detectLogRequestWithPatterns(query: string) {
+    
     // Check for water intake logs
     for (const pattern of LOG_PATTERNS.water) {
       const match = query.match(pattern);
@@ -1132,9 +1193,11 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
     // Check for weight logs
     for (const pattern of LOG_PATTERNS.weight) {
       const match = query.match(pattern);
+      console.log("Testing pattern:", pattern, "Match:", match);
       if (match && match[1]) {
         const value = parseFloat(match[1]);
         const unit = /\b(kg|kgs|kilograms)\b/i.test(query) ? "kg" : "lbs";
+        console.log("Weight log detected:", { value, unit });
         return {
           type: "weight",
           value,
@@ -1280,7 +1343,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
     }
   };
 
-  const detectAndHandleLogRequest = async (query: string) => {
+  const detectAndHandleLogRequest = async (query: string, shouldSpeak: boolean) => {
     // First try pattern-based recognition
     const patternMatch = detectLogRequestWithPatterns(query);
 
@@ -1304,12 +1367,12 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
             isIncrement: isIncrement,
           };
 
-          const incrementText = isIncrement ? " more" : "";
-          successMessage = `I've logged ${
+          const incrementText = isIncrement ? ` ${t('healthData.more')}` : "";
+          successMessage = `${t('healthData.ive_logged')} ${
             patternMatch.isGlasses
-              ? patternMatch.value + incrementText + " glasses"
+              ? patternMatch.value + incrementText + ` ${t('healthData.glasses')}`
               : patternMatch.value + incrementText + "ml"
-          } of water for you.`;
+          } ${t('healthData.of_water_for_you')}`;
 
           console.log("Water logging request:", { waterValue, isIncrement });
         } else if (patternMatch.type === "weight") {
@@ -1318,15 +1381,15 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
             weight: patternMatch.value,
             weight_unit: patternMatch.unit,
           };
-          successMessage = `I've logged your weight of ${patternMatch.value} ${patternMatch.unit}.`;
+          successMessage = `${t('healthData.logged_weight')} ${patternMatch.value} ${patternMatch.unit}.`;
         } else if (patternMatch.type === "steps") {
           endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/steps`;
           requestData = { steps: patternMatch.value };
-          successMessage = `I've logged ${patternMatch.value} steps for you.`;
+          successMessage = `${t('healthData.ive_logged')} ${patternMatch.value} ${t('healthData.steps_for_you')}`;
         } else if (patternMatch.type === "heart") {
           endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/heart`;
           requestData = { heartRate: patternMatch.value };
-          successMessage = `I've logged your heart rate of ${patternMatch.value} bpm.`;
+          successMessage = `${t('healthData.logged_heart_rate')} ${patternMatch.value} bpm.`;
         } else if (patternMatch.type === "sleep") {
           endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/sleep`;
 
@@ -1368,8 +1431,9 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
             sleepStart: sleepStart,
             sleepEnd: sleepEnd,
           };
-          successMessage = `I've logged your sleep from ${sleepStart} to ${sleepEnd}.`;
+          successMessage = `${t('healthData.logged_sleep_from')} ${sleepStart} ${t('healthData.to')} ${sleepEnd}.`;
         }
+
 
         // If we have valid data and an endpoint, make the API call
         if (endpoint) {
@@ -1380,6 +1444,10 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
           if (response.status >= 200 && response.status < 300) {
             // Success - refresh health data
             await fetchHealthData();
+
+            if(shouldSpeak){
+              speakResponse(successMessage);
+            }
 
             // Add response message
             setMessages((prevMessages) => [
@@ -1407,7 +1475,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
             id: (Date.now() + 1).toString(),
             type: "text",
             content:
-              "I'm sorry, I couldn't log that health information. Please try again or use the tracking screens.",
+              t('healthData.log_error'),
             isUser: false,
             timestamp: new Date(),
           },
@@ -1451,11 +1519,11 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
             : Math.round(extractedData.value ?? 0 / 250);
 
           requestData = { water: waterValue };
-          successMessage = `I've logged ${
+          successMessage = `${t('healthData.ive_logged')} ${
             extractedData.isGlasses
-              ? extractedData.value + " glasses"
+              ? extractedData.value + ` ${t('healthData.glasses')}`
               : extractedData.value + "ml"
-          } of water for you.`;
+          } ${t('healthData.of_water_for_you')}`;
         }
       } else if (isWeightLog) {
         extractedData = extractMetricFromText(query, "weight");
@@ -1466,7 +1534,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
             weight: extractedData.value,
             weight_unit: extractedData.unit,
           };
-          successMessage = `I've logged your weight of ${extractedData.value} ${extractedData.unit}.`;
+          successMessage = `${t('healthData.logged_weight')} ${extractedData.value} ${extractedData.unit}.`;
         }
       } else if (isStepsLog) {
         extractedData = extractMetricFromText(query, "steps");
@@ -1474,7 +1542,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
         if (extractedData) {
           endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/steps`;
           requestData = { steps: extractedData.value };
-          successMessage = `I've logged ${extractedData.value} steps for you.`;
+          successMessage = `${t('healthData.ive_logged')} ${extractedData.value} ${t('healthData.steps_for_you')}`;
         }
       } else if (isHeartLog) {
         extractedData = extractMetricFromText(query, "heart");
@@ -1482,7 +1550,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
         if (extractedData) {
           endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/heart`;
           requestData = { heartRate: extractedData.value };
-          successMessage = `I've logged your heart rate of ${extractedData.value} bpm.`;
+          successMessage = `${t('healthData.logged_heart_rate')} ${extractedData.value} bpm.`;
         }
       } else if (isSleepLog) {
         extractedData = extractMetricFromText(query, "sleep");
@@ -1529,7 +1597,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
               id: (Date.now() + 1).toString(),
               type: "text",
               content:
-                "To log sleep, please specify your sleep start and end times. For example, 'I slept from 10:30 PM to 6:45 AM' or 'Log my sleep from 11 PM to 7 AM'.",
+               t('healthData.sleep_log_instruction'),
               isUser: false,
               timestamp: new Date(),
             },
@@ -1586,7 +1654,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
     return false; // Not handled as a log request
   };
 
-  const detectAndHandleGoalRequest = async (query: string) => {
+  const detectAndHandleGoalRequest = async (query: string, shouldSpeak: boolean) => {
     // First try pattern-based recognition
     const patternMatch = detectGoalRequestWithPatterns(query);
 
@@ -1604,11 +1672,11 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
             : Math.round(patternMatch.value / 250);
 
           requestData = { waterGoal: waterGoal };
-          successMessage = `I've set your water intake goal to ${waterGoal} glasses per day.`;
+          successMessage = `${t('healthData.water_goal_set')} ${waterGoal} ${t('healthData.glasses_per_day')}`;
         } else if (patternMatch.type === "steps") {
           endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/steps`;
           requestData = { stepsGoal: patternMatch.value };
-          successMessage = `I've set your step goal to ${patternMatch.value} steps per day.`;
+          successMessage = `${t('healthData.steps_goal_set')} ${patternMatch.value} ${t('healthData.steps_per_day')}`;
         }
 
         // If we have valid data and an endpoint, make the API call
@@ -1647,7 +1715,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
             id: (Date.now() + 1).toString(),
             type: "text",
             content:
-              "I'm sorry, I couldn't set that health goal. Please try again or use the tracking screens.",
+             t('healthData.goal_set_error'),
             isUser: false,
             timestamp: new Date(),
           },
@@ -1688,7 +1756,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
             : Math.round((extractedData.value ?? 0) / 250);
 
           requestData = { waterGoal: waterGoal };
-          successMessage = `I've set your water intake goal to ${waterGoal} glasses per day.`;
+          successMessage = `${t('healthData.water_goal_set')} ${waterGoal} ${t('healthData.glasses_per_day')}`;
         }
       } else if (isStepsGoal) {
         extractedData = extractMetricFromText(query, "steps");
@@ -1696,7 +1764,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
         if (extractedData) {
           endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}/steps`;
           requestData = { stepsGoal: extractedData.value };
-          successMessage = `I've set your step goal to ${extractedData.value} steps per day.`;
+          successMessage = `${t('healthData.steps_goal_set')} ${extractedData.value} ${t('healthData.steps_per_day')}`;
         }
       }
 
@@ -1709,6 +1777,11 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
         if (response.status >= 200 && response.status < 300) {
           // Success - refresh health data
           await fetchHealthData();
+
+
+          if(shouldSpeak){
+            speakResponse(successMessage);
+          }
 
           // Add response message
           setMessages((prevMessages) => [
@@ -1736,7 +1809,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
           id: (Date.now() + 1).toString(),
           type: "text",
           content:
-            "I'm sorry, I couldn't set that health goal. Please try again or use the tracking screens.",
+            t('healthData.goal_set_error'),
           isUser: false,
           timestamp: new Date(),
         },
@@ -1754,6 +1827,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
     try {
       console.log("processUserQuery started with:", query);
      
+      console.log(shouldSpeak,"Should Speaking")
 
       // Check if this is a response to the "continue paused questionnaire" question
       if (messages.length > 0 && !messages[messages.length - 1].isUser) {
@@ -1850,8 +1924,8 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
         return;
       }
 
-      // First check if this is a log request
-      const wasHandledAsLogRequest = await detectAndHandleLogRequest(query);
+       // First check if this is a log request
+      const wasHandledAsLogRequest = await detectAndHandleLogRequest(query, shouldSpeak);
 
       if (wasHandledAsLogRequest) {
         setIsProcessing(false);
@@ -1859,7 +1933,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
       }
 
       // Then check if this is a goal setting request
-      const wasHandledAsGoalRequest = await detectAndHandleGoalRequest(query);
+      const wasHandledAsGoalRequest = await detectAndHandleGoalRequest(query, shouldSpeak);
 
       if (wasHandledAsGoalRequest) {
         setIsProcessing(false);
@@ -1881,7 +1955,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
 
       // Check for comprehensive stats query
       const isComprehensiveQuery =
-        /all stats|all metrics|health summary|overview/i.test(query) ||
+        /all stats|all metrics|health summary|overview|Show my health stats/i.test(query) ||
         (/avg|average/i.test(query) &&
           /heart|water|steps|sleep|weight/i.test(query) &&
           /heart|water|steps|sleep|weight/i.test(query) &&
@@ -1911,7 +1985,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
         console.log("Detected comprehensive health stats query");
 
         // Format a comprehensive health stats response
-        let statsMessage = "Here's a summary of your health statistics:\n\n";
+        let statsMessage = `${t('healthData.statsMessage')}:\n\n`;
 
         // Determine time period to report
         let reportPeriod = "weekly"; // Default to weekly
@@ -1920,74 +1994,74 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
 
         // Water stats
         if (reportPeriod === "today") {
-          statsMessage += `Water: ${healthStats.water.today} glasses today\n`;
+          statsMessage += `${t('water')}: ${healthStats.water.today} ${t('healthData.glasses')} ${t('healthData.today')}\n`;
         } else if (reportPeriod === "weekly") {
-          statsMessage += `Water: ${healthStats.water.avgWeekly.toFixed(
+          statsMessage += `${t('water')}: ${healthStats.water.avgWeekly.toFixed(
             1
-          )} glasses per day (weekly average)\n`;
+          )} ${t('healthData.glasses_per_day_weekly_avg')}\n`;
         } else {
-          statsMessage += `Water: ${healthStats.water.avgMonthly.toFixed(
+          statsMessage += `${t('water')}: ${healthStats.water.avgMonthly.toFixed(
             1
-          )} glasses per day (monthly average)\n`;
+          )} ${t('healthData.glasses_per_day_monthly_avg')}\n`;
         }
 
         // Steps stats
         if (reportPeriod === "today") {
-          statsMessage += `Steps: ${healthStats.steps.today} steps today\n`;
+          statsMessage += `${t('steps')}: ${healthStats.steps.today} ${t('healthData.steps_today')}\n`;
         } else if (reportPeriod === "weekly") {
-          statsMessage += `Steps: ${healthStats.steps.avgWeekly.toFixed(
+          statsMessage += `${t('steps')}: ${healthStats.steps.avgWeekly.toFixed(
             0
-          )} steps per day (weekly average)\n`;
+          )} ${t('healthData.steps_per_day_weekly_avg')}\n`;
         } else {
-          statsMessage += `Steps: ${healthStats.steps.avgMonthly.toFixed(
+          statsMessage += `${t('steps')}: ${healthStats.steps.avgMonthly.toFixed(
             0
-          )} steps per day (monthly average)\n`;
+          )} ${t('healthData.steps_per_day_monthly_avg')}\n`;
         }
 
         // Weight stats
         if (healthStats.weight.avgWeekly > 0) {
           if (reportPeriod === "today") {
-            statsMessage += `Weight: ${healthStats.weight.today} ${healthStats.weight.unit} today\n`;
+            statsMessage += `${t('weight')}: ${healthStats.weight.today} ${healthStats.weight.unit} ${t('healthData.steps_today')}\n`;
           } else if (reportPeriod === "weekly") {
-            statsMessage += `Weight: ${healthStats.weight.avgWeekly.toFixed(
+            statsMessage += `${t('weight')}: ${healthStats.weight.avgWeekly.toFixed(
               1
-            )} ${healthStats.weight.unit} (weekly average)\n`;
+            )} ${healthStats.weight.unit} ${t('healthData.weekly_average')}\n`;
           } else {
-            statsMessage += `Weight: ${healthStats.weight.avgMonthly.toFixed(
+            statsMessage += `${t('weight')}: ${healthStats.weight.avgMonthly.toFixed(
               1
-            )} ${healthStats.weight.unit} (monthly average)\n`;
+            )} ${healthStats.weight.unit} ${t('healthData.monthly_average')}\n`;
           }
         }
 
         // Heart rate stats
         if (healthStats.heart.avgWeekly > 0) {
           if (reportPeriod === "today") {
-            statsMessage += `Heart rate: ${healthStats.heart.today} bpm today\n`;
+            statsMessage += `${t('healthData.heart_rate')}: ${healthStats.heart.today} ${t('healthData.bpm_today')}\n`;
           } else if (reportPeriod === "weekly") {
-            statsMessage += `Heart rate: ${healthStats.heart.avgWeekly.toFixed(
+            statsMessage += `${t('healthData.heart_rate')}: ${healthStats.heart.avgWeekly.toFixed(
               0
-            )} bpm (weekly average)\n`;
+            )} ${t('healthData.bpm_weekly_avg')}\n`;
           } else {
-            statsMessage += `Heart rate: ${healthStats.heart.avgMonthly.toFixed(
+            statsMessage += `${t('healthData.heart_rate')}: ${healthStats.heart.avgMonthly.toFixed(
               0
-            )} bpm (monthly average)\n`;
+            )} ${t('healthData.bpm_monthly_avg')}\n`;
           }
         }
 
         // Sleep stats
         if (healthStats.sleep.avgWeekly > 0) {
           if (reportPeriod === "today") {
-            statsMessage += `Sleep: ${healthStats.sleep.today.toFixed(
+            statsMessage += `${t('sleep')}: ${healthStats.sleep.today.toFixed(
               1
-            )} hours today\n`;
+            )} ${t('healthData.hours_today')}\n`;
           } else if (reportPeriod === "weekly") {
-            statsMessage += `Sleep: ${healthStats.sleep.avgWeekly.toFixed(
+            statsMessage += `${t('sleep')}: ${healthStats.sleep.avgWeekly.toFixed(
               1
-            )} hours per night (weekly average)\n`;
+            )} ${t('healthData.hours_per_night_weekly_avg')}\n`;
           } else {
-            statsMessage += `Sleep: ${healthStats.sleep.avgMonthly.toFixed(
+            statsMessage += `${t('sleep')}: ${healthStats.sleep.avgMonthly.toFixed(
               1
-            )} hours per night (monthly average)\n`;
+            )} ${t('healthData.hours_per_night_monthly_avg')}\n`;
           }
         }
 
@@ -1997,11 +2071,13 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
           healthStats.sleep.avgWeekly === 0
         ) {
           statsMessage +=
-            "\nSome metrics have no data. Regular tracking will provide more complete insights.";
+            `\n${t('healthData.message')}`;
         }
 
         // Speak the response
-        speakResponse(statsMessage);
+        if(shouldSpeak){
+          speakResponse(statsMessage);
+        }
 
         // Add the response to messages
         setMessages((prevMessages) => [
@@ -2024,31 +2100,33 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
         let waterMessage = "";
 
         if (isTodayQuery) {
-          waterMessage = `You've consumed ${healthStats.water.today} glasses of water today.`;
+          waterMessage = `${t('healthData.youve_consumed')} ${healthStats.water.today} ${t('healthData.glasses_of_water_today')}`;
         } else if (isWeeklyQuery || isAverageQuery) {
-          waterMessage = `Your average water consumption is ${healthStats.water.avgWeekly.toFixed(
+          waterMessage = `${t('healthData.average_water_consumption')} ${healthStats.water.avgWeekly.toFixed(
             1
-          )} glasses per day over the past week. Your total weekly consumption was ${
+          )} ${t('healthData.glasses_per_day_week')} ${
             healthStats.water.weekly
-          } glasses.`;
+          } ${t('healthData.glasses')}.`;
         } else if (isMonthlyQuery) {
-          waterMessage = `Your average water consumption is ${healthStats.water.avgMonthly.toFixed(
+          waterMessage = `${t('healthData.average_water_consumption')} ${healthStats.water.avgMonthly.toFixed(
             1
-          )} glasses per day over the past month. Your total monthly consumption was ${
+          )}  ${t('healthData.glasses_per_day_month')} ${
             healthStats.water.monthly
-          } glasses.`;
+          } ${t('healthData.glasses')}.`;
         } else {
           // Default to weekly if no time period specified
-          waterMessage = `Your average water consumption is ${healthStats.water.avgWeekly.toFixed(
+          waterMessage = ` ${t('healthData.average_water_consumption')} ${healthStats.water.avgWeekly.toFixed(
             1
-          )} glasses per day over the past week. Today you've had ${
+          )}  ${t('healthData.glasses_per_day_week_today')} ${
             healthStats.water.today
-          } glasses.`;
+          }  ${t('healthData.glasses')}.`;
         }
 
-        waterMessage += " Staying hydrated is important for your pregnancy!";
+        waterMessage += `${t('healthData.hydration_reminder')}`;
         // Speak the response
-        speakResponse(waterMessage);
+        if(shouldSpeak){
+          speakResponse(waterMessage);
+        }
 
         // Add the response to messages
         setMessages((prevMessages) => [
@@ -2075,8 +2153,10 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
           healthStats.weight.today === 0
         ) {
           const noDataMessage =
-            "I don't have enough weight data to calculate statistics. Please log your weight regularly to track your pregnancy progress.";
-          speakResponse(noDataMessage);
+            `${t('healthData.no_weight_data')}`;
+            if(shouldSpeak){
+              speakResponse(noDataMessage);
+            }
 
           // Add the response to messages
           setMessages((prevMessages) => [
@@ -2097,17 +2177,19 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
         let weightMessage = "";
 
         if (isMonthlyQuery) {
-          weightMessage = `Your average weight is ${healthStats.weight.avgMonthly.toFixed(
+          weightMessage = `${t('healthData.average_weight')} ${healthStats.weight.avgMonthly.toFixed(
             1
-          )} ${healthStats.weight.unit} over the past month.`;
+          )} ${healthStats.weight.unit} ${t('healthData.over_past_month')}`;
         } else {
           // Default to weekly average for "what is avg weight" queries
-          weightMessage = `Your average weight is ${healthStats.weight.avgWeekly.toFixed(
+          weightMessage = `${t('healthData.average_weight')} ${healthStats.weight.avgWeekly.toFixed(
             1
-          )} ${healthStats.weight.unit} over the past week.`;
+          )} ${healthStats.weight.unit} ${t('healthData.over_past_week')}`;
         }
 
-        speakResponse(weightMessage);
+        if(shouldSpeak){
+          speakResponse(weightMessage);
+        }
 
         // Add the response to messages
         setMessages((prevMessages) => [
@@ -2130,32 +2212,35 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
         let stepsMessage = "";
 
         if (isTodayQuery) {
-          stepsMessage = `You've taken ${healthStats.steps.today} steps today.`;
+          stepsMessage = `${t('healthData.youve_taken')} ${healthStats.steps.today} ${t('healthData.steps_today1')}`;
         } else if (isWeeklyQuery || isAverageQuery) {
-          stepsMessage = `Your average daily step count is ${healthStats.steps.avgWeekly.toFixed(
+          stepsMessage = `${t('healthData.average_daily_steps')} ${healthStats.steps.avgWeekly.toFixed(
             0
-          )} steps over the past week. Your total steps this week were ${
+          )} ${t('healthData.steps_past_week')} ${
             healthStats.steps.weekly
           }.`;
         } else if (isMonthlyQuery) {
-          stepsMessage = `Your average daily step count is ${healthStats.steps.avgMonthly.toFixed(
+          stepsMessage = `${t('healthData.average_daily_steps')} ${healthStats.steps.avgMonthly.toFixed(
             0
-          )} steps over the past month. Your total steps this month were ${
+          )} ${t('healthData.steps_past_month')} ${
             healthStats.steps.monthly
           }.`;
         } else {
           // Default to weekly if no time period specified
-          stepsMessage = `Your average daily step count is ${healthStats.steps.avgWeekly.toFixed(
+          stepsMessage = `${t('healthData.average_daily_steps')} ${healthStats.steps.avgWeekly.toFixed(
             0
-          )} steps over the past week. Today you've taken ${
+          )} ${t('healthData.steps_week_today')} ${
             healthStats.steps.today
-          } steps.`;
+          } ${t('steps')}`;
         }
 
         stepsMessage +=
-          " Regular walking is excellent exercise during pregnancy!";
+          ` ${t('healthData.walking_encouragement')}`;
 
-        speakResponse(stepsMessage);
+          if(shouldSpeak){
+            speakResponse(stepsMessage);
+          }
+
 
         // Add the response to messages
         setMessages((prevMessages) => [
@@ -2180,8 +2265,10 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
           healthStats.heart.today === 0
         ) {
           const noDataMessage =
-            "I don't have enough heart rate data to calculate statistics. Please log your heart rate regularly for better tracking.";
-          speakResponse(noDataMessage);
+            `${t('healthData.no_heart_data')}`;
+            if(shouldSpeak){
+              speakResponse(noDataMessage);
+            }
 
           setMessages((prevMessages) => [
             ...prevMessages,
@@ -2201,24 +2288,26 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
         let heartMessage = "";
 
         if (isTodayQuery) {
-          heartMessage = `Your heart rate today is ${healthStats.heart.today} bpm.`;
+          heartMessage = `${t('healthData.heart_rate_today')} ${healthStats.heart.today} bpm.`;
         } else if (isWeeklyQuery || isAverageQuery) {
-          heartMessage = `Your average heart rate is ${healthStats.heart.avgWeekly.toFixed(
+          heartMessage = `${t('healthData.average_heart_rate')} ${healthStats.heart.avgWeekly.toFixed(
             0
-          )} bpm over the past week.`;
+          )} bpm ${t('healthData.over_past_week')}`;
         } else if (isMonthlyQuery) {
-          heartMessage = `Your average heart rate is ${healthStats.heart.avgMonthly.toFixed(
+          heartMessage = `${t('healthData.average_heart_rate')} ${healthStats.heart.avgMonthly.toFixed(
             0
-          )} bpm over the past month.`;
+          )} bpm ${t('healthData.over_past_month')}`;
         } else {
-          heartMessage = `Your current heart rate is ${
+          heartMessage = `${t('healthData.current_heart_rate')} ${
             healthStats.heart.today
-          } bpm, and your weekly average is ${healthStats.heart.avgWeekly.toFixed(
+          } bpm, ${t('healthData.and_weekly_average_is')} ${healthStats.heart.avgWeekly.toFixed(
             0
           )} bpm.`;
         }
 
-        speakResponse(heartMessage);
+        if(shouldSpeak){
+          speakResponse(heartMessage);
+        }
 
         setMessages((prevMessages) => [
           ...prevMessages,
@@ -2286,7 +2375,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
         console.log('Akks', assistantMessage);
           if (shouldSpeak) {
                setIsProcessing(true);
-          speakResponse(assistantMessage);
+           speakResponse(assistantMessage);
         }
 
 
@@ -2316,9 +2405,8 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
           
             if (shouldSpeak) {
                  setIsProcessing(true);
-          speakResponse(assistantMessage);
-
-        }
+                  speakResponse(assistantMessage);
+            }
 
           // Add the response to messages
           setMessages((prevMessages) => [
@@ -2347,7 +2435,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
 
           if (shouldSpeak) {
                setIsProcessing(true);
-          speakResponse(assistantMessage);
+           speakResponse(assistantMessage);
         }
 
 
@@ -2457,7 +2545,14 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
 
       // Process the translated text
        try {
-            await processUserQuery(transcript, true);
+             const processedTranscript = wordsToNumbers(transcript);
+      console.log("Processed transcript:", processedTranscript);
+
+       const translationResult = await generateTranslation(processedTranscript, 'en');
+      const translatedText = translationResult.response;
+
+      // Pass the processed transcript to processUserQuery
+      await processUserQuery(translatedText, true);
         } finally {
             setIsTyping(false);
             setIsAssistantResponding(false);
