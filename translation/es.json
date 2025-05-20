@@ -750,6 +750,8 @@
     "monthly_averages": "Promedio mensual",
     "current": "Actual",
     "last_night": "Anoche",
-    "hours": "horas"
+    "hours": "horas",
+     "weekly_average": "Promedio semanal",
+    "monthly_average1": "Promedio mensual"
   }
 }

@@ -37,11 +37,27 @@ interface FoodNutrient {
 interface FoodItem {
   fdcId: number;
   description: string;
-  name?: string; // Add name field
+  name?: string;
   servingSize?: number;
   servingSizeUnit?: string;
   foodNutrients: FoodNutrient[];
-  foodCategory?: string; // Add foodCategory field
+  foodCategory?: string;
+  yukaScore?: {
+    nutriscore_score: number;
+    nutriscore_grade: string;
+    components: {
+      negative: {
+        saturated_fat: number | null;
+      };
+      positive: {
+        protein: number | null;
+        carbohydrate: number | null;
+      };
+    };
+  };
+  carbs?: number;
+  fat?: number;
+  protein?: number;
 }
 
 interface FoodApiResponse {
@@ -50,6 +66,67 @@ interface FoodApiResponse {
 }
 
 const API_KEY = "snfzY15agSASht2DEL9fJF5HhAxRntErPycnZvYq";
+
+type ScoreLabel = {
+  label: string;
+  color: string; // hex or color code
+};
+
+interface NutriscoreComponent {
+  id: string;
+  value: number;
+}
+
+interface NutriscoreData {
+  score: number;
+  grade: string;
+  components: {
+    negative: NutriscoreComponent[];
+    positive: NutriscoreComponent[];
+  };
+}
+
+interface Nutriments {
+  proteins_100g?: number;
+  carbohydrates_100g?: number;
+  [key: string]: any;
+}
+
+interface Product {
+  nutriscore_data: NutriscoreData;
+  nutriments: Nutriments;
+  nutriscore_score?: number;
+  nutriscore_grade?: string;
+  yukaScore?: {
+    nutriscore_score: number;
+    nutriscore_grade: string;
+    components: {
+      negative: {
+        saturated_fat: number | null;
+      };
+      positive: {
+        protein: number | null;
+        carbohydrate: number | null;
+      };
+    };
+  };
+}
+
+// const getScoreLabel = (score: number): ScoreLabel => {
+//   if (score >= 30) return { label: "Bad", color: "#FF000099" };       // red
+//   else if (score <= 10) return { label: "Poor", color: "#E79E00A6" }; // orange
+//   else if (score <= 15) return { label: "Average", color: "#E9C46A" }; // yellow
+//   else if (score <= 20) return { label: "Good", color: "#22C8009E" };  // green
+//   else return { label: "Good", color: "#22C8009E" };             // dark green
+// };
+
+const getScoreLabel = (score: number): ScoreLabel => {
+  if (score >= 90) return { label: "Excellent", color: "#22C8009E" };       // dark green
+  else if (score >= 70) return { label: "Good", color: "#22C8009E" };        // lighter green
+  else if (score >= 50) return { label: "Moderate", color: "#E9C46A" };    // yellow
+  else if (score >= 30) return { label: "Poor", color: "#E79E00A6" };        // orange
+  else return { label: "Very Poor", color: "#FF000099" };                    // red
+};
 
 const addmeals = () => {
 
@@ -75,59 +152,202 @@ const addmeals = () => {
     searchFood("common foods");
   }, []);
 
-  const searchFood = async (query: string) => {
-    if (!query.trim()) {
-      setIsSearchMode(false);
+  const extractNutriScoreInfo = (product: Product) => {
+      const components = product.yukaScore?.components;
+
+      const saturatedFat = components?.negative?.saturated_fat ?? 0;
+
+      // Access protein directly from the positive component
+      const protein = components?.positive?.protein ?? product.nutriments?.proteins_100g ?? 0;
+
+      const carbohydrate = components?.positive?.carbohydrate ?? product.nutriments?.carbohydrates_100g ?? 0;
+
+      const nutriscoreScore = product.yukaScore?.nutriscore_score ?? product.nutriscore_score ?? 0;
+      const nutriscoreGrade = product.yukaScore?.nutriscore_grade ?? product.nutriscore_grade ?? 'unknown';
+
+  return {
+    nutriscore_score: nutriscoreScore,
+    nutriscore_grade: nutriscoreGrade,
+    components: {
+      negative: {
+        saturated_fat: saturatedFat,
+      },
+      positive: {
+        protein,
+        carbohydrate,
+      }
+    }
+  };
+};
+
+
+
+
+  const searchFood = async (input: string) => {
+  if (!input.trim()) {
+    setIsSearchMode(false);
+    setDisplayData([]);
+    setError(null);
+    return;
+  }
+
+  setLoading(true);
+  setError(null);
+  setIsSearchMode(true);
+
+  try {
+    const isUPC = /^\d{8,14}$/.test(input.trim()); // simple regex to detect UPC code
+
+    if (isUPC) {
+      // Treat input as UPC, fetch OpenFoodFacts product by UPC
+      const offResponse = await fetch(
+        `https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(input)}.json`
+      );
+
+      if (!offResponse.ok) {
+        throw new Error(`OpenFoodFacts API failed with status ${offResponse.status}`);
+      }
+
+      const offData = await offResponse.json();
+
+      console.log(offData);
+
+      if (offData.status === 1 && offData.product) {
+          const product = offData.product;
+          // Map OpenFoodFacts product to FoodItem
+          const mappedProduct = {
+            fdcId: -Number.parseInt(product.code),
+            description: product.product_name || product.generic_name || "Unknown",
+            name: product.product_name || product.generic_name || "Unknown",
+            servingSize:Number.parseFloat(product.serving_size),
+            servingSizeUnit: product.serving_size_unit || "g",
+            foodCategory: product.categories,
+            yukaScore: {
+              nutriscore_score: product.nutriscore_score,
+            },
+            calories: product.nutriments["energy-kcal"].toFixed(1) ?? 0,
+            // Extract from product.nutriments, fallback to 0
+            carbs: product.nutriments?.carbohydrates_100g.toFixed(1) ?? 0,
+            fat: product.nutriments?.fat_100g.toFixed(1) ?? 0,
+            protein: product.nutriments?.proteins_100g.toFixed(1) ?? 0,
+          };
+
+          console.log(mappedProduct);
+
+          if (product.nutriscore_data) {
+            const nutriInfo = extractNutriScoreInfo(product);
+            mappedProduct.yukaScore = nutriInfo;
+
+            mappedProduct.carbs = nutriInfo.components.positive.carbohydrate;
+            mappedProduct.fat = nutriInfo.components.negative.saturated_fat;
+            mappedProduct.protein = nutriInfo.components.positive.protein;
+          }
+
+
+        console.log(product.nutriscore_data)
+
+        setSearchResults([mappedProduct]);
+        setDisplayData([mappedProduct]);
+        setLoading(false);
+        return;
+      }
+
+      // If no product found on OpenFoodFacts by UPC:
+      setError("No product found on OpenFoodFacts for this UPC");
+      setSearchResults([]);
       setDisplayData([]);
-      setError(null);
+      setLoading(false);
       return;
     }
 
-    setLoading(true);
-    setError(null);
-    setIsSearchMode(true);
+    // If input is not a UPC, fallback to USDA search by product name
+    const usdaResponse = await fetch(
+      `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(input)}&api_key=${API_KEY}`,
+      { headers: { accept: "application/json" } }
+    );
 
-    try {
-      const response = await fetch(
-        `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(
-          query
-        )}&api_key=${API_KEY}`,
-        {
-          headers: {
-            accept: "application/json",
-          },
-        }
-      );
+    if (!usdaResponse.ok) {
+      throw new Error(`USDA API request failed with status ${usdaResponse.status}`);
+    }
 
-      if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
-      }
+    const usdaData = await usdaResponse.json();
 
-      const data = await response.json();
-      console.log(data.foods);
-
-      if (data && Array.isArray(data.foods)) {
-        const processedResults = processSearchResults(data.foods);
-        setSearchResults(processedResults);
-        setDisplayData(processedResults);
-      } else {
-        setSearchResults([]);
-        setDisplayData([]);
-        setError("No results found");
-      }
-    } catch (error) {
-      console.error("Error searching for food:", error);
+    if (usdaData && Array.isArray(usdaData.foods) && usdaData.foods.length > 0) {
+      const processedResults = processSearchResults(usdaData.foods);
+      setSearchResults(processedResults);
+      setDisplayData(processedResults);
+    } else {
+      setError("No results found in USDA for this product name");
       setSearchResults([]);
       setDisplayData([]);
-      setError(
-        `Error searching for food: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (error) {
+    console.error("Error searching for food:", error);
+    setSearchResults([]);
+    setDisplayData([]);
+    setError(`Error searching for food: ${error instanceof Error ? error.message : String(error)}`);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+
+
+
+  // const searchFood = async (query: string) => {
+  //   if (!query.trim()) {
+  //     setIsSearchMode(false);
+  //     setDisplayData([]);
+  //     setError(null);
+  //     return;
+  //   }
+
+  //   setLoading(true);
+  //   setError(null);
+  //   setIsSearchMode(true);
+
+  //   try {
+  //     const response = await fetch(
+  //       `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(
+  //         query
+  //       )}&api_key=${API_KEY}`,
+  //       {
+  //         headers: {
+  //           accept: "application/json",
+  //         },
+  //       }
+  //     );
+
+  //     if (!response.ok) {
+  //       throw new Error(`API request failed with status ${response.status}`);
+  //     }
+
+  //     const data = await response.json();
+  //     console.log(data.foods);
+
+  //     if (data && Array.isArray(data.foods)) {
+  //       const processedResults = processSearchResults(data.foods);
+  //       setSearchResults(processedResults);
+  //       setDisplayData(processedResults);
+  //     } else {
+  //       setSearchResults([]);
+  //       setDisplayData([]);
+  //       setError("No results found");
+  //     }
+  //   } catch (error) {
+  //     console.error("Error searching for food:", error);
+  //     setSearchResults([]);
+  //     setDisplayData([]);
+  //     setError(
+  //       `Error searching for food: ${
+  //         error instanceof Error ? error.message : String(error)
+  //       }`
+  //     );
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const processSearchResults = (foods: FoodItem[]) => {
     const uniqueFoods = new Map();
@@ -137,6 +357,7 @@ const addmeals = () => {
       if (!uniqueFoods.has(normalizedName)) {
         // Extract a cleaner name from the description
         const cleanName = getCleanName(food.description);
+        const score = calculateScore(food);
 
         uniqueFoods.set(normalizedName, {
           ...food,
@@ -148,6 +369,7 @@ const addmeals = () => {
           servingSizeUnit:
             food.servingSizeUnit || getDefaultServingUnit(food.description),
             category: food.foodCategory || "Unknown",
+            yukaScore: score,
             expanded: false,
         });
       }
@@ -286,6 +508,72 @@ const addmeals = () => {
     }
   };
 
+  const getNutrientValue = (foodItem: FoodItem, nutrientNames: string[]) => {
+  if (!foodItem.foodNutrients) return 0;
+  for (const name of nutrientNames) {
+    const found = foodItem.foodNutrients.find(
+      (n) =>
+        (n.nutrientName && n.nutrientName.toLowerCase().includes(name)) ||
+        (n.nutrient && n.nutrient.name.toLowerCase().includes(name))
+    );
+    if (found && found.value != null) {
+      return found.value;
+    }
+  }
+  return 0;
+};
+
+const calculateScore = (foodItem: FoodItem) => {
+  const servingSize = foodItem.servingSize || 100; // default 100g if missing
+  const factor = 100 / servingSize; // normalize to per 100g
+
+  // Extract nutrient values normalized per 100g
+  const energy = getNutrientValue(foodItem, ["energy", "calories"]) * factor; // kcal
+  const saturatedFat = getNutrientValue(foodItem, ["saturated fat"]) * factor; // g
+  const sugars = getNutrientValue(foodItem, ["sugars", "sugar"]) * factor; // g
+  const sodium = getNutrientValue(foodItem, ["sodium"]) * factor; // mg
+  const fiber = getNutrientValue(foodItem, ["fiber"]) * factor; // g
+  const protein = getNutrientValue(foodItem, ["protein"]) * factor; // g
+
+  // Negative points (penalties)
+  const negativePoints =
+    Math.min(Math.floor(energy / 100), 10) +
+    Math.min(Math.floor(saturatedFat), 10) +
+    Math.min(Math.floor(sugars / 4.5), 10) +
+    Math.min(Math.floor(sodium / 90), 10);
+
+  // Positive points (benefits)
+  const positivePoints =
+    Math.min(Math.floor(fiber / 0.9), 5) + Math.min(Math.floor(protein / 1.6), 5);
+
+  // Raw score
+  const rawScore = negativePoints - positivePoints;
+
+  // console.log("RawScore", rawScore);
+
+  // Map rawScore to grade A-E
+  let grade = "E";
+  if (rawScore <= 0) grade = "A";
+  else if (rawScore <= 5) grade = "B";
+  else if (rawScore <= 10) grade = "C";
+  else if (rawScore <= 15) grade = "D";
+
+  // console.log("Grade", grade);
+
+  return {
+    rawScore,
+    grade,
+    energy: Math.round(energy),
+    saturatedFat: saturatedFat.toFixed(1),
+    sugars: sugars.toFixed(1),
+    sodium: Math.round(sodium),
+    fiber: fiber.toFixed(1),
+    protein: protein.toFixed(1),
+  };
+};
+
+
+
   const getAnimatedValue = (id: number) => {
     if (!animatedValues.current[id]) {
       animatedValues.current[id] = new Animated.Value(expandedId === id ? 1 : 0);
@@ -314,14 +602,10 @@ const addmeals = () => {
 
   // Update the renderFoodItem to use the new toggleSelection
   const renderFoodItem = ({ item }: { item: any }) => {
-    const calories = getCalories(item);
+    // const calories = getCalories(item);
     const isSelected = selectedItems.has(item.fdcId);
     const isExpanded = expandedId === item.fdcId;
     
-    const protein = getProtein(item);
-    const carbs = getCarbs(item);
-    const fat = getFat(item);
-
     const animValue = getAnimatedValue(item.fdcId);
     
     // Calculate animations
@@ -345,6 +629,16 @@ const addmeals = () => {
       outputRange: [0, 150], // Adjust this value based on your content
     });
 
+    const protein = item.protein ?? 0;
+const carbs = item.carbs ?? 0;
+const fat = item.fat ?? 0;
+const calories = item.calories ?? 0;
+
+
+     const yukaScore = item.yukaScore;
+  const scoreLabel = yukaScore ? getScoreLabel(yukaScore.nutriscore_score) : null;
+
+
     return (
       <View style={styles.foodItemContainer}>
       <TouchableOpacity
@@ -356,9 +650,21 @@ const addmeals = () => {
         activeOpacity={0.7}
       >
         <View style={styles.foodInfo}>
-          <Text style={styles.foodName}>{item.name || item.description}</Text>
+          <Text style={styles.foodName}>{item.name || item.description}
+          
+          </Text>
           <Text style={styles.servingSize}>
-            {item.servingSize} {item.servingSizeUnit}
+            <Text>{item.servingSize}</Text> <Text>{item.servingSizeUnit}</Text> {scoreLabel && (
+              <Text style={{ fontSize: 12, color: scoreLabel.color, fontWeight: "600", marginLeft: 6 }}>
+                {"  "}
+                <View style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 5,
+                  backgroundColor: `${scoreLabel.color}`
+                }}/> {scoreLabel.label}
+              </Text>
+            )}
           </Text>
         </View>
 
@@ -489,7 +795,7 @@ const addmeals = () => {
               ]}
             >
               <Text style={styles.categoryLabel}>{t('meals.categoryLabel')}</Text>
-              <Text style={styles.categoryValue}>{item.category}</Text>
+              <Text style={styles.categoryValue}>{item.foodCategory}</Text>
             </Animated.View>
           </Animated.View>
         </Animated.View>
@@ -640,6 +946,8 @@ const styles = StyleSheet.create({
   },
   servingSize: {
     fontSize: 12,
+    flexDirection:'row',
+    alignItems:'center',
     fontFamily: "Inter400",
     color: "#7B7B7B",
   },

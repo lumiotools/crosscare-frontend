@@ -637,7 +637,7 @@
   "flOz": "Ons likid Ameriken (fl.oz)",
   "meals": {
     "headerTitle": "Manje",
-    "caloriesConsumed": " nan {{displayCalorieGoal} Kalori Konsome",
+    "caloriesConsumed": " nan {{displayCalorieGoal}} Kalori Konsome",
     "edit": "Modifye",
     "today": "Jodi a",
     "mealTitles": {
@@ -746,6 +746,8 @@
     "monthly_averages": "Mwayèn chak mwa",
     "current": "Aktuèl",
     "last_night": "Yè swa",
-    "hours": "èdtan"
+    "hours": "èdtan",
+    "weekly_average": "Mwayèn chak semèn",
+    "monthly_average1": "Mwayèn chak mwa"
   }
 }

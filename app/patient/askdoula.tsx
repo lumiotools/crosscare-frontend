@@ -2367,7 +2367,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
       
       if (ragResponse && ragResponse.success) {
         // Use the response from RAG service
-        const assistantMessage = ragResponse.response;
+        let assistantMessage = ragResponse.response;
 
         // console.log(`Generating translation to ${currentLanguage}`);
         // assistantMessage = await generateTranslation(assistantMessage, currentLanguage);
