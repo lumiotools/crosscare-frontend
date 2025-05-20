@@ -67,7 +67,7 @@ export default function askdoula() {
 
   const params = useLocalSearchParams();
   const fromModal = params.from_modal === "true";
-
+  const RAG_SERVICE_URL = "https://crosscare-rag.onrender.com/api/chat";
   const [isAssistantResponding, setIsAssistantResponding] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -117,125 +117,125 @@ export default function askdoula() {
     }
   };
 
-  useEffect(() => {
-    const checkQuestionnaireStatus = async () => {
-      const isPaused = await questionnaireManager.checkForPausedQuestionnaire();
+  // useEffect(() => {
+  //   const checkQuestionnaireStatus = async () => {
+  //     const isPaused = await questionnaireManager.isPaused();
 
-      // In the useEffect for checkQuestionnaireStatus, modify the paused questionnaire section
-      // If there's a paused questionnaire and no messages yet, ask if they want to continue
-      if (isPaused && messages.length === 0) {
-        console.log("Found paused questionnaire, asking to continue");
+  //     // In the useEffect for checkQuestionnaireStatus, modify the paused questionnaire section
+  //     // If there's a paused questionnaire and no messages yet, ask if they want to continue
+  //     if (isPaused && messages.length === 0) {
+  //       console.log("Found paused questionnaire, asking to continue");
 
-        // Try to load the last question that was asked
-        try {
-          const lastQuestionJson = await AsyncStorage.getItem(
-            `last_question_${user?.user_id}`
-          );
-          if (lastQuestionJson) {
-            const lastQuestion = JSON.parse(lastQuestionJson);
-            console.log(
-              "Found last question for paused questionnaire:",
-              lastQuestion
-            );
+  //       // Try to load the last question that was asked
+  //       try {
+  //         const lastQuestionJson = await AsyncStorage.getItem(
+  //           `last_question_${user?.user_id}`
+  //         );
+  //         if (lastQuestionJson) {
+  //           const lastQuestion = JSON.parse(lastQuestionJson);
+  //           console.log(
+  //             "Found last question for paused questionnaire:",
+  //             lastQuestion
+  //           );
 
-            // If the last message was a pause confirmation, use a different message to resume
-            if (lastQuestion.domainId === "pause") {
-              setMessages([
-                {
-                  id: Date.now().toString(),
-                  type: "text",
-                  content: `Hey ${
-                    user?.user_name || "there"
-                  }, you have an unfinished questionnaire. Would you like to continue where you left off?`,
-                  isUser: false,
-                  timestamp: new Date(),
-                },
-              ]);
-              return;
-            }
+  //           // If the last message was a pause confirmation, use a different message to resume
+  //           if (lastQuestion.domainId === "pause") {
+  //             setMessages([
+  //               {
+  //                 id: Date.now().toString(),
+  //                 type: "text",
+  //                 content: `Hey ${
+  //                   user?.user_name || "there"
+  //                 }, you have an unfinished questionnaire. Would you like to continue where you left off?`,
+  //                 isUser: false,
+  //                 timestamp: new Date(),
+  //               },
+  //             ]);
+  //             return;
+  //           }
 
-            // If it was a domain continuation question, use that context
-            if (lastQuestion.domainId === "continue") {
-              const savedState = await AsyncStorage.getItem(
-                `questionnaire_state_${user?.user_id}`
-              );
-              if (savedState) {
-                const parsedState = JSON.parse(savedState);
-                const nextDomainIndex = parsedState.currentDomainIndex + 1;
+  //           // If it was a domain continuation question, use that context
+  //           if (lastQuestion.domainId === "continue") {
+  //             const savedState = await AsyncStorage.getItem(
+  //               `questionnaire_state_${user?.user_id}`
+  //             );
+  //             if (savedState) {
+  //               const parsedState = JSON.parse(savedState);
+  //               const nextDomainIndex = parsedState.currentDomainIndex + 1;
 
-                if (nextDomainIndex < QUESTIONNAIRE_DOMAINS.length) {
-                  const nextDomain =
-                    QUESTIONNAIRE_DOMAINS[parsedState.currentDomainIndex];
-                  setMessages([
-                    {
-                      id: Date.now().toString(),
-                      type: "text",
-                      content: `Hey ${
-                        user?.user_name || "there"
-                      }, we were discussing ${QUESTIONNAIRE_DOMAINS[
-                        parsedState.currentDomainIndex
-                      ].description.toLowerCase()} and about to move to ${nextDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
-                      isUser: false,
-                      timestamp: new Date(),
-                    },
-                  ]);
-                  return;
-                }
-              }
-            }
+  //               if (nextDomainIndex < QUESTIONNAIRE_DOMAINS.length) {
+  //                 const nextDomain =
+  //                   QUESTIONNAIRE_DOMAINS[parsedState.currentDomainIndex];
+  //                 setMessages([
+  //                   {
+  //                     id: Date.now().toString(),
+  //                     type: "text",
+  //                     content: `Hey ${
+  //                       user?.user_name || "there"
+  //                     }, we were discussing ${QUESTIONNAIRE_DOMAINS[
+  //                       parsedState.currentDomainIndex
+  //                     ].description.toLowerCase()} and about to move to ${nextDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
+  //                     isUser: false,
+  //                     timestamp: new Date(),
+  //                   },
+  //                 ]);
+  //                 return;
+  //               }
+  //             }
+  //           }
 
-            // For a regular question, use the domain context
-            const savedState = await AsyncStorage.getItem(
-              `questionnaire_state_${user?.user_id}`
-            );
-            if (savedState) {
-              const parsedState = JSON.parse(savedState);
-              const currentDomain =
-                QUESTIONNAIRE_DOMAINS[parsedState.currentDomainIndex];
+  //           // For a regular question, use the domain context
+  //           const savedState = await AsyncStorage.getItem(
+  //             `questionnaire_state_${user?.user_id}`
+  //           );
+  //           if (savedState) {
+  //             const parsedState = JSON.parse(savedState);
+  //             const currentDomain =
+  //               QUESTIONNAIRE_DOMAINS[parsedState.currentDomainIndex];
 
-              if (currentDomain) {
-                setMessages([
-                  {
-                    id: Date.now().toString(),
-                    type: "text",
-                    content: `Hey ${
-                      user?.user_name || "there"
-                    }, you have an unfinished questionnaire about ${currentDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
-                    isUser: false,
-                    timestamp: new Date(),
-                  },
-                ]);
-                return;
-              }
-            }
-          }
-        } catch (error) {
-          console.error("Error getting last question:", error);
-        }
+  //             if (currentDomain) {
+  //               setMessages([
+  //                 {
+  //                   id: Date.now().toString(),
+  //                   type: "text",
+  //                   content: `Hey ${
+  //                     user?.user_name || "there"
+  //                   }, you have an unfinished questionnaire about ${currentDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
+  //                   isUser: false,
+  //                   timestamp: new Date(),
+  //                 },
+  //               ]);
+  //               return;
+  //             }
+  //           }
+  //         }
+  //       } catch (error) {
+  //         console.error("Error getting last question:", error);
+  //       }
 
-        // Fallback message if we can't determine the context
-        setMessages([
-          {
-            id: Date.now().toString(),
-            type: "text",
-            content: `Hey ${
-              user?.user_name || "there"
-            }, you have an unfinished questionnaire. Would you like to continue where you left off?`,
-            isUser: false,
-            timestamp: new Date(),
-          },
-        ]);
-        return;
-      }
-    };
+  //       // Fallback message if we can't determine the context
+  //       setMessages([
+  //         {
+  //           id: Date.now().toString(),
+  //           type: "text",
+  //           content: `Hey ${
+  //             user?.user_name || "there"
+  //           }, you have an unfinished questionnaire. Would you like to continue where you left off?`,
+  //           isUser: false,
+  //           timestamp: new Date(),
+  //         },
+  //       ]);
+  //       return;
+  //     }
+  //   };
 
-    checkQuestionnaireStatus();
-  }, [
-    questionnaireManager,
-    messages,
-    user,
-    checkQuestionnaireCompletionStatus,
-  ]);
+  //   checkQuestionnaireStatus();
+  // }, [
+  //   questionnaireManager,
+  //   messages,
+  //   user,
+  //   checkQuestionnaireCompletionStatus,
+  // ]);
 
   // Fetch health data when component mounts
   useEffect(() => {
@@ -573,8 +573,7 @@ export default function askdoula() {
     // Create a function for the RAG service call
     const callRagService = async (query: string, conversationHistory: any[] = []) => {
       try {
-        const RAG_SERVICE_URL = "https://crosscare-rag.onrender.com/api/chat";
-        
+
         console.log(`Calling RAG service with query: "${query}"`);
         
         const response = await axios.post(`${RAG_SERVICE_URL}/${user?.user_id}`, {
@@ -591,6 +590,34 @@ export default function askdoula() {
         }
       } catch (error: any) {
         console.error("Error calling RAG service:", error.message);
+        
+        // Add enhanced error logging
+        if (error.response) {
+          // The server responded with a status code outside of 2xx
+          console.error("RAG service error status:", error.response.status);
+          console.error("RAG service error data:", error.response.data);
+          console.error("RAG service error headers:", error.response.headers);
+        } else if (error.request) {
+          // The request was made but no response was received
+          console.error("RAG service no response received:", error.request);
+        } else {
+          // Something happened in setting up the request
+          console.error("RAG service error details:", error.stack);
+        }
+        
+        // Log the request that was sent
+        try {
+          console.error("Request that caused error:", {
+            url: `${RAG_SERVICE_URL}/${user?.user_id}`,
+            payload: {
+              query: query,
+              conversationHistory: conversationHistory?.length || 0 // Just log length to avoid huge logs
+            }
+          });
+        } catch (logError) {
+          console.error("Error while logging request details:", logError);
+        }
+        
         return null;
       }
     };
@@ -624,23 +651,25 @@ export default function askdoula() {
         isUser: true,
         timestamp: new Date(),
       };
-
+  
       // Update messages state with the new message
       const updatedMessages = [...messages, userMessage];
       setMessages(updatedMessages as Message[]);
       setInputText("");
       setIsTyping(true);
       setIsAssistantResponding(true);
-
-      if (questionnaireManager.isActive && !questionnaireManager.isCompleted) {
+  
+      // Only process as questionnaire response when the questionnaire is active and not paused
+      if (questionnaireManager.isActive && !questionnaireManager.isPaused && !questionnaireManager.isCompleted) {
         const handled = await questionnaireManager.handleUserResponse(messageContent);
         if (handled) {
           setIsTyping(false);
           setIsAssistantResponding(false);
-          return; // Exit the function if the questionnaire handled the message
+          return; // Exit if questionnaire handled the response
         }
       }
-      // Process the query - our new implementation will check for log/goal requests first
+      
+      // Otherwise, process as a regular chat message
       await handleProcessUserQuery(messageContent);
       setIsTyping(false);
       setIsAssistantResponding(false);
@@ -779,7 +808,67 @@ export default function askdoula() {
     }
   };
 
-  // Function to load messages from AsyncStorage
+    // Calculate progress percentage based on completed questions
+  const calculateProgress = () => {
+    if (!questionnaireManager.isActive) return 0;
+    
+    // Get total questions across all domains
+    const totalQuestions = QUESTIONNAIRE_DOMAINS.reduce(
+      (sum, domain) => sum + domain.questions.length, 
+      0
+    );
+    
+    // Get completed questions count
+    const completedCount = questionnaireManager.context?.responses?.length || 0;
+    
+    return Math.min(Math.round((completedCount / totalQuestions) * 100), 100);
+  };
+
+  // Get current domain title
+  const getCurrentDomainIndex = () => {
+    return questionnaireManager.context?.currentDomainIndex || 0;
+  };
+
+  const getCurrentDomainTitle = () => {
+    const domainIndex = getCurrentDomainIndex();
+    const domain = QUESTIONNAIRE_DOMAINS[domainIndex];
+    return domain ? domain.description : "Getting to Know You";
+  };
+
+  // Handle pause/resume button press
+  const handlePauseResumeToggle = async () => {
+    if (questionnaireManager.isPaused) {
+      // Resume questionnaire
+      await questionnaireManager.resumeQuestionnaire();
+    } else {
+      // Pause and save progress to database
+      const context = await questionnaireManager.pauseQuestionnaire();
+      
+      // Save responses to database
+      try {
+        // Get the current responses from context
+        const responses = context?.responses || [];
+        
+        // Submit each response to database
+        for (const response of responses) {
+          await axios.post(
+            `https://crosscare-backends.onrender.com/api/user/${user?.user_id}/domain`,
+            {
+              domainId: response.domainId,
+              questionId: response.questionId,
+              response: response.response,
+              flag: response.flag,
+              timestamp: response.timestamp.toISOString()
+            }
+          );
+        }
+        console.log("Saved questionnaire responses to database");
+      } catch (error) {
+        console.error("Error saving responses to database:", error);
+      }
+    }
+  };
+
   // Function to load messages from AsyncStorage
   const loadMessages = async () => {
     try {
@@ -848,6 +937,40 @@ export default function askdoula() {
               {/* <TouchableOpacity>
                 <Feather name="more-vertical" size={20} color="#E5E5E5" />
               </TouchableOpacity> */}
+            </View>
+          </View>
+        )}
+
+        {(questionnaireManager.isActive || questionnaireManager.isPaused) && (
+          <View style={styles.questionnaireStatusContainer}>
+            <View style={styles.statusTextContainer}>
+              <Text style={styles.questionnaireStatusTitle}>
+                Questionnaire Status - {getCurrentDomainTitle()}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.pauseButton,
+                questionnaireManager.isPaused && styles.resumeButton
+              ]}
+              onPress={handlePauseResumeToggle}
+            >
+              <Text style={[
+                styles.pauseButtonText,
+                questionnaireManager.isPaused && styles.resumeButtonText
+              ]}>
+                {questionnaireManager.isPaused ? "Resume" : "Pause"}
+              </Text>
+            </TouchableOpacity>
+            
+            {/* Progress Bar */}
+            <View style={styles.progressBarContainer}>
+              <View 
+                style={[
+                  styles.progressBar, 
+                  { width: `${calculateProgress()}%` }
+                ]} 
+              />
             </View>
           </View>
         )}
@@ -1076,6 +1199,57 @@ const styles = StyleSheet.create({
     color: "#434343",
     fontSize: 16,
     fontFamily: "DMSans600",
+  },
+  // Add these to your styles
+  questionnaireStatusContainer: {
+    padding: 16,
+    backgroundColor: "#FFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+  statusTextContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  questionnaireStatusTitle: {
+    fontSize: 14,
+    fontFamily: "DMSans500",
+    color: "#94588D",
+  },
+  pauseButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: "#FFF",
+    borderWidth: 1,
+    borderColor: "#FBBBE9",
+    alignSelf: "flex-end",
+    marginBottom: 8,
+  },
+  pauseButtonText: {
+    color: "#F76CCF",
+    fontSize: 12,
+    fontFamily: "DMSans500",
+  },
+  resumeButton: {
+    backgroundColor: "#F76CCF",
+    borderColor: "#F989D9",
+  },
+  resumeButtonText: {
+    color: "#FFF",
+  },
+  progressBarContainer: {
+    height: 8,
+    backgroundColor: "#F0F0F0",
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  progressBar: {
+    height: "100%",
+    backgroundColor: "#F76CCF",
+    borderRadius: 4,
   },
   profileSection: {
     alignItems: "center",

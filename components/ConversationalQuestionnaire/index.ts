@@ -212,7 +212,6 @@ const ConversationalQuestionnaire = ({
   // Save conversation state to storage
   const saveConversationState = async () => {
     try {
-      console.log('Saving conversation state:', context);
       await saveConversationContext(userId, context);
     } catch (error) {
       console.error("Error saving conversation state:", error);
@@ -611,38 +610,38 @@ const ConversationalQuestionnaire = ({
       
       console.log("Response classification:", classification);
       
-      // First, check if this is a pause request (can happen at any time)
-      if (classification.isPauseRequest) {
-        console.log("Detected pause request during questionnaire");
+      // // First, check if this is a pause request (can happen at any time)
+      // if (classification.isPauseRequest) {
+      //   console.log("Detected pause request during questionnaire");
         
-        // Send confirmation and pause
-        const pauseKey = `pause_request`;
-        if (!sentMessages.has(pauseKey)) {
-          sentMessages.add(pauseKey);
-          const pauseMessage = "I understand you'd like to take a break. I've saved your progress, and we can continue whenever you're ready.";
+      //   // Send confirmation and pause
+      //   const pauseKey = `pause_request`;
+      //   if (!sentMessages.has(pauseKey)) {
+      //     sentMessages.add(pauseKey);
+      //     const pauseMessage = "I understand you'd like to take a break. I've saved your progress, and we can continue whenever you're ready.";
           
-          // Save the context
-          saveLastQuestion("pause", pauseKey, pauseMessage);
+      //     // Save the context
+      //     saveLastQuestion("pause", pauseKey, pauseMessage);
           
-          // Set the state to paused
-          dispatch({
-            type: 'SET_PAUSED',
-            payload: {}
-          });
+      //     // Set the state to paused
+      //     dispatch({
+      //       type: 'SET_PAUSED',
+      //       payload: {}
+      //     });
           
-          await saveConversationState();
+      //     await saveConversationState();
 
-          // Send the message
-          onQuestionReady(pauseMessage);
-        }
-        return true;
-      }
+      //     // Send the message
+      //     onQuestionReady(pauseMessage);
+      //   }
+      //   return true;
+      // }
 
-      if (classification.isResumeRequest) {
-        console.log("Detected resume request")
-        await resumeQuestionnaire();
-        return true;
-      }
+      // if (classification.isResumeRequest) {
+      //   console.log("Detected resume request")
+      //   await resumeQuestionnaire();
+      //   return true;
+      // }
       
       // Check if the response needs empathy
       if (classification.needsEmpathy || classification.emotionalContent !== 'none') {
@@ -704,7 +703,34 @@ const ConversationalQuestionnaire = ({
                 
                 // Add this section to continue after the follow-up
                 setTimeout(() => {
-                  // Move to next question after the follow-up
+                  // After follow-up question, determine next question based on follow-up mapping
+                  if (currentQuestion.followUp) {
+                    let followUpId = null;
+                    
+                    // Check for selected option in the mapping
+                    if (classification.selectedOption && currentQuestion.followUp[classification.selectedOption]) {
+                      followUpId = currentQuestion.followUp[classification.selectedOption];
+                    } 
+                    // Use wildcard if available
+                    else if (currentQuestion.followUp["*"]) {
+                      followUpId = currentQuestion.followUp["*"];
+                    }
+                    
+                    if (followUpId) {
+                      const targetQuestionIndex = currentDomain.questions.findIndex(q => q.id === followUpId);
+                      if (targetQuestionIndex !== -1) {
+                        dispatch({
+                          type: 'SET_POSITION',
+                          payload: {
+                            currentQuestionIndex: targetQuestionIndex
+                          }
+                        });
+                        return;
+                      }
+                    }
+                  }
+                  
+                  // Fallback to incrementing sequentially if no mapping found
                   const nextQuestionIndex = context.currentQuestionIndex + 1;
                   if (nextQuestionIndex < currentDomain.questions.length) {
                     dispatch({
@@ -717,7 +743,7 @@ const ConversationalQuestionnaire = ({
                     // End of domain, ask to continue
                     askToContinue();
                   }
-                }, 5000); // Wait for user to read and possibly respond to follow-up
+                }, 5000);
                 
               }, 2000);
             } else {
@@ -1184,28 +1210,7 @@ const ConversationalQuestionnaire = ({
               throw error;
             }
           };
-          
-          // Check for paused questionnaire
-          const checkForPausedQuestionnaire = async (): Promise<boolean> => {
-            // First check current in-memory state
-            if (context.isPaused) {
-              return true;
-            }
-            
-            // Only check storage on first load or when explicitly needed
-            try {
-              // Only access storage if we're unsure about the state
-              if (!context.isActive && !context.isCompleted) {
-                const savedContext = await loadConversationContext(userId);
-                return savedContext?.isPaused || false;
-              }
-              return false;
-            } catch (error) {
-              console.error("Error checking for paused questionnaire:", error);
-              return false;
-            }
-          };
-          
+                  
           // Check if questionnaire is completed
           const isQuestionnaireCompleted = async (): Promise<boolean> => {
             // First check in-memory state
@@ -1304,14 +1309,7 @@ const ConversationalQuestionnaire = ({
               if (!savedContext) {
                 console.error("No saved context found for resuming");
                 return;
-              }
-              
-              console.log("Loaded saved context for resuming:", {
-                savedContext,
-                domainIndex: savedContext.currentDomainIndex,
-                questionIndex: savedContext.currentQuestionIndex
-              });
-              
+              }  
               // Mark intro as seen
               await AsyncStorage.setItem(`intro_shown_${userId}`, "true");
               
@@ -1409,8 +1407,16 @@ const ConversationalQuestionnaire = ({
             isPaused: context.isPaused,
             isActive: context.isActive,
             isCompleted: context.isCompleted,
-            checkForPausedQuestionnaire,
-            isQuestionnaireCompleted
+            isQuestionnaireCompleted,
+            pauseQuestionnaire: async () => {
+              dispatch({
+                type: 'SET_PAUSED',
+                payload: {}
+              });
+              await saveConversationState();
+              return context;
+            },
+            context
           };
         };
         

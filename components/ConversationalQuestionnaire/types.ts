@@ -1,5 +1,6 @@
 import { EmpathyResponse } from '../../utils/ConversationalSystem/EmpathyResponses/types';
 import { QuestionnaireResponse } from '../../constants/questionaireData';
+import { ConversationContext } from '../../utils/ConversationalSystem/ConversationalContext/types';
 
 export interface ConversationalQuestionnaireProps {
   userId: string;
@@ -27,6 +28,7 @@ export interface ConversationalQuestionnaireManager {
   isPaused: boolean;
   isActive: boolean;
   isCompleted: boolean;
-  checkForPausedQuestionnaire: () => Promise<boolean>;
+  pauseQuestionnaire: () => Promise<ConversationContext>;
   isQuestionnaireCompleted: () => Promise<boolean>;
+  context: ConversationContext;
 }
