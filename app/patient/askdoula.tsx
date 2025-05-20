@@ -34,6 +34,7 @@ import { detectAndHandleLogRequest } from "@/utils/DoulaChatUtils/detectAndHandl
 import { detectAndHandleGoalRequest } from "@/utils/DoulaChatUtils/detectAndHandleGoalRequest";
 import { processUserQuery } from "@/utils/DoulaChatUtils/processUserQuery";
 import ConversationalQuestionnaire from "@/components/ConversationalQuestionnaire";
+import { loadConversationContext } from "@/utils/ConversationalSystem/ConversationalContext/contextManager";
 
 interface Message {
   id: string;
@@ -104,6 +105,35 @@ export default function askdoula() {
     openAIApiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY || ''
   });
 
+  // Add this useEffect to check for paused questionnaire on mount
+  useEffect(() => {
+    const checkPausedQuestionnaire = async () => {
+      try {
+        // Check if there's a paused questionnaire
+        const savedContext = await loadConversationContext(user?.user_id);
+        
+        console.log("Checking saved questionnaire state:", savedContext);
+        
+        // If we have ANY saved context (not just paused), load it
+        if (savedContext) {
+          // Make sure to await this so the state is actually loaded
+          if (questionnaireManager.loadPausedState) {
+            await questionnaireManager.loadPausedState();
+            console.log("After loading state:", {
+              isActive: questionnaireManager.isActive,
+              isPaused: questionnaireManager.isPaused,
+              currentDomain: questionnaireManager.context?.currentDomainIndex,
+              currentQuestion: questionnaireManager.context?.currentQuestionIndex
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error checking for saved questionnaire:", error);
+      }
+    };
+    
+    checkPausedQuestionnaire();
+  }, []);
 
   const checkQuestionnaireCompletionStatus = async () => {
     try {
@@ -840,6 +870,7 @@ export default function askdoula() {
     if (questionnaireManager.isPaused) {
       // Resume questionnaire
       await questionnaireManager.resumeQuestionnaire();
+
     } else {
       // Pause and save progress to database
       const context = await questionnaireManager.pauseQuestionnaire();
@@ -941,7 +972,7 @@ export default function askdoula() {
           </View>
         )}
 
-        {(questionnaireManager.isActive || questionnaireManager.isPaused) && (
+        {!questionnaireManager.isCompleted && (
           <View style={styles.questionnaireStatusContainer}>
             <View style={styles.statusTextContainer}>
               <Text style={styles.questionnaireStatusTitle}>

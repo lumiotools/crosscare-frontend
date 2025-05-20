@@ -1416,6 +1416,11 @@ const ConversationalQuestionnaire = ({
               await saveConversationState();
               return context;
             },
+            loadPausedState: async () => {
+              hasLoadedRef.current = false; // Reset loading flag
+              await loadConversationState(); // Reload the conversation state
+              return context;
+            },
             context
           };
         };
