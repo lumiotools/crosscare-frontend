@@ -30,6 +30,7 @@ import { detectAndHandleLogRequest } from "@/utils/DoulaChatUtils/detectAndHandl
 import { detectAndHandleGoalRequest } from "@/utils/DoulaChatUtils/detectAndHandleGoalRequest"
 import { processUserQuery } from "@/utils/DoulaChatUtils/processUserQuery"
 import ConversationalQuestionnaire from "@/components/ConversationalQuestionnaire"
+import { loadConversationContext } from "@/utils/ConversationalSystem/ConversationalContext/contextManager"
 
 interface PauseStateStorage {
   paused: boolean
@@ -74,6 +75,35 @@ export default function askdoula() {
   const [isAssistantResponding, setIsAssistantResponding] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0)
+
+  const loadPauseState = async () => {
+    try {
+      // First check dedicated storage
+      const state = await AsyncStorage.getItem(`questionnaire_paused_${user?.user_id}`)
+      if (state !== null) {
+        const isPaused = state === "true"
+        console.log(`Loaded pause state from dedicated storage: ${isPaused}`)
+        return isPaused
+      }
+
+      // Fall back to context if dedicated storage doesn't have the value
+      const contextString = await AsyncStorage.getItem(`conversation_context_${user?.user_id}`)
+      if (contextString) {
+        const context = JSON.parse(contextString)
+        const isPaused = context?.isPaused || false
+        console.log(`Loaded pause state from context: ${isPaused}`)
+        return isPaused
+      }
+
+      console.log("No pause state found, defaulting to false")
+      return false
+    } catch (error) {
+      console.error("Error loading pause state:", error)
+      return false
+    }
+  }
+
+  
 
   // Add this function to directly get progress from AsyncStorage
   const getProgressFromStorage = async () => {
@@ -1001,21 +1031,6 @@ export default function askdoula() {
   };
 
     // Calculate progress percentage based on completed questions
-  const calculateProgress = () => {
-    if (!questionnaireManager.isActive) return 0;
-    
-    // Get total questions across all domains
-    const totalQuestions = QUESTIONNAIRE_DOMAINS.reduce(
-      (sum, domain) => sum + domain.questions.length, 
-      0
-    );
-    
-    // Get completed questions count
-    const completedCount = questionnaireManager.context?.responses?.length || 0;
-    
-    return Math.min(Math.round((completedCount / totalQuestions) * 100), 100);
-  };
-
   const savePauseState = async (paused: boolean): Promise<void> => {
     try {
       await AsyncStorage.setItem(`questionnaire_paused_${user?.user_id}`, paused ? "true" : "false")
@@ -1031,33 +1046,7 @@ export default function askdoula() {
     return domain ? domain.description : "Getting to Know You";
   };
 
-  const loadPauseState = async () => {
-    try {
-      // First check dedicated storage
-      const state = await AsyncStorage.getItem(`questionnaire_paused_${user?.user_id}`)
-      if (state !== null) {
-        const isPaused = state === "true"
-        console.log(`Loaded pause state from dedicated storage: ${isPaused}`)
-        return isPaused
-      }
-
-      // Fall back to context if dedicated storage doesn't have the value
-      const contextString = await AsyncStorage.getItem(`conversation_context_${user?.user_id}`)
-      if (contextString) {
-        const context = JSON.parse(contextString)
-        const isPaused = context?.isPaused || false
-        console.log(`Loaded pause state from context: ${isPaused}`)
-        return isPaused
-      }
-
-      console.log("No pause state found, defaulting to false")
-      return false
-    } catch (error) {
-      console.error("Error loading pause state:", error)
-      return false
-    }
-  }
-
+ 
   // Handle pause/resume button press
   const handlePauseResumeToggle = async () => {
     try {
@@ -1135,34 +1124,45 @@ export default function askdoula() {
   const loadMessages = async () => {
     try {
       // First check if questionnaire is completed
-      const isCompleted = await checkQuestionnaireCompletionStatus();
+      const isCompleted = await checkQuestionnaireCompletionStatus()
 
-      const savedMessages = await AsyncStorage.getItem("chatHistory");
+      const savedMessages = await AsyncStorage.getItem("chatHistory")
+
+      if (questionnaireManager && questionnaireManager.context) {
+        try {
+          // Force the questionnaire manager to reload its context
+          const savedQContext = await AsyncStorage.getItem(`conversation_context_${user?.user_id}`)
+          if (savedQContext) {
+            console.log("Reloading questionnaire context for progress bar")
+            // This will trigger the next step in your existing code that handles context loading
+            setForceUpdate((prev) => prev + 1)
+          }
+        } catch (qError) {
+          console.error("Error refreshing questionnaire context:", qError)
+        }
+      }
 
       if (savedMessages) {
         // Parse the JSON and convert timestamp strings back to Date objects
         const parsedMessages = JSON.parse(savedMessages).map((msg: any) => ({
           ...msg,
           timestamp: new Date(msg.timestamp),
-        }));
+        }))
 
         // If we have messages, load them
         if (parsedMessages.length > 0) {
-          setMessages(parsedMessages);
-          console.log(
-            "Loaded messages from AsyncStorage, count:",
-            parsedMessages.length
-          );
+          setMessages(parsedMessages)
+          console.log("Loaded messages from AsyncStorage, count:", parsedMessages.length)
         } else {
-          console.log("No messages found in saved chat history");
+          console.log("No messages found in saved chat history")
         }
       } else {
-        console.log("No saved messages found in AsyncStorage");
+        console.log("No saved messages found in AsyncStorage")
       }
     } catch (error) {
-      console.error("Error loading messages:", error);
+      console.error("Error loading messages:", error)
     }
-  };
+  }
 
   return (
     <KeyboardAvoidingView
@@ -1203,39 +1203,27 @@ export default function askdoula() {
           </View>
         )}
 
-        {!questionnaireManager.isCompleted && (
+{(questionnaireManager.isActive || questionnaireManager.isPaused || !questionnaireManager.isCompleted) && (
           <View style={styles.questionnaireStatusContainer}>
             <View style={styles.statusTextContainer}>
-              <Text style={styles.questionnaireStatusTitle}>
-                Questionnaire Status - {getCurrentDomainTitle()}
-              </Text>
+              <Text style={styles.questionnaireStatusTitle}>Questionnaire Status - {getCurrentDomainTitle()}</Text>
+              <TouchableOpacity
+                style={[styles.pauseButton, isPaused && styles.resumeButton]}
+                onPress={handlePauseResumeToggle}
+              >
+                <Text style={[styles.pauseButtonText, isPaused && styles.resumeButtonText]}>
+                  {isPaused ? "Resume" : "Pause"}
+                </Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              style={[
-                styles.pauseButton,
-                questionnaireManager.isPaused && styles.resumeButton
-              ]}
-              onPress={handlePauseResumeToggle}
-            >
-              <Text style={[
-                styles.pauseButtonText,
-                questionnaireManager.isPaused && styles.resumeButtonText
-              ]}>
-                {questionnaireManager.isPaused ? "Resume" : "Pause"}
-              </Text>
-            </TouchableOpacity>
-            
+
             {/* Progress Bar */}
-            <View style={styles.progressBarContainer}>
-              <View 
-                style={[
-                  styles.progressBar, 
-                  { width: `${calculateProgress()}%` }
-                ]} 
-              />
+             <View style={styles.progressBarContainer}>
+              <View style={[styles.progressBar, { width: `${progress}%` }]} />
+              <Text style={[styles.progressText, { left: `${progress}%` }]}>{progress}%</Text>
             </View>
           </View>
-        )}
+        )}    
 
         {/* Chat Container */}
         <ScrollView
@@ -1512,6 +1500,14 @@ const styles = StyleSheet.create({
     height: "100%",
     backgroundColor: "#F76CCF",
     borderRadius: 4,
+  },
+  progressText: {
+    position: "absolute",
+    right: 8,
+    color: "rgba(136, 59, 114, 1)",
+    fontSize: 9,
+    fontFamily: "DMSans500",
+    // alignSelf: "center",
   },
   profileSection: {
     alignItems: "center",
