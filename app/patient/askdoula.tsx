@@ -73,6 +73,36 @@ export default function askdoula() {
   const RAG_SERVICE_URL = "https://crosscare-rag.onrender.com/api/chat";
   const [isAssistantResponding, setIsAssistantResponding] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState(0)
+
+  // Add this function to directly get progress from AsyncStorage
+  const getProgressFromStorage = async () => {
+    try {
+      // Get the conversation context directly from storage
+      const contextString = await AsyncStorage.getItem(`conversation_context_${user?.user_id}`)
+      if (!contextString) {
+        console.log("No context found in storage")
+        return 0
+      }
+
+      // Parse the context and get the response count
+      const context = JSON.parse(contextString)
+      const responseCount = context?.responses?.length || 0
+
+      // Calculate progress
+      const totalQuestions = QUESTIONNAIRE_DOMAINS.reduce((sum, domain) => sum + domain.questions.length, 0)
+
+      const percentage = Math.min(Math.round((responseCount / totalQuestions) * 100), 100)
+      console.log(`Direct progress calculation: ${responseCount}/${totalQuestions} = ${percentage}%`)
+
+      return percentage
+    } catch (error) {
+      console.error("Error getting progress from storage:", error)
+      return 0
+    }
+  }
+
+
 
   const scrollViewRef = useRef<ScrollView>(null);
   const loadingAnimation = useRef(new Animated.Value(0)).current;
@@ -148,6 +178,136 @@ export default function askdoula() {
       return false;
     }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      console.log("Screen focused - loading progress and pause state")
+
+      // Load progress directly from storage
+      const loadProgressAndPauseState = async () => {
+        try {
+          // First check the dedicated pause state storage
+          const pauseState = await AsyncStorage.getItem(`questionnaire_paused_${user?.user_id}`)
+          const isPausedFromDedicated = pauseState === "true"
+
+          // Get the progress
+          const storedProgress = await getProgressFromStorage()
+          setProgress(storedProgress)
+
+          // Also get the pause state from context as a fallback
+          const contextString = await AsyncStorage.getItem(`conversation_context_${user?.user_id}`)
+          if (contextString) {
+            const context = JSON.parse(contextString)
+            // Use dedicated storage value first, fall back to context
+            const wasPaused = isPausedFromDedicated || context?.isPaused || false
+
+            console.log(`Loaded pause state from storage: isPaused=${wasPaused}`)
+            setIsPaused(wasPaused)
+
+            // Also force the questionnaire manager to update its state if possible
+            if (questionnaireManager && wasPaused) {
+              console.log("Setting questionnaire manager to paused state")
+              // If we have a reloadContextFromStorage method, use it
+              if (typeof questionnaireManager.reloadContextFromStorage === "function") {
+                await questionnaireManager.reloadContextFromStorage()
+              }
+            }
+          } else if (pauseState === "true") {
+            // If we have no context but we do have a pause state, still set it
+            setIsPaused(true)
+          }
+        } catch (error) {
+          console.error("Error loading progress and pause state:", error)
+        }
+      }
+
+      loadProgressAndPauseState()
+
+      return () => {
+        // Nothing to clean up
+      }
+    }, [user?.user_id]),
+  )
+
+  const [isContextLoaded, setIsContextLoaded] = useState(false)
+  const [forceUpdate, setForceUpdate] = useState(0)
+
+  useFocusEffect(
+    useCallback(() => {
+      const loadContextAndUpdateProgress = async () => {
+        console.log("Screen focused - updating progress bar")
+        setIsContextLoaded(false)
+
+        // Wait a moment to allow context to load
+        setTimeout(async () => {
+          // If questionnaireManager exists, make sure it's properly initialized
+          if (questionnaireManager) {
+            try {
+              const savedContext = await AsyncStorage.getItem(`conversation_context_${user?.user_id}`)
+              if (savedContext) {
+                console.log("Found saved context for progress calculation")
+                // Force a re-render of the progress bar
+                setForceUpdate((prev) => prev + 1)
+              }
+            } catch (error) {
+              console.error("Error checking saved context:", error)
+            }
+          }
+          setIsContextLoaded(true)
+        }, 500)
+      }
+
+      loadContextAndUpdateProgress()
+
+      return () => {
+        // Nothing to clean up
+      }
+    }, []),
+  )
+
+
+  const calculateProgress = useCallback(() => {
+    // Debug log to see the state values when calculating progress
+    console.log("Calculate progress called with state:", {
+      isActive: questionnaireManager.isActive,
+      isPaused: questionnaireManager.isPaused,
+      responseCount: questionnaireManager.context?.responses?.length || 0,
+      domainIdx: questionnaireManager.context?.currentDomainIndex,
+    })
+
+    // If questionnaire manager isn't available yet, return 0
+    if (!questionnaireManager) return 0
+
+    // Get total questions across all domains
+    const totalQuestions = QUESTIONNAIRE_DOMAINS.reduce((sum, domain) => sum + domain.questions.length, 0)
+
+    // Get completed questions count - safely access responses
+    const responses = questionnaireManager.context?.responses || []
+    const completedCount = responses.length
+
+    // Log calculation details for debugging
+    const percentage = Math.min(Math.round((completedCount / totalQuestions) * 100), 100)
+    console.log(`Progress bar calculation: ${completedCount}/${totalQuestions} = ${percentage}%`)
+
+    return percentage
+  }, [questionnaireManager])
+
+  // Get current domain title
+  const getCurrentDomainIndex = () => {
+    return questionnaireManager.context?.currentDomainIndex || 0
+  }
+
+  useEffect(() => {
+    // Initialize progress when component mounts
+    const initProgress = async () => {
+      const initialProgress = await getProgressFromStorage()
+      setProgress(initialProgress)
+      console.log(`Initial progress set to ${initialProgress}%`)
+    }
+
+    initProgress()
+  }, [])
+
 
   // useEffect(() => {
   //   const checkQuestionnaireStatus = async () => {
@@ -856,10 +1016,14 @@ export default function askdoula() {
     return Math.min(Math.round((completedCount / totalQuestions) * 100), 100);
   };
 
-  // Get current domain title
-  const getCurrentDomainIndex = () => {
-    return questionnaireManager.context?.currentDomainIndex || 0;
-  };
+  const savePauseState = async (paused: boolean): Promise<void> => {
+    try {
+      await AsyncStorage.setItem(`questionnaire_paused_${user?.user_id}`, paused ? "true" : "false")
+      console.log(`Saved pause state: ${paused}`)
+    } catch (error: unknown) {
+      console.error("Error saving pause state:", error)
+    }
+  }
 
   const getCurrentDomainTitle = () => {
     const domainIndex = getCurrentDomainIndex();
