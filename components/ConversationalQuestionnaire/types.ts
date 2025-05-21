@@ -30,6 +30,7 @@ export interface ConversationalQuestionnaireManager {
   isCompleted: boolean;
   pauseQuestionnaire: () => Promise<ConversationContext>;
   isQuestionnaireCompleted: () => Promise<boolean>;
-  loadPausedState: () => Promise<ConversationContext>;
+  reloadContextFromStorage: () => Promise<boolean>;
   context: ConversationContext;
 }
+
