@@ -1475,5 +1475,8 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     opacity: 0.5,
+    
   },
 });
+
+
