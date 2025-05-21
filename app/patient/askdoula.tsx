@@ -1031,40 +1031,105 @@ export default function askdoula() {
     return domain ? domain.description : "Getting to Know You";
   };
 
+  const loadPauseState = async () => {
+    try {
+      // First check dedicated storage
+      const state = await AsyncStorage.getItem(`questionnaire_paused_${user?.user_id}`)
+      if (state !== null) {
+        const isPaused = state === "true"
+        console.log(`Loaded pause state from dedicated storage: ${isPaused}`)
+        return isPaused
+      }
+
+      // Fall back to context if dedicated storage doesn't have the value
+      const contextString = await AsyncStorage.getItem(`conversation_context_${user?.user_id}`)
+      if (contextString) {
+        const context = JSON.parse(contextString)
+        const isPaused = context?.isPaused || false
+        console.log(`Loaded pause state from context: ${isPaused}`)
+        return isPaused
+      }
+
+      console.log("No pause state found, defaulting to false")
+      return false
+    } catch (error) {
+      console.error("Error loading pause state:", error)
+      return false
+    }
+  }
+
   // Handle pause/resume button press
   const handlePauseResumeToggle = async () => {
-    if (questionnaireManager.isPaused) {
-      // Resume questionnaire
-      await questionnaireManager.resumeQuestionnaire();
+    try {
+      if (isPaused) {
+        // Resume questionnaire
+        console.log("Resuming questionnaire")
 
-    } else {
-      // Pause and save progress to database
-      const context = await questionnaireManager.pauseQuestionnaire();
-      
-      // Save responses to database
-      try {
-        // Get the current responses from context
-        const responses = context?.responses || [];
-        
-        // Submit each response to database
-        for (const response of responses) {
-          await axios.post(
-            `https://crosscare-backends.onrender.com/api/user/${user?.user_id}/domain`,
-            {
+        // Update local state first for immediate UI feedback
+        setIsPaused(false)
+
+        // Save the pause state to dedicated storage
+        await savePauseState(false)
+
+        // Also update the context
+        const contextString = await AsyncStorage.getItem(`conversation_context_${user?.user_id}`)
+        if (contextString) {
+          const context = JSON.parse(contextString)
+          context.isPaused = false
+          await AsyncStorage.setItem(`conversation_context_${user?.user_id}`, JSON.stringify(context))
+        }
+
+        // Resume in the questionnaire manager
+        await questionnaireManager.resumeQuestionnaire()
+      } else {
+        // Pause questionnaire
+        console.log("Pausing questionnaire")
+
+        // Update local state first for immediate UI feedback
+        setIsPaused(true)
+
+        // Save the pause state to dedicated storage
+        await savePauseState(true)
+
+        // Pause in the questionnaire manager and get context
+        const context = await questionnaireManager.pauseQuestionnaire()
+
+        // Make sure the context has isPaused set to true
+        if (context) {
+          context.isPaused = true
+          await AsyncStorage.setItem(`conversation_context_${user?.user_id}`, JSON.stringify(context))
+        }
+
+        // Save responses to database
+        try {
+          // Get the current responses from context
+          const responses = context?.responses || []
+
+          // Submit each response to database
+          for (const response of responses) {
+            await axios.post(`https://crosscare-backends.onrender.com/api/user/${user?.user_id}/domain`, {
               domainId: response.domainId,
               questionId: response.questionId,
               response: response.response,
               flag: response.flag,
-              timestamp: response.timestamp.toISOString()
-            }
-          );
+              timestamp: response.timestamp.toISOString(),
+            })
+          }
+          console.log("Saved questionnaire responses to database")
+        } catch (error) {
+          console.error("Error saving responses to database:", error)
         }
-        console.log("Saved questionnaire responses to database");
-      } catch (error) {
-        console.error("Error saving responses to database:", error);
       }
+
+      // Update progress after state change
+      const updatedProgress = await getProgressFromStorage()
+      setProgress(updatedProgress)
+    } catch (error) {
+      console.error("Error in pause/resume toggle:", error)
+      // Revert state if there was an error
+      setIsPaused(!isPaused)
     }
-  };
+  }
 
   // Function to load messages from AsyncStorage
   const loadMessages = async () => {
