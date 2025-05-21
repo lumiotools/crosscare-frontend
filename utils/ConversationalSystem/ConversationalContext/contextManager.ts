@@ -76,6 +76,15 @@ export const loadConversationContext = async (userId: string): Promise<Conversat
 export const conversationReducer = (state: ConversationContext, action: ConversationStateUpdateAction): ConversationContext => {
   switch (action.type) {
     case 'SET_ACTIVE':
+      if (action.payload && typeof action.payload === 'object') {
+        // Keep all properties from the payload but ensure isActive is true and isPaused is false
+        return { 
+          ...state,
+          ...action.payload, 
+          isActive: true, 
+          isPaused: false,
+        };
+      }
       return { ...state, isActive: true, isPaused: false };
     case 'SET_PAUSED':
       return { ...state, isPaused: true, isActive: false, stage: 'paused' };
