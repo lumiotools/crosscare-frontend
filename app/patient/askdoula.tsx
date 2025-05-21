@@ -30,7 +30,6 @@ import { detectAndHandleLogRequest } from "@/utils/DoulaChatUtils/detectAndHandl
 import { detectAndHandleGoalRequest } from "@/utils/DoulaChatUtils/detectAndHandleGoalRequest"
 import { processUserQuery } from "@/utils/DoulaChatUtils/processUserQuery"
 import ConversationalQuestionnaire from "@/components/ConversationalQuestionnaire"
-import { loadConversationContext } from "@/utils/ConversationalSystem/ConversationalContext/contextManager"
 
 interface PauseStateStorage {
   paused: boolean
@@ -76,63 +75,6 @@ export default function askdoula() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0)
 
-  const loadPauseState = async () => {
-    try {
-      // First check dedicated storage
-      const state = await AsyncStorage.getItem(`questionnaire_paused_${user?.user_id}`)
-      if (state !== null) {
-        const isPaused = state === "true"
-        console.log(`Loaded pause state from dedicated storage: ${isPaused}`)
-        return isPaused
-      }
-
-      // Fall back to context if dedicated storage doesn't have the value
-      const contextString = await AsyncStorage.getItem(`conversation_context_${user?.user_id}`)
-      if (contextString) {
-        const context = JSON.parse(contextString)
-        const isPaused = context?.isPaused || false
-        console.log(`Loaded pause state from context: ${isPaused}`)
-        return isPaused
-      }
-
-      console.log("No pause state found, defaulting to false")
-      return false
-    } catch (error) {
-      console.error("Error loading pause state:", error)
-      return false
-    }
-  }
-
-  
-
-  // Add this function to directly get progress from AsyncStorage
-  const getProgressFromStorage = async () => {
-    try {
-      // Get the conversation context directly from storage
-      const contextString = await AsyncStorage.getItem(`conversation_context_${user?.user_id}`)
-      if (!contextString) {
-        console.log("No context found in storage")
-        return 0
-      }
-
-      // Parse the context and get the response count
-      const context = JSON.parse(contextString)
-      const responseCount = context?.responses?.length || 0
-
-      // Calculate progress
-      const totalQuestions = QUESTIONNAIRE_DOMAINS.reduce((sum, domain) => sum + domain.questions.length, 0)
-
-      const percentage = Math.min(Math.round((responseCount / totalQuestions) * 100), 100)
-      console.log(`Direct progress calculation: ${responseCount}/${totalQuestions} = ${percentage}%`)
-
-      return percentage
-    } catch (error) {
-      console.error("Error getting progress from storage:", error)
-      return 0
-    }
-  }
-
-
 
   const scrollViewRef = useRef<ScrollView>(null);
   const loadingAnimation = useRef(new Animated.Value(0)).current;
@@ -167,47 +109,66 @@ export default function askdoula() {
     openAIApiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY || ''
   });
 
-  // Add this useEffect to check for paused questionnaire on mount
-  useEffect(() => {
-    const checkPausedQuestionnaire = async () => {
-      try {
-        // Check if there's a paused questionnaire
-        const savedContext = await loadConversationContext(user?.user_id);
-        
-        console.log("Checking saved questionnaire state:", savedContext);
-        
-        // If we have ANY saved context (not just paused), load it
-        if (savedContext) {
-          // Make sure to await this so the state is actually loaded
-          if (questionnaireManager.loadPausedState) {
-            await questionnaireManager.loadPausedState();
-            console.log("After loading state:", {
-              isActive: questionnaireManager.isActive,
-              isPaused: questionnaireManager.isPaused,
-              currentDomain: questionnaireManager.context?.currentDomainIndex,
-              currentQuestion: questionnaireManager.context?.currentQuestionIndex
-            });
-          }
-        }
-      } catch (error) {
-        console.error("Error checking for saved questionnaire:", error);
-      }
-    };
-    
-    checkPausedQuestionnaire();
-  }, []);
-
   const checkQuestionnaireCompletionStatus = async () => {
     try {
-      const completedStatus = await AsyncStorage.getItem(
-        `questionnaire_completed_${user?.user_id}`
-      );
-      return completedStatus === "true";
+      const completedStatus = await AsyncStorage.getItem(`questionnaire_completed_${user?.user_id}`)
+      return completedStatus === "true"
     } catch (error) {
-      console.error("Error checking questionnaire completion status:", error);
-      return false;
+      console.error("Error checking questionnaire completion status:", error)
+      return false
     }
-  };
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      console.log("Screen focused - loading progress and pause state")
+
+      // Load progress directly from storage
+      const loadProgressAndPauseState = async () => {
+        try {
+          // First check the dedicated pause state storage
+          const pauseState = await AsyncStorage.getItem(`questionnaire_paused_${user?.user_id}`)
+          const isPausedFromDedicated = pauseState === "true"
+
+          // Get the progress
+          const storedProgress = await getProgressFromStorage()
+          setProgress(storedProgress)
+
+          // Also get the pause state from context as a fallback
+          const contextString = await AsyncStorage.getItem(`conversation_context_${user?.user_id}`)
+          if (contextString) {
+            const context = JSON.parse(contextString)
+            // Use dedicated storage value first, fall back to context
+            const wasPaused = isPausedFromDedicated || context?.isPaused || false
+
+            console.log(`Loaded pause state from storage: isPaused=${wasPaused}`)
+            setIsPaused(wasPaused)
+
+            // Also force the questionnaire manager to update its state if possible
+            if (questionnaireManager && wasPaused) {
+              console.log("Setting questionnaire manager to paused state")
+              // If we have a reloadContextFromStorage method, use it
+              if (typeof questionnaireManager.reloadContextFromStorage === "function") {
+                await questionnaireManager.reloadContextFromStorage()
+              }
+            }
+          } else if (pauseState === "true") {
+            // If we have no context but we do have a pause state, still set it
+            setIsPaused(true)
+          }
+        } catch (error) {
+          console.error("Error loading progress and pause state:", error)
+        }
+      }
+
+      loadProgressAndPauseState()
+
+      return () => {
+        // Nothing to clean up
+      }
+    }, [user?.user_id]),
+  )
+
 
   useFocusEffect(
     useCallback(() => {
@@ -489,16 +450,51 @@ export default function askdoula() {
   }, [isTyping, loadingAnimation]);
 
   // Add useEffect to load messages when component mounts
-  useEffect(() => {
-    loadMessages();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      // This will run when the screen comes into focus
+      console.log("Screen focused, reloading context if needed")
+      loadMessages()
+
+      // If questionnaireManager exists, make sure it's properly initialized
+      // No need to call questionnaireManager.loadConversationState here, as it does not exist.
+    }, []),
+  )
+
+
+  // Add this function to directly get progress from AsyncStorage
+  const getProgressFromStorage = async () => {
+    try {
+      // Get the conversation context directly from storage
+      const contextString = await AsyncStorage.getItem(`conversation_context_${user?.user_id}`)
+      if (!contextString) {
+        console.log("No context found in storage")
+        return 0
+      }
+
+      // Parse the context and get the response count
+      const context = JSON.parse(contextString)
+      const responseCount = context?.responses?.length || 0
+
+      // Calculate progress
+      const totalQuestions = QUESTIONNAIRE_DOMAINS.reduce((sum, domain) => sum + domain.questions.length, 0)
+
+      const percentage = Math.min(Math.round((responseCount / totalQuestions) * 100), 100)
+      console.log(`Direct progress calculation: ${responseCount}/${totalQuestions} = ${percentage}%`)
+
+      return percentage
+    } catch (error) {
+      console.error("Error getting progress from storage:", error)
+      return 0
+    }
+  }
 
   // Add useEffect to save messages when they change
   useEffect(() => {
     if (messages.length > 0) {
-      saveMessages(messages);
+      saveMessages(messages)
     }
-  }, [messages]);
+  }, [messages])
 
   const systemPrompt = `${systemPrompts}`;
 
@@ -872,31 +868,61 @@ export default function askdoula() {
         content: messageContent,
         isUser: true,
         timestamp: new Date(),
-      };
-  
+      }
+
       // Update messages state with the new message
-      const updatedMessages = [...messages, userMessage];
-      setMessages(updatedMessages as Message[]);
-      setInputText("");
-      setIsTyping(true);
-      setIsAssistantResponding(true);
-  
+      const updatedMessages = [...messages, userMessage]
+      setMessages(updatedMessages as Message[])
+      setInputText("")
+      setIsTyping(true)
+      setIsAssistantResponding(true)
+
+      const updatedProgress = await getProgressFromStorage()
+      setProgress(updatedProgress)
+
       // Only process as questionnaire response when the questionnaire is active and not paused
       if (questionnaireManager.isActive && !questionnaireManager.isPaused && !questionnaireManager.isCompleted) {
-        const handled = await questionnaireManager.handleUserResponse(messageContent);
+        const handled = await questionnaireManager.handleUserResponse(messageContent)
         if (handled) {
-          setIsTyping(false);
-          setIsAssistantResponding(false);
-          return; // Exit if questionnaire handled the response
+          setIsTyping(false)
+          setIsAssistantResponding(false)
+          return // Exit if questionnaire handled the response
         }
       }
-      
+
       // Otherwise, process as a regular chat message
-      await handleProcessUserQuery(messageContent);
-      setIsTyping(false);
-      setIsAssistantResponding(false);
+      await handleProcessUserQuery(messageContent)
+      setIsTyping(false)
+      setIsAssistantResponding(false)
     }
-  };
+  }
+
+  const loadPauseState = async () => {
+    try {
+      // First check dedicated storage
+      const state = await AsyncStorage.getItem(`questionnaire_paused_${user?.user_id}`)
+      if (state !== null) {
+        const isPaused = state === "true"
+        console.log(`Loaded pause state from dedicated storage: ${isPaused}`)
+        return isPaused
+      }
+
+      // Fall back to context if dedicated storage doesn't have the value
+      const contextString = await AsyncStorage.getItem(`conversation_context_${user?.user_id}`)
+      if (contextString) {
+        const context = JSON.parse(contextString)
+        const isPaused = context?.isPaused || false
+        console.log(`Loaded pause state from context: ${isPaused}`)
+        return isPaused
+      }
+
+      console.log("No pause state found, defaulting to false")
+      return false
+    } catch (error) {
+      console.error("Error loading pause state:", error)
+      return false
+    }
+  }
 
   const handleAudioSent = (
     audioUri: string,
@@ -941,6 +967,32 @@ export default function askdoula() {
     setInputText(optionText); // Update the inputText with the selected option
     sendMessage(optionText);
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      console.log("Screen focused - reloading pause state and progress")
+
+      const refreshState = async () => {
+        // First load the pause state
+        const paused = await loadPauseState()
+        console.log(`Loaded pause state on focus: ${paused}`)
+        setIsPaused(paused)
+
+        // Then load progress
+        const storedProgress = await getProgressFromStorage()
+        setProgress(storedProgress)
+
+        // Debug log
+        console.log(`Screen focused: isPaused=${paused}, progress=${storedProgress}%`)
+      }
+
+      refreshState()
+
+      return () => {
+        // Nothing to clean up
+      }
+    }, []),
+  )
 
   const clearChatHistory = async () => {
     try {
