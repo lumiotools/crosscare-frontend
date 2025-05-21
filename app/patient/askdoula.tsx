@@ -1514,29 +1514,29 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 8,
+
   },
   questionnaireStatusTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: "DMSans500",
-    color: "#94588D",
+    color: "rgba(136, 59, 114, 1)",
+    maxWidth:'90%'
   },
   pauseButton: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
     backgroundColor: "#FFF",
     borderWidth: 1,
     borderColor: "#FBBBE9",
-    alignSelf: "flex-end",
-    marginBottom: 8,
   },
   pauseButtonText: {
-    color: "#F76CCF",
-    fontSize: 12,
+    color: "rgba(247, 108, 207, 1)",
+    fontSize: 10,
     fontFamily: "DMSans500",
   },
   resumeButton: {
-    backgroundColor: "#F76CCF",
+    backgroundColor: "rgba(247, 108, 207, 1)",
     borderColor: "#F989D9",
   },
   resumeButtonText: {
@@ -1549,9 +1549,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   progressBar: {
-    height: "100%",
+    height: '100%',
     backgroundColor: "#F76CCF",
-    borderRadius: 4,
+    borderRadius: 10,
   },
   progressText: {
     position: "absolute",
