@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   StyleSheet,
   Text,
@@ -12,29 +12,29 @@ import {
   Platform,
   Animated,
   Alert,
-} from "react-native";
-import { Ionicons, Feather } from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { router, usePathname } from "expo-router";
-import VoiceRecorder from "@/components/VoiceRecorder";
-import AudioMessage from "@/components/AudioMessage";
-import { useSelector } from "react-redux";
-import axios from "axios";
-import { systemPrompts } from "@/constants/systemPrompts";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import {
-  QUESTIONNAIRE_DOMAINS,
-  type QuestionnaireResponse,
-} from "@/constants/questionaireData";
-import QuestionnaireManager from "@/components/QuestionaireManager";
-import { useLocalSearchParams } from "expo-router";
-import User from "@/assets/images/Svg/User";
-import { fetchHealthData, type HealthStats, type HealthData } from "@/utils/DoulaChatUtils/fetchHealthData";
-import { detectAndHandleLogRequest } from "@/utils/DoulaChatUtils/detectAndHandleLogRequest";
-import { detectAndHandleGoalRequest } from "@/utils/DoulaChatUtils/detectAndHandleGoalRequest";
-import { processUserQuery } from "@/utils/DoulaChatUtils/processUserQuery";
-import ConversationalQuestionnaire from "@/components/ConversationalQuestionnaire";
-import { loadConversationContext } from "@/utils/ConversationalSystem/ConversationalContext/contextManager";
+} from "react-native"
+import { Ionicons, Feather } from "@expo/vector-icons"
+import { SafeAreaView } from "react-native-safe-area-context"
+import { router, useFocusEffect } from "expo-router"
+import VoiceRecorder from "@/components/VoiceRecorder"
+import AudioMessage from "@/components/AudioMessage"
+import { useSelector } from "react-redux"
+import axios from "axios"
+import { systemPrompts } from "@/constants/systemPrompts"
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import { QUESTIONNAIRE_DOMAINS, type QuestionnaireResponse } from "@/constants/questionaireData"
+import { useLocalSearchParams } from "expo-router"
+import User from "@/assets/images/Svg/User"
+import { fetchHealthData, type HealthData } from "@/utils/DoulaChatUtils/fetchHealthData"
+import { detectAndHandleLogRequest } from "@/utils/DoulaChatUtils/detectAndHandleLogRequest"
+import { detectAndHandleGoalRequest } from "@/utils/DoulaChatUtils/detectAndHandleGoalRequest"
+import { processUserQuery } from "@/utils/DoulaChatUtils/processUserQuery"
+import ConversationalQuestionnaire from "@/components/ConversationalQuestionnaire"
+
+interface PauseStateStorage {
+  paused: boolean
+  userId: string | undefined
+}
 
 interface Message {
   id: string;
