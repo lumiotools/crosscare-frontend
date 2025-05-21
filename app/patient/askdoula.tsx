@@ -66,6 +66,8 @@ export default function askdoula() {
     sleep: { today: 0, weekly: 0, monthly: 0, avgWeekly: 0, avgMonthly: 0 },
   });
 
+  const [isPaused, setIsPaused] = useState(false)
+
   const params = useLocalSearchParams();
   const fromModal = params.from_modal === "true";
   const RAG_SERVICE_URL = "https://crosscare-rag.onrender.com/api/chat";
