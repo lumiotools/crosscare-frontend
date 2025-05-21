@@ -651,10 +651,11 @@ const ConversationalQuestionnaire = ({
           console.log("Detected need for empathetic response, trigger:", empathyTrigger);
           
           // Generate an empathetic response
-          const empathyResponse = generateEmpathyResponse(
+          const empathyResponse = await generateEmpathyResponse(
             empathyTrigger,
             response,
-            currentQuestion.text
+            currentQuestion.text,
+            openAIApiKey
           );
           
           // Record this as a sensitive disclosure
