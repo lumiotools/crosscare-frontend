@@ -113,18 +113,13 @@ export const generateEmpathyResponse = async (
       responsePreview: userResponse.substring(0, 50) + (userResponse.length > 50 ? '...' : '')
     });
     
-    // Determine the follow-up question based on trigger type
+    // Remove follow-up questions entirely
     let suggestedFollowUp = "";
-    if (trigger === 'physical_harm' || trigger === 'safety_concern') {
-      suggestedFollowUp = "Would you like information about safety resources that might be helpful?";
-    } else if (trigger === 'financial_distress' || trigger === 'housing_insecurity' || trigger === 'food_insecurity') {
-      suggestedFollowUp = "Would you like information about support services that might help with this challenge?";
-    }
     
     // Check if we have a valid API key
     if (!apiKey || apiKey.trim() === '') {
       console.error("No API key provided for empathy generation");
-      return fallbackEmpathyResponse(trigger, suggestedFollowUp);
+      return fallbackEmpathyResponse(trigger);
     }
     
     // Create a prompt for the AI
@@ -174,25 +169,19 @@ Provide only the response text, no additional commentary.`;
     
     if (!generatedResponse) {
       console.error("Empty response from OpenAI API");
-      return fallbackEmpathyResponse(trigger, suggestedFollowUp);
+      return fallbackEmpathyResponse(trigger);
     }
     
     console.log("Generated empathy response:", generatedResponse);
     
     return {
       responseText: generatedResponse,
-      followUpQuestion: suggestedFollowUp,
-      resourcesOffered: !!suggestedFollowUp
+      followUpQuestion: undefined,
+      resourcesOffered: false
     };
   } catch (error) {
     console.error("Error generating AI empathy response:", error);
-    return fallbackEmpathyResponse(trigger, 
-      trigger === 'physical_harm' || trigger === 'safety_concern' 
-        ? "Would you like information about safety resources that might be helpful?"
-        : trigger === 'financial_distress' || trigger === 'housing_insecurity' || trigger === 'food_insecurity'
-          ? "Would you like information about support services that might help with this challenge?"
-          : undefined
-    );
+    return fallbackEmpathyResponse(trigger);
   }
 };
 
@@ -241,13 +230,13 @@ const FALLBACK_TEMPLATES: Record<EmpathyTrigger, string[]> = {
 };
 
 // Provide a fallback response if the API call fails
-const fallbackEmpathyResponse = (trigger: EmpathyTrigger, followUpQuestion?: string): EmpathyResponse => {
+const fallbackEmpathyResponse = (trigger: EmpathyTrigger): EmpathyResponse => {
   const templates = FALLBACK_TEMPLATES[trigger];
   const template = templates[Math.floor(Math.random() * templates.length)];
   
   return {
     responseText: template,
-    followUpQuestion,
-    resourcesOffered: !!followUpQuestion
+    followUpQuestion: undefined,
+    resourcesOffered: false
   };
 };

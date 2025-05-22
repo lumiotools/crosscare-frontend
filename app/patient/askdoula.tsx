@@ -874,7 +874,7 @@ export default function askdoula() {
     } else {
       // Pause and save progress to database
       const context = await questionnaireManager.pauseQuestionnaire();
-      
+      console.log("Context is the following:", context);
       // Save responses to database
       try {
         // Get the current responses from context
@@ -882,6 +882,7 @@ export default function askdoula() {
         
         // Submit each response to database
         for (const response of responses) {
+          console.log("Saving response to database:", response);
           await axios.post(
             `https://crosscare-backends.onrender.com/api/user/${user?.user_id}/domain`,
             {
