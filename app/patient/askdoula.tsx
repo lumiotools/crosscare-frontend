@@ -822,7 +822,7 @@ export default function askdoula() {
 
 const generateTranslation = async (text: string, targetLanguage: string) => {
   const apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
-  const apiKey = "AIzaSyD0ISmMWP4_yDqEvlrjpNJB8TnuJBkhZPs"; // Replace with your actual API key
+  const apiKey = "AIzaSyDa4LHDX8SHeXNeKr6sZP5TCIrEIPnkjSU"; // Replace with your actual API key
 
   // Prepare the request body for translation
   const requestBody = {
@@ -897,7 +897,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
       // Your API key should be stored in an environment variable in production
-      const apiKey = "AIzaSyD0ISmMWP4_yDqEvlrjpNJB8TnuJBkhZPs"; // Replace with your actual API key
+      const apiKey = "AIzaSyDa4LHDX8SHeXNeKr6sZP5TCIrEIPnkjSU"; // Replace with your actual API key
 
       // const currentLanguage = ;
 
@@ -1059,58 +1059,62 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
 
   useEffect(() => {
     return () => {
-        // Cleanup speech when component unmounts
-        if (isSpeaking) {
-            Speech.stop();
-            setIsSpeaking(false);
-        }
-    };
-}, [isSpeaking]);
+      // Cleanup speech when component unmounts
+      if (isSpeaking) {
+        Speech.stop()
+        setIsSpeaking(false)
+        setSpeakingMessageId(null)
+      }
+    }
+  }, [isSpeaking])
 
   const speakResponse = (text: string) => {
-      // Check if muted - if so, don't speak but still process
-      if (effectiveMuted) {
-        console.log("Voice is muted, not speaking response:", text)
+    // Check if muted - if so, don't speak but still process
+    if (effectiveMuted) {
+      console.log("Voice is muted, not speaking response:", text)
+      setIsProcessing(false)
+      setIsSpeaking(false)
+      return
+    }
+
+    // If speech is already happening, stop it before starting new speech
+    if (isSpeaking) {
+      Speech.stop()
+      console.log("Speech interrupted.")
+    }
+
+    setIsSpeaking(true)
+
+    // Create speech options with the female voice if available
+    const speechOptions: Speech.SpeechOptions = {
+      language: currentLanguage,
+      pitch: 1.0,
+      rate: 0.9,
+      onDone: () => {
+        setIsSpeaking(false)
         setIsProcessing(false)
-        setIsSpeaking(false);
-        return
-      }
-  
-      // If speech is already happening, stop it before starting new speech
-      if (isSpeaking) {
-        Speech.stop();
-        console.log("Speech interrupted.");
-      }
-  
-      setIsSpeaking(true)
-  
-      // Create speech options with the female voice if available
-      const speechOptions: Speech.SpeechOptions = {
-        language: currentLanguage,
-        pitch: 1.0,
-        rate: 0.9,
-        onDone: () => {
-          setIsSpeaking(false)
-          setIsProcessing(false)
-        },
-        onStopped: () => {
-          setIsSpeaking(false)
-          setIsProcessing(false)
-        },
-        onError: (error) => {
-          console.error("Speech error:", error)
-          setIsSpeaking(false)
-          setIsProcessing(false)
-        },
-      }
-  
-      // Add the voice if we found a female one
-      if (femaleVoice) {
-        speechOptions.voice = femaleVoice.identifier
-      }
-  
-      // Start speaking the text
-      Speech.speak(text, speechOptions)
+        setSpeakingMessageId(null)
+      },
+      onStopped: () => {
+        setIsSpeaking(false)
+        setIsProcessing(false)
+        setSpeakingMessageId(null)
+      },
+      onError: (error) => {
+        console.error("Speech error:", error)
+        setIsSpeaking(false)
+        setIsProcessing(false)
+        setSpeakingMessageId(null)
+      },
+    }
+
+    // Add the voice if we found a female one
+    if (femaleVoice) {
+      speechOptions.voice = femaleVoice.identifier
+    }
+
+    // Start speaking the text
+    Speech.speak(text, speechOptions)
   }
 
   const wordsToNumbers = (text: string): string => {
@@ -2325,7 +2329,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
       }
 
       // New function to call the RAG service
-      const callRagService = async (query: string, conversationHistory: any[] = []) => {
+      const callRagService = async (query: string, conversationHistory: any[] = [], currentLanguage: string) => {
         try {
           // Replace with your actual Render URL once deployed
           const RAG_SERVICE_URL = "https://crosscare-rag.onrender.com/api/chat";
@@ -2334,7 +2338,8 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
           
           const response = await axios.post(`${RAG_SERVICE_URL}/${user?.user_id}`, {
             query: query,
-            conversationHistory: conversationHistory
+            conversationHistory: conversationHistory,
+            currentLanguage: currentLanguage
           });
           
           if (response.status === 200 && response.data.success) {
@@ -2346,6 +2351,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
           }
         } catch (error: any) {
           console.error("Error calling RAG service:", error.message);
+
           return null;
         }
       };
@@ -2363,7 +2369,7 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
 
     // Try to use RAG service first
     try {
-        const ragResponse = await callRagService(query, recentMessages);
+        const ragResponse = await callRagService(query, recentMessages, currentLanguage);
       
       if (ragResponse && ragResponse.success) {
         // Use the response from RAG service
@@ -2716,6 +2722,8 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
     saveMuteState()
   }, [isMuted])
 
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+
  const toggleMute = () => {
     const newMuteState = !isMuted;
     setIsMuted(newMuteState);
@@ -2727,6 +2735,57 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
         setIsSpeaking(false);
     }
 }; 
+
+ const speakMessage = (messageId: string, messageContent: string) => {
+    // If this message is already being spoken, stop it
+    if (speakingMessageId === messageId) {
+      Speech.stop()
+      setIsSpeaking(false)
+      setSpeakingMessageId(null)
+      return
+    }
+
+    // If another message is being spoken, stop it first
+    if (isSpeaking) {
+      Speech.stop()
+    }
+
+    // If muted, unmute first
+    if (isMuted) {
+      setIsMuted(false)
+    }
+
+    // Set the speaking state and ID before starting speech
+    setIsSpeaking(true)
+    setSpeakingMessageId(messageId)
+
+    const speechOptions: Speech.SpeechOptions = {
+      language: currentLanguage,
+      pitch: 1.0,
+      rate: 0.9,
+      onDone: () => {
+        setIsSpeaking(false)
+        setSpeakingMessageId(null)
+      },
+      onStopped: () => {
+        setIsSpeaking(false)
+        setSpeakingMessageId(null)
+      },
+      onError: (error) => {
+        console.error("Speech error:", error)
+        setIsSpeaking(false)
+        setSpeakingMessageId(null)
+      },
+    }
+
+    // Add the voice if we found a female one
+    if (femaleVoice) {
+      speechOptions.voice = femaleVoice.identifier
+    }
+
+    // Start speaking the text
+    Speech.speak(messageContent, speechOptions)
+  }
 
   return (
     <KeyboardAvoidingView
@@ -2832,9 +2891,16 @@ const generateTranslation = async (text: string, targetLanguage: string) => {
                         message.isUser ? styles.userBubble : styles.doulaBubble,
                       ]}
                     >
-                      {!message.isUser && (
-                        <TouchableOpacity style={styles.bubbleMuteButton} onPress={toggleMute}>
-                          <Ionicons name={isMuted ? "volume-mute" : "volume-medium"} size={16} color="#E162BC" />
+                        {!message.isUser && (
+                        <TouchableOpacity
+                          style={styles.bubbleMuteButton}
+                          onPress={() => speakMessage(message.id, message.content)}
+                        >
+                          <Ionicons
+                            name={speakingMessageId === message.id ? "volume-high" : "volume-medium"}
+                            size={16}
+                            color={speakingMessageId === message.id ? "#E162BC" : '#CCCCCC'}
+                          />
                         </TouchableOpacity>
                       )}
                       <Text
