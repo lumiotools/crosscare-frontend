@@ -954,65 +954,74 @@ const ConversationalQuestionnaire = ({
           console.log("Selected option:", classification.selectedOption);
 
           // If there's a follow-up question, send that after a delay
-          if (empathyResponse.followUpQuestion) {
-            setTimeout(() => {
-              onQuestionReady(empathyResponse.followUpQuestion as string);
+          // Save the response first
+          const questionnaireResponse = {
+            questionId: currentQuestion.id,
+            domainId: currentDomain.id,
+            response: response,
+            flag: currentQuestion.flag || "",
+            timestamp: new Date()
+          };
 
-              // Add this section to continue after the follow-up
-              setTimeout(() => {
-                // After follow-up question, determine next question based on follow-up mapping
-                if (currentQuestion.followUp) {
-                  let followUpId = null;
+          // Add to context
+          dispatch({
+            type: 'ADD_RESPONSE',
+            payload: questionnaireResponse
+          });
 
-                  // Check for selected option in the mapping
-                  if (
-                    classification.selectedOption &&
-                    currentQuestion.followUp[classification.selectedOption]
-                  ) {
-                    followUpId =
-                      currentQuestion.followUp[classification.selectedOption];
-                  }
-                  // Use wildcard if available
-                  else if (currentQuestion.followUp["*"]) {
-                    followUpId = currentQuestion.followUp["*"];
-                  }
+          // Notify parent
+          onResponseSaved(questionnaireResponse);
 
-                  if (followUpId) {
-                    const targetQuestionIndex =
-                      currentDomain.questions.findIndex(
-                        (q) => q.id === followUpId
-                      );
-                    if (targetQuestionIndex !== -1) {
-                      dispatch({
-                        type: "SET_POSITION",
-                        payload: {
-                          currentQuestionIndex: targetQuestionIndex,
-                        },
-                      });
-                      return;
-                    }
-                  }
-                }
-
-                // Fallback to incrementing sequentially if no mapping found
-                const nextQuestionIndex = context.currentQuestionIndex + 1;
-                if (nextQuestionIndex < currentDomain.questions.length) {
+          // Wait a brief moment and then move to the next question
+          setTimeout(() => {
+            // If followUp is defined, use that logic
+            if (currentQuestion.followUp) {
+              // Check if this option has a follow-up defined
+              let followUpId = null;
+              
+              // Check exact match with selected option from classification
+              if (classification.selectedOption && currentQuestion.followUp[classification.selectedOption]) {
+                followUpId = currentQuestion.followUp[classification.selectedOption];
+              } 
+              // Check wildcard
+              else if (currentQuestion.followUp["*"]) {
+                followUpId = currentQuestion.followUp["*"];
+              }
+              
+              if (followUpId) {
+                const targetQuestionIndex = currentDomain.questions.findIndex(q => q.id === followUpId);
+                if (targetQuestionIndex !== -1) {
                   dispatch({
-                    type: "SET_POSITION",
+                    type: 'SET_POSITION',
                     payload: {
-                      currentQuestionIndex: nextQuestionIndex,
-                    },
+                      currentQuestionIndex: targetQuestionIndex
+                    }
                   });
-                } else {
-                  // End of domain, ask to continue
-                  askToContinue();
+                  
+                  // Send next question after a short delay
+                  setTimeout(() => sendNextQuestion(), 500);
+                  return;
                 }
-              }, 5000);
-            }, 2000);
-          } else {
-            // If no follow-up, just save the response and continue
-            saveResponseAndContinue(response, currentQuestion, currentDomain);
-          }
+              }
+            }
+            
+            // Default case: move to the next sequential question
+            const nextQuestionIndex = context.currentQuestionIndex + 1;
+            if (nextQuestionIndex < currentDomain.questions.length) {
+              dispatch({
+                type: 'SET_POSITION',
+                payload: {
+                  currentQuestionIndex: nextQuestionIndex
+                }
+              });
+              
+              // Send next question
+              setTimeout(() => sendNextQuestion(), 500);
+            } else {
+              // End of domain, ask to continue
+              askToContinue();
+            }
+          }, 2000); // Wait 2 seconds after empathy response before showing next question
 
           return true;
         }

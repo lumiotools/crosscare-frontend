@@ -1145,6 +1145,7 @@ export default function askdoula() {
         try {
           // Get the current responses from context
           const responses = context?.responses || []
+          console.log("this is the responses:", responses);
 
           // Submit each response to database
           for (const response of responses) {
