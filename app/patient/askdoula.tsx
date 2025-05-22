@@ -1256,7 +1256,7 @@ export default function askdoula() {
           </View>
         )}
 
-{(questionnaireManager.isActive || questionnaireManager.isPaused || !questionnaireManager.isCompleted) && (
+        {(questionnaireManager.isActive || questionnaireManager.isPaused || !questionnaireManager.isCompleted) && (
           <View style={styles.questionnaireStatusContainer}>
             <View style={styles.statusTextContainer}>
               <Text style={styles.questionnaireStatusTitle}>Questionnaire Status - {getCurrentDomainTitle()}</Text>
@@ -1544,7 +1544,7 @@ const styles = StyleSheet.create({
     color: "#FFF",
   },
   progressBarContainer: {
-    height: 8,
+    height: 16,
     backgroundColor: "#F0F0F0",
     borderRadius: 4,
     overflow: "hidden",
@@ -1560,6 +1560,7 @@ const styles = StyleSheet.create({
     color: "rgba(136, 59, 114, 1)",
     fontSize: 9,
     fontFamily: "DMSans500",
+    flex: 1
     // alignSelf: "center",
   },
   profileSection: {
