@@ -684,6 +684,7 @@
     "addAria": "Add"
   },
   "healthData": {
+    "weight":"Weight",
     "userhealth": "User's health data:",
     "statsMessage": "Here's a summary of your health statistics",
     "glasses": "glasses",
