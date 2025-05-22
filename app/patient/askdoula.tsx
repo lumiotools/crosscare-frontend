@@ -1417,7 +1417,7 @@ export default function askdoula() {
               style={styles.optionButton}
               onPress={() =>
                 handleOptionPress(
-                  "What foods should I eat during my third trimester?"
+                  "Give me nutrition advice?"
                 )
               }
               disabled={isAssistantResponding}
