@@ -74,7 +74,8 @@ export default function askdoula() {
 
   const scrollViewRef = useRef<ScrollView>(null);
   const loadingAnimation = useRef(new Animated.Value(0)).current;
-
+  const [isPaused, setIsPaused] = useState(false);
+  const [savedProgress, setSavedProgress] = useState(0);
 
   // Initialize questionnaire manager
   const questionnaireManager = ConversationalQuestionnaire({
@@ -104,6 +105,20 @@ export default function askdoula() {
     // You need to add your OpenAI API key here
     openAIApiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY || ''
   });
+
+  useEffect(() => {
+    const checkPausedState = async () => {
+      try {
+        const pausedState = await AsyncStorage.getItem(`questionnaire_paused_${user?.user_id}`);
+        setIsPaused(pausedState === 'true');
+        console.log("Loaded paused state from AsyncStorage:", pausedState === 'true');
+      } catch (error) {
+        console.error("Error checking paused state:", error);
+      }
+    };
+    
+    checkPausedState();
+  }, []);
 
   // Add this useEffect to check for paused questionnaire on mount
   useEffect(() => {
@@ -147,126 +162,6 @@ export default function askdoula() {
     }
   };
 
-  // useEffect(() => {
-  //   const checkQuestionnaireStatus = async () => {
-  //     const isPaused = await questionnaireManager.isPaused();
-
-  //     // In the useEffect for checkQuestionnaireStatus, modify the paused questionnaire section
-  //     // If there's a paused questionnaire and no messages yet, ask if they want to continue
-  //     if (isPaused && messages.length === 0) {
-  //       console.log("Found paused questionnaire, asking to continue");
-
-  //       // Try to load the last question that was asked
-  //       try {
-  //         const lastQuestionJson = await AsyncStorage.getItem(
-  //           `last_question_${user?.user_id}`
-  //         );
-  //         if (lastQuestionJson) {
-  //           const lastQuestion = JSON.parse(lastQuestionJson);
-  //           console.log(
-  //             "Found last question for paused questionnaire:",
-  //             lastQuestion
-  //           );
-
-  //           // If the last message was a pause confirmation, use a different message to resume
-  //           if (lastQuestion.domainId === "pause") {
-  //             setMessages([
-  //               {
-  //                 id: Date.now().toString(),
-  //                 type: "text",
-  //                 content: `Hey ${
-  //                   user?.user_name || "there"
-  //                 }, you have an unfinished questionnaire. Would you like to continue where you left off?`,
-  //                 isUser: false,
-  //                 timestamp: new Date(),
-  //               },
-  //             ]);
-  //             return;
-  //           }
-
-  //           // If it was a domain continuation question, use that context
-  //           if (lastQuestion.domainId === "continue") {
-  //             const savedState = await AsyncStorage.getItem(
-  //               `questionnaire_state_${user?.user_id}`
-  //             );
-  //             if (savedState) {
-  //               const parsedState = JSON.parse(savedState);
-  //               const nextDomainIndex = parsedState.currentDomainIndex + 1;
-
-  //               if (nextDomainIndex < QUESTIONNAIRE_DOMAINS.length) {
-  //                 const nextDomain =
-  //                   QUESTIONNAIRE_DOMAINS[parsedState.currentDomainIndex];
-  //                 setMessages([
-  //                   {
-  //                     id: Date.now().toString(),
-  //                     type: "text",
-  //                     content: `Hey ${
-  //                       user?.user_name || "there"
-  //                     }, we were discussing ${QUESTIONNAIRE_DOMAINS[
-  //                       parsedState.currentDomainIndex
-  //                     ].description.toLowerCase()} and about to move to ${nextDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
-  //                     isUser: false,
-  //                     timestamp: new Date(),
-  //                   },
-  //                 ]);
-  //                 return;
-  //               }
-  //             }
-  //           }
-
-  //           // For a regular question, use the domain context
-  //           const savedState = await AsyncStorage.getItem(
-  //             `questionnaire_state_${user?.user_id}`
-  //           );
-  //           if (savedState) {
-  //             const parsedState = JSON.parse(savedState);
-  //             const currentDomain =
-  //               QUESTIONNAIRE_DOMAINS[parsedState.currentDomainIndex];
-
-  //             if (currentDomain) {
-  //               setMessages([
-  //                 {
-  //                   id: Date.now().toString(),
-  //                   type: "text",
-  //                   content: `Hey ${
-  //                     user?.user_name || "there"
-  //                   }, you have an unfinished questionnaire about ${currentDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
-  //                   isUser: false,
-  //                   timestamp: new Date(),
-  //                 },
-  //               ]);
-  //               return;
-  //             }
-  //           }
-  //         }
-  //       } catch (error) {
-  //         console.error("Error getting last question:", error);
-  //       }
-
-  //       // Fallback message if we can't determine the context
-  //       setMessages([
-  //         {
-  //           id: Date.now().toString(),
-  //           type: "text",
-  //           content: `Hey ${
-  //             user?.user_name || "there"
-  //           }, you have an unfinished questionnaire. Would you like to continue where you left off?`,
-  //           isUser: false,
-  //           timestamp: new Date(),
-  //         },
-  //       ]);
-  //       return;
-  //     }
-  //   };
-
-  //   checkQuestionnaireStatus();
-  // }, [
-  //   questionnaireManager,
-  //   messages,
-  //   user,
-  //   checkQuestionnaireCompletionStatus,
-  // ]);
-
   // Fetch health data when component mounts
   useEffect(() => {
     fetchAndUpdateHealthData();
@@ -307,6 +202,21 @@ export default function askdoula() {
       saveMessages(messages);
     }
   }, [messages]);
+
+  useEffect(() => {
+    const loadSavedProgress = async () => {
+      try {
+        const savedProgressValue = await AsyncStorage.getItem(`questionnaire_progress_${user?.user_id}`);
+        if (savedProgressValue) {
+          setSavedProgress(parseInt(savedProgressValue, 10));
+        }
+      } catch (error) {
+        console.error("Error loading saved progress:", error);
+      }
+    };
+    
+    loadSavedProgress();
+  }, []);
 
   const systemPrompt = `${systemPrompts}`;
 
@@ -764,6 +674,7 @@ export default function askdoula() {
       await AsyncStorage.removeItem(`questionnaire_state_${user?.user_id}`);
       await AsyncStorage.removeItem(`last_question_${user?.user_id}`);
       await AsyncStorage.removeItem(`intro_shown_${user?.user_id}`);
+      await AsyncStorage.removeItem(`questionnaire_paused_${user?.user_id}`);
 
       console.log("Chat history cleared successfully");
 
@@ -839,20 +750,25 @@ export default function askdoula() {
   };
 
     // Calculate progress percentage based on completed questions
-  const calculateProgress = () => {
-    if (!questionnaireManager.isActive) return 0;
-    
-    // Get total questions across all domains
-    const totalQuestions = QUESTIONNAIRE_DOMAINS.reduce(
-      (sum, domain) => sum + domain.questions.length, 
-      0
-    );
-    
-    // Get completed questions count
-    const completedCount = questionnaireManager.context?.responses?.length || 0;
-    
-    return Math.min(Math.round((completedCount / totalQuestions) * 100), 100);
-  };
+    const calculateProgress = () => {
+      // If paused, use the saved progress
+      if (isPaused && savedProgress > 0) {
+        return savedProgress;
+      }
+      
+      // If questionnaire is not initialized, return 0
+      if (!questionnaireManager.context) return 0;
+      
+      // Calculate progress normally
+      const totalQuestions = QUESTIONNAIRE_DOMAINS.reduce(
+        (sum, domain) => sum + domain.questions.length, 
+        0
+      );
+      
+      const completedCount = questionnaireManager.context?.responses?.length || 0;
+      
+      return Math.min(Math.round((completedCount / totalQuestions) * 100), 100);
+    };
 
   // Get current domain title
   const getCurrentDomainIndex = () => {
@@ -867,18 +783,26 @@ export default function askdoula() {
 
   // Handle pause/resume button press
   const handlePauseResumeToggle = async () => {
-    if (questionnaireManager.isPaused) {
+    if (isPaused) {
       // Resume questionnaire
       await questionnaireManager.resumeQuestionnaire();
-
+      setIsPaused(false);
+      await AsyncStorage.setItem(`questionnaire_paused_${user?.user_id}`, 'false');
+      console.log("Questionnaire resumed, updated AsyncStorage");
     } else {
       // Pause and save progress to database
       const context = await questionnaireManager.pauseQuestionnaire();
       console.log("Context is the following:", context);
+
+      setIsPaused(true);
+      await AsyncStorage.setItem(`questionnaire_paused_${user?.user_id}`, 'true');
+      console.log("Questionnaire paused, updated AsyncStorage");
+
       // Save responses to database
       try {
         // Get the current responses from context
         const responses = context?.responses || [];
+        console.log("this is the responses:", responses);
         
         // Submit each response to database
         for (const response of responses) {
@@ -975,27 +899,27 @@ export default function askdoula() {
 
         {!questionnaireManager.isCompleted && (
           <View style={styles.questionnaireStatusContainer}>
-            <View style={styles.statusTextContainer}>
+            <View style={styles.statusHeader}>
               <Text style={styles.questionnaireStatusTitle}>
                 Questionnaire Status - {getCurrentDomainTitle()}
               </Text>
+              <TouchableOpacity
+                style={[
+                  styles.pauseButton,
+                  isPaused && styles.resumeButton
+                ]}
+                onPress={handlePauseResumeToggle}
+              >
+                <Text style={[
+                  styles.pauseButtonText,
+                  isPaused && styles.resumeButtonText
+                ]}>
+                  {isPaused ? "Resume" : "Pause"}
+                </Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              style={[
-                styles.pauseButton,
-                questionnaireManager.isPaused && styles.resumeButton
-              ]}
-              onPress={handlePauseResumeToggle}
-            >
-              <Text style={[
-                styles.pauseButtonText,
-                questionnaireManager.isPaused && styles.resumeButtonText
-              ]}>
-                {questionnaireManager.isPaused ? "Resume" : "Pause"}
-              </Text>
-            </TouchableOpacity>
             
-            {/* Progress Bar */}
+            {/* Progress Bar with percentage inside */}
             <View style={styles.progressBarContainer}>
               <View 
                 style={[
@@ -1003,6 +927,7 @@ export default function askdoula() {
                   { width: `${calculateProgress()}%` }
                 ]} 
               />
+              <Text style={styles.progressPercentage}>{calculateProgress()}%</Text>
             </View>
           </View>
         )}
@@ -1232,38 +1157,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "DMSans600",
   },
-  // Add these to your styles
   questionnaireStatusContainer: {
     padding: 16,
     backgroundColor: "#FFF",
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
   },
-  statusTextContainer: {
+  statusHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 12,
   },
   questionnaireStatusTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: "DMSans500",
     color: "#94588D",
+    flex: 1,
   },
   pauseButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+    borderRadius: 50,
     backgroundColor: "#FFF",
     borderWidth: 1,
     borderColor: "#FBBBE9",
-    alignSelf: "flex-end",
-    marginBottom: 8,
   },
   pauseButtonText: {
     color: "#F76CCF",
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: "DMSans500",
+    textAlign: "center",
   },
   resumeButton: {
     backgroundColor: "#F76CCF",
@@ -1273,15 +1197,32 @@ const styles = StyleSheet.create({
     color: "#FFF",
   },
   progressBarContainer: {
-    height: 8,
+    height: 24,
     backgroundColor: "#F0F0F0",
-    borderRadius: 4,
+    borderRadius: 12,
     overflow: "hidden",
+    position: "relative",
   },
   progressBar: {
     height: "100%",
     backgroundColor: "#F76CCF",
-    borderRadius: 4,
+    borderRadius: 12,
+    position: "absolute",
+    left: 0,
+    top: 0,
+  },
+  progressPercentage: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    textAlign: "center",
+    textAlignVertical: "center",
+    color: "#444444",
+    fontSize: 12,
+    fontFamily: "DMSans500",
+    lineHeight: 24,
   },
   profileSection: {
     alignItems: "center",
@@ -1454,12 +1395,10 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: "DMSans400",
     fontSize: 12,
-    // height: 48,
     height:'100%'
   },
   micButton: {
     padding: 4,
-    // paddingLeft,
   },
   sendButton: {
     width: 48,

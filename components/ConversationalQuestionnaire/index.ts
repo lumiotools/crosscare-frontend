@@ -175,40 +175,71 @@ const ConversationalQuestionnaire = ({
   ]);
   
   // Load conversation state from storage
-  const loadConversationState = async () => {
-    try {
-      const savedContext = await loadConversationContext(userId);
-      console.log("Saved context:", savedContext);
-      if (savedContext) {
-        // Dispatch the loaded context to our reducer
-        dispatch({
-          type: 'RESET',
-          payload: savedContext
-        });
-        
-        // If the conversation was paused, we'll need to restore the appropriate state variables
-        if (savedContext.isPaused) {
-          setWaitingForDomainTransition(false);
-          setNextDomainIndex(-1);
-          
-          // Skip intro for returning users
-          setIntroStep(4);
-          setHasSeenIntro(true);
-          setHasAskedForTime(true);
-          setUserWantsToStart(true);
+  // In loadConversationState function
+const loadConversationState = async () => {
+  try {
+    const savedContext = await loadConversationContext(userId);
+    console.log("Saved context:", savedContext);
+    if (savedContext) {
+      // Instead of using RESET, we'll use multiple actions to set the state correctly
+      
+      // First set position
+      dispatch({
+        type: 'SET_POSITION',
+        payload: {
+          currentDomainIndex: savedContext.currentDomainIndex,
+          currentQuestionIndex: savedContext.currentQuestionIndex
         }
+      });
+      
+      // Set last question
+      dispatch({
+        type: 'SET_LAST_QUESTION',
+        payload: { lastQuestion: savedContext.lastQuestion }
+      });
+      
+      // Then set the appropriate state (active, paused, or completed)
+      if (savedContext.isPaused) {
+        dispatch({ type: 'SET_PAUSED' });
+      } else if (savedContext.isCompleted) {
+        dispatch({ type: 'SET_COMPLETED' });
+      } else if (savedContext.isActive) {
+        dispatch({ type: 'SET_ACTIVE' });
       }
       
-      // Check if intro has been shown previously
-      const introShown = await AsyncStorage.getItem(`intro_shown_${userId}`);
-      if (introShown === "true") {
-        setHasSeenIntro(true);
-        setIntroStep(4);
+      // Copy over any responses
+      if (savedContext.responses && savedContext.responses.length > 0) {
+        savedContext.responses.forEach(response => {
+          dispatch({
+            type: 'ADD_RESPONSE',
+            payload: response
+          });
+        });
       }
-    } catch (error) {
-      console.error("Error loading conversation state:", error);
+      
+      // If the conversation was paused, we'll need to restore the appropriate state variables
+      if (savedContext.isPaused) {
+        setWaitingForDomainTransition(false);
+        setNextDomainIndex(-1);
+        
+        // Skip intro for returning users
+        setIntroStep(4);
+        setHasSeenIntro(true);
+        setHasAskedForTime(true);
+        setUserWantsToStart(true);
+      }
     }
-  };
+    
+    // Check if intro has been shown previously
+    const introShown = await AsyncStorage.getItem(`intro_shown_${userId}`);
+    if (introShown === "true") {
+      setHasSeenIntro(true);
+      setIntroStep(4);
+    }
+  } catch (error) {
+    console.error("Error loading conversation state:", error);
+  }
+};
   
   // Save conversation state to storage
   const saveConversationState = async () => {
