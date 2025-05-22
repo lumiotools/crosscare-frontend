@@ -1146,7 +1146,7 @@ export default function askdoula() {
               style={styles.optionButton}
               onPress={() =>
                 handleOptionPress(
-                  "What foods should I eat during my third trimester?"
+                  "Give me nutrition advice"
                 )
               }
               disabled={isAssistantResponding}
@@ -1156,7 +1156,7 @@ export default function askdoula() {
             <TouchableOpacity
               style={styles.optionButton}
               onPress={() =>
-                handleOptionPress("What exercises are safe during pregnancy?")
+                handleOptionPress("Give me exercise tips")
               }
               disabled={isAssistantResponding}
             >
@@ -1164,7 +1164,7 @@ export default function askdoula() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.optionButton}
-              onPress={() => handleOptionPress("How do I create a birth plan?")}
+              onPress={() => handleOptionPress("Give me birth plan advice")}
               disabled={isAssistantResponding}
             >
               <Text style={styles.optionText}>Birth Planning</Text>
@@ -1172,7 +1172,7 @@ export default function askdoula() {
             <TouchableOpacity
               style={styles.optionButton}
               onPress={() =>
-                handleOptionPress("Is it safe to travel during pregnancy?")
+                handleOptionPress("Give me travel safety advice")
               }
               disabled={isAssistantResponding}
             >
