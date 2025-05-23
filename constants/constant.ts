@@ -1,9 +1,11 @@
 import { router } from "expo-router";
+import i18next from "i18next";
+import { useTranslation } from "react-i18next";
 
 export const onBoardingData: onBoardingDataType[] = [
   {
     id: 1,
-    title: "Empower Your Pregnancy Journey",
+    title: i18next.t('cards.askDoula'),
     description:
       "Personalized health tracking, expert insights, and emotional support — all in one place.",
     image: require("../assets/images/onboarding1.png"),
@@ -24,39 +26,7 @@ export const onBoardingData: onBoardingDataType[] = [
   },
 ];
 
-export const cardData = [
-  {
-    id: '1',
-    title: "Ask Your Doula",
-    description: "Personalised to your pregnancy",
-    bg1: "#FBBBE9", // Light pink
-    bg2: "#E162BC", // Deep pink
-    image1: require("../assets/images/hairs/h1/face/c1.png"),
-    onPress: () => {
-      router.push({
-        pathname: "/patient/askdoula",
-        params: { from_modal: "true" },
-      });
-    },
-  },
-  {
-    id: '2',
-    title: "Your Calendar",
-    description: "Track your appointments",
-    bg1: "#FFE5B0", // Light yellow
-    bg2: "#FFAA00", // Bright orange
-    image1: require("../assets/images/calendra.png"),
-  },
-  {
-    id: '3',
-    title: "MotherCare",
-    description: "Track health, vitals & more",
-    bg1: "#ACF3FF", // Light blue
-    bg2: "#64C4D4", // Turquoise
-    image1: require("../assets/images/mother.png"),
-    onPress: () => router.push("/patient/health"),
-  },
-];
+
 
 /**
  * Utility functions for sleep calculations
@@ -79,13 +49,13 @@ export const calculateWakeupTimes = (
   const times = [];
   const cycleLength = 90; // Sleep cycle duration in minutes
 
-  const adjustedSleepTime = new Date(wakeUpTime.getTime());
-  adjustedSleepTime.setMinutes(adjustedSleepTime.getMinutes());
+  const adjustedSleepTime = new Date(wakeUpTime.getTime())
+  adjustedSleepTime.setMinutes(adjustedSleepTime.getMinutes())
 
   for (let cycles = 6; cycles >= 1; cycles--) {
     // Create a new Date object to avoid mutating wakeUpTime
-    const wakeUpTime = new Date(adjustedSleepTime.getTime());
-    wakeUpTime.setMinutes(wakeUpTime.getMinutes() + cycles * cycleLength);
+    const wakeUpTime = new Date(adjustedSleepTime.getTime())
+    wakeUpTime.setMinutes(wakeUpTime.getMinutes() + cycles * cycleLength)
 
     // Format sleep time correctly
     const formattedTime = wakeUpTime.toLocaleTimeString("en-US", {
@@ -125,48 +95,47 @@ export const calculateWakeupTimes = (
 };
 
 export const calculateBedtimes = (
-  wakeUpTime: Date
+  wakeUpTime: Date,
 ): Array<{
-  time: string;
-  cycles: number;
-  hours: number;
-  mood: "happy" | "neutral" | "sad";
-  color: string;
+  time: string
+  cycles: number
+  hours: number
+  mood: "happy" | "neutral" | "sad"
+  color: string
 }> => {
   const times = [];
   const cycleLength = 90; // Sleep cycle duration in minutes
-  // const fallAsleepTime = 15 // Minutes it takes to fall asleep
-
+  
+  // Loop through the cycles to generate different bedtime options
   for (let cycles = 6; cycles >= 1; cycles--) {
-    // Create a new Date object to avoid mutating wakeUpTime
     const sleepTime = new Date(wakeUpTime.getTime());
 
-    // Subtract sleep cycles AND the time it takes to fall asleep
-    sleepTime.setMinutes(sleepTime.getMinutes() - cycles * cycleLength);
+    // Subtract cycle length from the wake-up time to get the bedtime
+    sleepTime.setMinutes(sleepTime.getMinutes() + (cycles * cycleLength));
 
-    // Format sleep time correctly
+    // Format the bedtime into a 12-hour time format
     const formattedTime = sleepTime.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
     });
 
-    // Calculate sleep duration in hours (NOT including the time to fall asleep)
+    // Calculate the sleep duration in hours
     const hours = (cycles * cycleLength) / 60;
 
-    // Determine mood & color
+    // Determine mood & color based on the number of cycles
     let mood: "happy" | "neutral" | "sad";
     let color: string;
 
     if (cycles >= 5) {
       mood = "happy";
-      color = "#52E186";
+      color = "#52E186"; // Green for 5 and 6 cycles
     } else if (cycles >= 3) {
       mood = "neutral";
-      color = "#FFD764";
+      color = "#FFD764"; // Yellow for 3 and 4 cycles
     } else {
       mood = "sad";
-      color = "#FF7575";
+      color = "#FF7575"; // Red for less than 3 cycles
     }
 
     times.push({
@@ -180,6 +149,8 @@ export const calculateBedtimes = (
 
   return times;
 };
+
+
 
 /**
  * Formats a date object to a time string like "08:15 AM"

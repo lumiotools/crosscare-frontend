@@ -3,6 +3,7 @@ import Svg, { Circle, Path } from "react-native-svg";
 import { useEffect, useRef } from "react";
 import HeartIcon from "@/assets/images/Svg/HeartIcon";
 import { width } from '../constants/helper';
+import { useTranslation } from "react-i18next";
 
 interface HeartRateProps {
   bpm: number;
@@ -56,6 +57,8 @@ export default function HeartCard({
     extrapolate: "clamp",
   });
 
+  const {t} = useTranslation();
+
   return (
     <View style={styles.container}>
       {/* Background Circle */}
@@ -101,7 +104,7 @@ export default function HeartCard({
             </Animated.View>
             {/* Heart Icon with ECG Line */}
 
-            <Text style={styles.bpmText}>bpm</Text>
+            <Text style={styles.bpmText}>{t('heart.BPM')}</Text>
           </View>
         </View>
       </View>

@@ -13,6 +13,7 @@ import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import Pen from "@/assets/images/Svg/Pen";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 
 const openphoto = () => {
   const params = useLocalSearchParams();
@@ -20,6 +21,8 @@ const openphoto = () => {
   const [details, setDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const item1 = details;
+
+  const {t} = useTranslation();
 
   // Parse the params.item (which is likely a string)
   const item = typeof params.item === "string" ? JSON.parse(params.item) : null;
@@ -192,9 +195,9 @@ const openphoto = () => {
           <Ionicons name="chevron-back" size={20} color="black" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Journal</Text>
-        <TouchableOpacity style={styles.menuButton} onPress={getdetails}>
-          <Feather name={loading ? "loader" : "refresh-cw"} size={20} color="#E5E5E5" />
-        </TouchableOpacity>
+        <View style={{
+          width:20,
+        }}/>
       </View>
 
       {loading ? (
@@ -222,7 +225,7 @@ const openphoto = () => {
                   alignItems: "center",
                 }}
               >
-                <Text style={styles.text1}>Taken on </Text>
+                <Text style={styles.text1}>{t('journal.takenon')}</Text>
                 <Text style={styles.text}>
                   {datePart ? formatDate(datePart) : "Unknown Date"}
                 </Text>
@@ -234,7 +237,7 @@ const openphoto = () => {
                   alignItems: "center",
                 }}
               >
-                <Text style={styles.text1}>At</Text>
+                <Text style={styles.text1}>{t('journal.at')}</Text>
                 <Text style={styles.text}> {times}</Text>
               </View>
             </View>

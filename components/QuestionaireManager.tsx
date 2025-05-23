@@ -95,12 +95,12 @@ const QuestionnaireManager = ({
       }
 
       // Get badge type from mapping
-      const badgeType = "TRIVIA_QUEEN" // Hardcode for reliability
+      const badgeType = "GETTING_TO_KNOW_YOU" // Hardcode for reliability
 
       // Prepare the data payload for the Trivia Queen badge
       const payload = {
         badgeType: badgeType,
-        title: "Trivia Queen",
+        title: "Getting to know you",
         description: "On completing all domains of the Doula questionnaire",
       }
 

@@ -15,6 +15,7 @@ import {
   AppState,
   type AppStateStatus,
 } from "react-native"
+import Markdown from 'react-native-markdown-display';
 import { Ionicons, Feather } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { router, useFocusEffect } from "expo-router"
@@ -33,11 +34,15 @@ import { detectAndHandleGoalRequest } from "@/utils/DoulaChatUtils/detectAndHand
 import { processUserQuery } from "@/utils/DoulaChatUtils/processUserQuery"
 import ConversationalQuestionnaire from "@/components/ConversationalQuestionnaire"
 import { BackHandler } from "react-native"
+import { useTranslation } from "react-i18next";
+import * as Speech from 'expo-speech';
+import { GOAL_PATTERNS, isIncrementalRequest, LOG_PATTERNS } from "@/utils/DoulaChatUtils/doulaLogPatterns";
 
 interface PauseStateStorage {
   paused: boolean
   userId: string | undefined
 }
+
 
 interface Message {
   id: string
@@ -48,11 +53,14 @@ interface Message {
 }
 
 export default function askdoula() {
-  const [inputText, setInputText] = useState("")
-  const [isTyping, setIsTyping] = useState(false)
-  const [messages, setMessages] = useState<Message[]>([])
-  const user = useSelector((state: any) => state.user)
+  const [inputText, setInputText] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const { t, i18n } = useTranslation()
+  const currentLanguage = i18n.language
+  const [messages, setMessages] = useState<Message[]>([]);
+  const user = useSelector((state: any) => state.user);
   const [healthData, setHealthData] = useState<HealthData | null>(null)
+  const [isRecording, setIsRecording] = useState(false);
   const [healthStats, setHealthStats] = useState({
     water: { today: 0, weekly: 0, monthly: 0, avgWeekly: 0, avgMonthly: 0 },
     steps: { today: 0, weekly: 0, monthly: 0, avgWeekly: 0, avgMonthly: 0 },
@@ -121,7 +129,119 @@ export default function askdoula() {
     }
   }
 
-  // Add AppState listener to handle app going to background/foreground
+  // Replace the existing useEffect for checkQuestionnaireStatus with this:
+  // useEffect(() => {
+  //   const checkQuestionnaireStatus = async () => {
+  //     try {
+  //       // First check if questionnaire is already completed
+  //       const isCompleted = await checkQuestionnaireCompletionStatus()
+  //       console.log("Questionnaire completed status:", isCompleted)
+
+  //       // If completed, don't do anything with the questionnaire
+  //       if (isCompleted) {
+  //         console.log("Questionnaire already completed, not starting again")
+
+  //         // If we have no messages yet, add a welcome message
+  //         if (messages.length === 0) {
+  //           setMessages([
+  //             {
+  //               id: Date.now().toString(),
+  //               type: "text",
+  //               content: `Hello ${user?.user_name || "there"}! How can I help you today?`,
+  //               isUser: false,
+  //               timestamp: new Date(),
+  //             },
+  //           ])
+  //         }
+  //         return
+  //       }
+
+  //       // Check if there's a paused questionnaire
+  //       const isPaused = await questionnaireManager.checkForPausedQuestionnaire()
+  //       console.log("Paused questionnaire status:", isPaused)
+
+  //       // If there's a paused questionnaire and no messages yet, ask if they want to continue
+  //       if (isPaused && messages.length === 0) {
+  //         console.log("Found paused questionnaire, asking to continue")
+
+  //         // Get domain information to provide context
+  //         try {
+  //           const savedState = await AsyncStorage.getItem(`questionnaire_state_${user?.user_id}`)
+  //           if (savedState) {
+  //             const parsedState = JSON.parse(savedState)
+
+  //             // Tell the user what domain we were in, and what's coming next
+  //             const currentDomain = QUESTIONNAIRE_DOMAINS[parsedState.currentDomainIndex]
+
+  //             // Check if we were at the end of the current domain
+  //             if (parsedState.currentQuestionIndex >= currentDomain.questions.length) {
+  //               const nextDomainIndex = parsedState.currentDomainIndex + 1
+  //               if (nextDomainIndex < QUESTIONNAIRE_DOMAINS.length) {
+  //                 const nextDomain = QUESTIONNAIRE_DOMAINS[nextDomainIndex]
+  //                 setMessages([
+  //                   {
+  //                     id: Date.now().toString(),
+  //                     type: "text",
+  //                     content: `Hey ${user?.user_name || "there"}, you have an unfinished questionnaire. We were about to start discussing ${nextDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
+  //                     isUser: false,
+  //                     timestamp: new Date(),
+  //                   },
+  //                 ])
+  //                 return
+  //               }
+  //             }
+
+  //             // If we weren't at the end, we were in the middle of a domain
+  //             if (currentDomain) {
+  //               setMessages([
+  //                 {
+  //                   id: Date.now().toString(),
+  //                   type: "text",
+  //                   content: `Hey ${user?.user_name || "there"}, you have an unfinished questionnaire about ${currentDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
+  //                   isUser: false,
+  //                   timestamp: new Date(),
+  //                 },
+  //               ])
+  //               return
+  //             }
+  //           }
+  //         } catch (error) {
+  //           console.error("Error getting saved questionnaire state:", error)
+  //         }
+
+  //         // Fallback message if we can't determine the domain
+  //         setMessages([
+  //           {
+  //             id: Date.now().toString(),
+  //             type: "text",
+  //             content: `Hey ${user?.user_name || "there"}, you have an unfinished questionnaire. Would you like to continue where you left off?`,
+  //             isUser: false,
+  //             timestamp: new Date(),
+  //           },
+  //         ])
+  //         return
+  //       }
+
+  //       // Only if NOT completed, NOT paused, and no messages, auto-start it
+  //       if (!isPaused && messages.length === 0) {
+  //         console.log("Starting new questionnaire")
+  //         questionnaireManager.startQuestionnaire()
+  //       }
+  //     } catch (error) {
+  //       console.error("Error checking questionnaire status:", error)
+  //     }
+  //   }
+
+  //   // Only run this effect if we have a user ID
+  //   if (user?.user_id) {
+  //     checkQuestionnaireStatus()
+  //   }
+  // }, [user?.user_id])
+
+  const [isMuted, setIsMuted] = useState(false)
+
+  const userId = user?.user_id;
+
   useEffect(() => {
     const subscription = AppState.addEventListener("change", handleAppStateChange)
 
@@ -286,7 +406,7 @@ const handleGoBack = useCallback(async () => {
   return true // Indicate we handled the back press
 }, [questionnaireManager, messages, user?.user_id, router])
 
-// 4. ADD Android back button handler
+
 useEffect(() => {
   const backAction = () => {
     handleGoBack()
@@ -388,41 +508,180 @@ useEffect(() => {
     }, [user?.user_id]),
   )
 
-  const [isContextLoaded, setIsContextLoaded] = useState(false)
-  const [forceUpdate, setForceUpdate] = useState(0)
 
-  useFocusEffect(
-    useCallback(() => {
-      const loadContextAndUpdateProgress = async () => {
-        console.log("Screen focused - updating progress bar")
-        setIsContextLoaded(false)
+  useEffect(() => {
+    const checkQuestionnaireStatus = async () => {
+      const isPaused = await questionnaireManager.checkForPausedQuestionnaire();
 
-        // Wait a moment to allow context to load
-        setTimeout(async () => {
-          // If questionnaireManager exists, make sure it's properly initialized
-          if (questionnaireManager) {
-            try {
-              const savedContext = await AsyncStorage.getItem(`conversation_context_${user?.user_id}`)
-              if (savedContext) {
-                console.log("Found saved context for progress calculation")
-                // Force a re-render of the progress bar
-                setForceUpdate((prev) => prev + 1)
+      // In the useEffect for checkQuestionnaireStatus, modify the paused questionnaire section
+      // If there's a paused questionnaire and no messages yet, ask if they want to continue
+      if (isPaused && messages.length === 0) {
+        console.log("Found paused questionnaire, asking to continue");
+
+        // Try to load the last question that was asked
+        try {
+          const lastQuestionJson = await AsyncStorage.getItem(
+            `last_question_${user?.user_id}`
+          );
+          if (lastQuestionJson) {
+            const lastQuestion = JSON.parse(lastQuestionJson);
+            console.log(
+              "Found last question for paused questionnaire:",
+              lastQuestion
+            );
+
+            // If the last message was a pause confirmation, use a different message to resume
+            if (lastQuestion.domainId === "pause") {
+              setMessages([
+                {
+                  id: Date.now().toString(),
+                  type: "text",
+                  content: `Hey ${
+                    user?.user_name || "there"
+                  }, you have an unfinished questionnaire. Would you like to continue where you left off?`,
+                  isUser: false,
+                  timestamp: new Date(),
+                },
+              ]);
+              return;
+            }
+
+            // If it was a domain continuation question, use that context
+            if (lastQuestion.domainId === "continue") {
+              const savedState = await AsyncStorage.getItem(
+                `questionnaire_state_${user?.user_id}`
+              );
+              if (savedState) {
+                const parsedState = JSON.parse(savedState);
+                const nextDomainIndex = parsedState.currentDomainIndex + 1;
+
+                if (nextDomainIndex < QUESTIONNAIRE_DOMAINS.length) {
+                  const nextDomain =
+                    QUESTIONNAIRE_DOMAINS[parsedState.currentDomainIndex];
+                  setMessages([
+                    {
+                      id: Date.now().toString(),
+                      type: "text",
+                      content: `Hey ${
+                        user?.user_name || "there"
+                      }, we were discussing ${QUESTIONNAIRE_DOMAINS[
+                        parsedState.currentDomainIndex
+                      ].description.toLowerCase()} and about to move to ${nextDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
+                      isUser: false,
+                      timestamp: new Date(),
+                    },
+                  ]);
+                  return;
+                }
               }
-            } catch (error) {
-              console.error("Error checking saved context:", error)
+            }
+
+            // For a regular question, use the domain context
+            const savedState = await AsyncStorage.getItem(
+              `questionnaire_state_${user?.user_id}`
+            );
+            if (savedState) {
+              const parsedState = JSON.parse(savedState);
+              const currentDomain =
+                QUESTIONNAIRE_DOMAINS[parsedState.currentDomainIndex];
+
+              if (currentDomain) {
+                setMessages([
+                  {
+                    id: Date.now().toString(),
+                    type: "text",
+                    content: `Hey ${
+                      user?.user_name || "there"
+                    }, you have an unfinished questionnaire about ${currentDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
+                    isUser: false,
+                    timestamp: new Date(),
+                  },
+                ]);
+                return;
+              }
             }
           }
-          setIsContextLoaded(true)
-        }, 500)
-      }
+        } catch (error) {
+          console.error("Error getting last question:", error);
+        }
 
-      loadContextAndUpdateProgress()
-
-      return () => {
-        // Nothing to clean up
+        // Fallback message if we can't determine the context
+        setMessages([
+          {
+            id: Date.now().toString(),
+            type: "text",
+            content: `Hey ${
+              user?.user_name || "there"
+            }, you have an unfinished questionnaire. Would you like to continue where you left off?`,
+            isUser: false,
+            timestamp: new Date(),
+          },
+        ]);
+        return;
       }
-    }, []),
-  )
+    };
+
+    checkQuestionnaireStatus();
+  }, [
+    questionnaireManager,
+    messages,
+    user,
+    checkQuestionnaireCompletionStatus,
+  ]);
+
+  // Fetch health data when component mounts
+  useEffect(() => {
+    fetchHealthData();
+  }, []);
+
+  // Auto-scroll to bottom when messages change or when typing indicator appears
+  useEffect(() => {
+    if (scrollViewRef.current && (messages.length > 0 || isTyping)) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [messages, isTyping]);
+
+  // Animate the typing indicator
+  useEffect(() => {
+    if (isTyping) {
+      Animated.loop(
+        Animated.timing(loadingAnimation, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: false,
+        })
+      ).start();
+    } else {
+      loadingAnimation.setValue(0);
+    }
+  }, [isTyping, loadingAnimation]);
+
+  // Add useEffect to load messages when component mounts
+  useEffect(() => {
+    loadMessages();
+  }, []);
+
+  // Add useEffect to save messages when they change
+  useEffect(() => {
+    if (messages.length > 0) {
+      saveMessages(messages);
+    }
+  }, [messages]);
+
+  const systemPrompt = `${systemPrompts}`;
+
+   const getLanguageName = (langCode: string) => {
+    const languages = {
+      en: "English",
+      es: "Spanish",
+      pt: "Portuguese",
+      ht: "Haitian Creole",
+    }
+    return languages[langCode as keyof typeof languages] || "English"
+  }
+
 
   const calculateProgress = useCallback(() => {
     // Debug log to see the state values when calculating progress
@@ -475,7 +734,6 @@ useEffect(() => {
     }
   }, [messages, isTyping])
 
-  // Animate the typing indicator
   useEffect(() => {
     if (isTyping) {
       Animated.loop(
@@ -490,7 +748,323 @@ useEffect(() => {
     }
   }, [isTyping, loadingAnimation])
 
-  // Add useEffect to load messages when component mounts
+
+  const fetchHealthData = async () => {
+    if (user && user.user_id) {
+      try {
+        // Use the specified endpoint format
+        const apiUrl = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}`;
+        console.log(`Making API call to: ${apiUrl}`);
+
+        // Make the API call
+        const response = await axios.get(apiUrl);
+        const apiData = response.data.activities 
+
+
+
+        // Process the data if we got a response
+        if (
+          apiData &&
+          Array.isArray(apiData) &&
+          apiData.length > 0
+        ) {
+          console.log(
+            "API data found. First record:",
+            JSON.stringify(apiData[0], null, 2)
+          );
+
+          // Sort by date (newest first)
+          const sortedRecords = [...apiData].sort(
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+
+
+          // Get the most recent record
+          const latestRecord = sortedRecords[0];
+
+          // Get the last 7 days of records for weekly stats
+          const last7Days = sortedRecords.slice(0, 7);
+
+          // Get the last 30 days of records for monthly stats
+          const last30Days = sortedRecords.slice(0, 30);
+
+          // Calculate sleep duration in hours for a record
+          const calculateSleepDuration = (record: any) => {
+            if (
+              record.details &&
+              record.details.sleep &&
+              record.details.sleep.start &&
+              record.details.sleep.end
+            ) {
+              const start = new Date(record.details.sleep.start);
+              const end = new Date(record.details.sleep.end);
+              return (end.getTime() - start.getTime()) / (1000 * 60 * 60); // Convert ms to hours
+            }
+            return 0;
+          };
+
+          // Create a new stats object to update state
+          const newHealthStats = {
+            water: {
+              today: 0,
+              weekly: 0,
+              monthly: 0,
+              avgWeekly: 0,
+              avgMonthly: 0,
+            },
+            steps: {
+              today: 0,
+              weekly: 0,
+              monthly: 0,
+              avgWeekly: 0,
+              avgMonthly: 0,
+            },
+            weight: {
+              today: 0,
+              weekly: 0,
+              monthly: 0,
+              avgWeekly: 0,
+              avgMonthly: 0,
+              unit: "kg",
+            },
+            heart: {
+              today: 0,
+              weekly: 0,
+              monthly: 0,
+              avgWeekly: 0,
+              avgMonthly: 0,
+            },
+            sleep: {
+              today: 0,
+              weekly: 0,
+              monthly: 0,
+              avgWeekly: 0,
+              avgMonthly: 0,
+            },
+          };
+
+          // TODAY'S STATS
+          newHealthStats.water.today = latestRecord.details?.water || 0;
+          newHealthStats.steps.today = latestRecord.details?.steps || 0;
+          newHealthStats.heart.today = latestRecord.details?.heart || 0;
+          newHealthStats.sleep.today = calculateSleepDuration(latestRecord);
+          if (latestRecord.details?.weight?.value) {
+            newHealthStats.weight.today = latestRecord.details.weight.value;
+            newHealthStats.weight.unit =
+              latestRecord.details.weight.unit || "kg";
+          }
+
+          // WEEKLY STATS
+          // Filter records with valid data for each metric
+          const weeklyWaterRecords = last7Days.filter(
+            (r) =>
+              r.details &&
+              typeof r.details.water === "number" &&
+              r.details.water > 0
+          );
+          const weeklyStepsRecords = last7Days.filter(
+            (r) =>
+              r.details &&
+              typeof r.details.steps === "number" &&
+              r.details.steps > 0
+          );
+          const weeklyHeartRecords = last7Days.filter(
+            (r) =>
+              r.details &&
+              typeof r.details.heart === "number" &&
+              r.details.heart > 0
+          );
+          const weeklySleepRecords = last7Days.filter(
+            (r) => calculateSleepDuration(r) > 0
+          );
+          const weeklyWeightRecords = last7Days.filter(
+            (r) =>
+              r.details &&
+              r.details.weight &&
+              typeof r.details.weight.value === "number" &&
+              r.details.weight.value > 0
+          );
+
+          // Calculate totals
+          newHealthStats.water.weekly = weeklyWaterRecords.reduce(
+            (sum, r) => sum + r.details.water,
+            0
+          );
+          newHealthStats.steps.weekly = weeklyStepsRecords.reduce(
+            (sum, r) => sum + r.details.steps,
+            0
+          );
+          newHealthStats.heart.weekly = weeklyHeartRecords.reduce(
+            (sum, r) => sum + r.details.heart,
+            0
+          );
+          newHealthStats.sleep.weekly = weeklySleepRecords.reduce(
+            (sum, r) => sum + calculateSleepDuration(r),
+            0
+          );
+          newHealthStats.weight.weekly = weeklyWeightRecords.reduce(
+            (sum, r) => sum + r.details.weight.value,
+            0
+          );
+
+          // Calculate averages
+          newHealthStats.water.avgWeekly =
+            weeklyWaterRecords.length > 0
+              ? newHealthStats.water.weekly / weeklyWaterRecords.length
+              : 0;
+          newHealthStats.steps.avgWeekly =
+            weeklyStepsRecords.length > 0
+              ? newHealthStats.steps.weekly / weeklyStepsRecords.length
+              : 0;
+          newHealthStats.heart.avgWeekly =
+            weeklyHeartRecords.length > 0
+              ? newHealthStats.heart.weekly / weeklyHeartRecords.length
+              : 0;
+          newHealthStats.sleep.avgWeekly =
+            weeklySleepRecords.length > 0
+              ? newHealthStats.sleep.weekly / weeklySleepRecords.length
+              : 0;
+          newHealthStats.weight.avgWeekly =
+            weeklyWeightRecords.length > 0
+              ? newHealthStats.weight.weekly / weeklyWeightRecords.length
+              : 0;
+
+          // MONTHLY STATS
+          // Filter records with valid data for each metric
+          const monthlyWaterRecords = last30Days.filter(
+            (r) =>
+              r.details &&
+              typeof r.details.water === "number" &&
+              r.details.water > 0
+          );
+          const monthlyStepsRecords = last30Days.filter(
+            (r) =>
+              r.details &&
+              typeof r.details.steps === "number" &&
+              r.details.steps > 0
+          );
+          const monthlyHeartRecords = last30Days.filter(
+            (r) =>
+              r.details &&
+              typeof r.details.heart === "number" &&
+              r.details.heart > 0
+          );
+          const monthlySleepRecords = last30Days.filter(
+            (r) => calculateSleepDuration(r) > 0
+          );
+          const monthlyWeightRecords = last30Days.filter(
+            (r) =>
+              r.details &&
+              r.details.weight &&
+              typeof r.details.weight.value === "number" &&
+              r.details.weight.value > 0
+          );
+
+          // Calculate totals
+          newHealthStats.water.monthly = monthlyWaterRecords.reduce(
+            (sum, r) => sum + r.details.water,
+            0
+          );
+          newHealthStats.steps.monthly = monthlyStepsRecords.reduce(
+            (sum, r) => sum + r.details.steps,
+            0
+          );
+          newHealthStats.heart.monthly = monthlyHeartRecords.reduce(
+            (sum, r) => sum + r.details.heart,
+            0
+          );
+          newHealthStats.sleep.monthly = monthlySleepRecords.reduce(
+            (sum, r) => sum + calculateSleepDuration(r),
+            0
+          );
+          newHealthStats.weight.monthly = monthlyWeightRecords.reduce(
+            (sum, r) => sum + r.details.weight.value,
+            0
+          );
+
+          // Calculate averages
+          newHealthStats.water.avgMonthly =
+            monthlyWaterRecords.length > 0
+              ? newHealthStats.water.monthly / monthlyWaterRecords.length
+              : 0;
+          newHealthStats.steps.avgMonthly =
+            monthlyStepsRecords.length > 0
+              ? newHealthStats.steps.monthly / monthlyStepsRecords.length
+              : 0;
+          newHealthStats.heart.avgMonthly =
+            monthlyHeartRecords.length > 0
+              ? newHealthStats.heart.monthly / monthlyHeartRecords.length
+              : 0;
+          newHealthStats.sleep.avgMonthly =
+            monthlySleepRecords.length > 0
+              ? newHealthStats.sleep.monthly / monthlySleepRecords.length
+              : 0;
+          newHealthStats.weight.avgMonthly =
+            monthlyWeightRecords.length > 0
+              ? newHealthStats.weight.monthly / monthlyWeightRecords.length
+              : 0;
+
+          // Create health data object with safer property access (for backward compatibility)
+          const newHealthData = {
+            steps: {
+              today: newHealthStats.steps.today,
+              weekly: newHealthStats.steps.weekly,
+            },
+            water: {
+              today: newHealthStats.water.today,
+              weekly: newHealthStats.water.weekly,
+            },
+            weight: {
+              current: latestRecord.details?.weight?.value || 0,
+              unit: latestRecord.details?.weight?.unit || "kg",
+              previous: 0,
+            },
+          };
+
+          // Find previous weight record for backward compatibility
+          const prevWeightRecord = sortedRecords.find(
+            (r) =>
+              r !== latestRecord &&
+              r.details &&
+              r.details.weight &&
+              typeof r.details.weight.value === "number" &&
+              r.details.weight.value > 0
+          );
+
+          if (
+            prevWeightRecord &&
+            prevWeightRecord.details &&
+            prevWeightRecord.details.weight
+          ) {
+            newHealthData.weight.previous =
+              prevWeightRecord.details.weight.value;
+          }
+
+          // Update state with the new health data
+          setHealthStats(newHealthStats);
+          setHealthData(newHealthData as any);
+          console.log(
+            "Health stats calculated successfully:",
+            JSON.stringify(newHealthStats, null, 2)
+          );
+        } else {
+          console.log("No valid data in API response");
+        }
+      } catch (error: any) {
+        console.error("API call error:", error.message);
+        if (error.response) {
+          console.error("API error response status:", error.response.status);
+          console.error(
+            "API error response data:",
+            JSON.stringify(error.response.data, null, 2)
+          );
+        }
+      }
+    } else {
+      console.log("No user ID available")
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       // This will run when the screen comes into focus
@@ -501,6 +1075,72 @@ useEffect(() => {
       // No need to call questionnaireManager.loadConversationState here, as it does not exist.
     }, []),
   )
+
+  const generateTranslation = async (text: string, targetLanguage: string) => {
+  const apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+  const apiKey = "AIzaSyDa4LHDX8SHeXNeKr6sZP5TCIrEIPnkjSU"; // Replace with your actual API key
+
+  // Prepare the request body for translation
+  const requestBody = {
+    contents: [
+      {
+        parts: [
+          {
+            text: `Translate the following text to ${getLanguageName(targetLanguage)} without any explanations or additional context. Only return the translated text:\n\n"${text}"`,  // Adjust the structure of the prompt
+          },
+        ],
+      },
+    ],
+    generationConfig: {
+      temperature: 0.0, // Ensuring deterministic output
+      topK: 40,
+      topP: 0.95,
+      maxOutputTokens: 1000,
+    },
+  };
+
+  // Use fetch instead of axios
+  try {
+    const response = await fetch(`${apiUrl}?key=${apiKey}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept-Language": targetLanguage, // Use target language here
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error("API Error:", errorData);
+      throw new Error(
+        `Failed to send message to Gemini API: ${response.status}`
+      );
+    }
+
+    const data = await response.json();
+
+    // Extract the response text from Gemini's response format
+    let responseText =
+      data.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "I'm sorry, I couldn't process your request at this time.";
+
+    responseText = responseText.replace(/^["']|["']$/g, '') // Remove surrounding quotes
+      .replace(/^Translation:?\s*/i, '') // Remove "Translation:" prefix
+      .trim();// Clean up unwanted characters
+    console.log('Response Text:', responseText);
+
+    return {
+      response: responseText,
+    };
+  } catch (error) {
+    console.error("Error sending message to Gemini API:", error);
+    return {
+      response:
+        "I'm having trouble connecting right now. Please try again later.",
+    };
+  }
+};
 
   // Add this function to directly get progress from AsyncStorage
   const getProgressFromStorage = async () => {
@@ -536,7 +1176,6 @@ useEffect(() => {
     }
   }, [messages])
 
-  const systemPrompt = `${systemPrompts}`
 
   const fetchAndUpdateHealthData = async () => {
     if (user && user.user_id) {
@@ -555,11 +1194,6 @@ useEffect(() => {
     }
   }
 
-  // Fetch health data when component mounts
-  useEffect(() => {
-    fetchAndUpdateHealthData()
-  }, [])
-
   const sendToAPI = async (messageContent: string, messageType: "text" | "audio") => {
     try {
       // Correct Gemini API endpoint
@@ -569,49 +1203,60 @@ useEffect(() => {
       const apiKey = process.env.GEMINI_API // Replace with your actual API key
 
       // Create enhanced prompt with health data if available
-      let enhancedPrompt = systemPrompt
+      let enhancedPrompt = systemPrompt;
+
+      // Add explicit language instruction at the beginning
+      enhancedPrompt = `IMPORTANT: Always respond in ${currentLanguage} language only with the specific and accurate response`
 
       if (healthData) {
-        enhancedPrompt += `\n\nUser's health data:\n`
+        enhancedPrompt += `\n\n${t('healthData.userhealth')}\n`;
 
         if (healthStats.steps) {
-          enhancedPrompt += `- Steps: Today: ${
+          enhancedPrompt += `- ${t('steps')}: ${t('healthData.today1')}: ${
             healthStats.steps.today
-          }, Weekly average: ${healthStats.steps.avgWeekly.toFixed(
-            0,
-          )}, Monthly average: ${healthStats.steps.avgMonthly.toFixed(0)}\n`
+          }, ${t('healthData.weekly_averages')}: ${healthStats.steps.avgWeekly.toFixed(
+            0
+          )}, ${t('healthData.monthly_averages')}: ${healthStats.steps.avgMonthly.toFixed(0)}\n`;
         }
 
         if (healthStats.water) {
-          enhancedPrompt += `- Water: Today: ${
+          enhancedPrompt += `- ${t('water')}: ${t('healthData.today1')}: ${
             healthStats.water.today
-          } glasses, Weekly average: ${healthStats.water.avgWeekly.toFixed(
-            1,
-          )} glasses, Monthly average: ${healthStats.water.avgMonthly.toFixed(1)} glasses\n`
+          } ${t('healthData.glasses')}, ${t('healthData.weekly_averages')}: ${healthStats.water.avgWeekly.toFixed(
+            1
+          )} ${t('healthData.glasses')}, ${t('healthData.monthly_averages')}: ${healthStats.water.avgMonthly.toFixed(
+            1
+          )} ${t('healthData.glasses')}\n`;
         }
 
         if (healthStats.weight && healthStats.weight.avgWeekly > 0) {
-          enhancedPrompt += `- Weight: Current: ${healthStats.weight.today} ${
+          enhancedPrompt += `- ${t('healthData.weight')}: ${t('healthData.current')}: ${healthStats.weight.today} ${
             healthStats.weight.unit
-          }, Weekly average: ${healthStats.weight.avgWeekly.toFixed(1)} ${
+          }, ${t('healthData.weekly_average')}: ${healthStats.weight.avgWeekly.toFixed(1)} ${
             healthStats.weight.unit
-          }, Monthly average: ${healthStats.weight.avgMonthly.toFixed(1)} ${healthStats.weight.unit}\n`
+          }, ${t('healthData.monthly_average1')}: ${healthStats.weight.avgMonthly.toFixed(1)} ${
+            healthStats.weight.unit
+          }\n`;
         }
 
         if (healthStats.heart && healthStats.heart.avgWeekly > 0) {
-          enhancedPrompt += `- Heart rate: Current: ${
+          enhancedPrompt += `- ${t('healthData.heart_rate')}: ${t('healthData.current')}: ${
             healthStats.heart.today
-          } bpm, Weekly average: ${healthStats.heart.avgWeekly.toFixed(
-            0,
-          )} bpm, Monthly average: ${healthStats.heart.avgMonthly.toFixed(0)} bpm\n`
+          } bpm, ${t('healthData.weekly_averages')}: ${healthStats.heart.avgWeekly.toFixed(
+            0
+          )} bpm, ${t('healthData.monthly_averages')}: ${healthStats.heart.avgMonthly.toFixed(
+            0
+          )} bpm\n`;
         }
 
         if (healthStats.sleep && healthStats.sleep.avgWeekly > 0) {
-          enhancedPrompt += `- Sleep: Last night: ${healthStats.sleep.today.toFixed(
-            1,
-          )} hours, Weekly average: ${healthStats.sleep.avgWeekly.toFixed(
-            1,
-          )} hours, Monthly average: ${healthStats.sleep.avgMonthly.toFixed(1)} hours\n`
+          enhancedPrompt += `- ${t('healthData.sleep')}: ${t('healthData.last_night')}: ${healthStats.sleep.today.toFixed(
+            1
+          )} ${t('healthData.hours')}, ${t('healthData.weekly_averages')}: ${healthStats.sleep.avgWeekly.toFixed(
+            1
+          )} ${t('healthData.hours')}, ${t('healthData.monthly_averages')}: ${healthStats.sleep.avgMonthly.toFixed(
+            1
+          )} ${t('healthData.hours')}\n`;
         }
 
         enhancedPrompt += `\nPlease answer the user's question about their health metrics using this data. Be specific and encouraging.`
@@ -631,15 +1276,17 @@ useEffect(() => {
         // Skip audio messages as they don't have text content we can send
         if (msg.type === "text") {
           parts.push({
-            text: msg.isUser ? `User: ${msg.content}` : `Assistant: ${msg.content}`,
-          })
+            text: msg.isUser
+              ? `User ${msg.content}`
+              : `${msg.content}`,
+          });
         }
       }
 
       // Add the current message
       parts.push({
-        text: `User: ${messageContent}`,
-      })
+        text: `${messageContent}`
+      });
 
       const requestBody = {
         contents: [
@@ -653,12 +1300,15 @@ useEffect(() => {
           topP: 0.95,
           maxOutputTokens: 1000,
         },
-      }
+      };
+
+      console.log("Current Language: ", currentLanguage);
 
       const response = await fetch(`${apiUrl}?key=${apiKey}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          // "Accept-Language": currentLanguage,
         },
         body: JSON.stringify(requestBody),
       })
@@ -675,23 +1325,147 @@ useEffect(() => {
       let responseText =
         data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm sorry, I couldn't process your request at this time."
 
-      responseText = responseText.replace(/\*/g, "")
+      responseText = responseText.replace(/\*/g, "");
+      console.log('Response Text', responseText)
       return {
         response: responseText,
       }
     } catch (error) {
       console.error("Error sending message to Gemini API:", error)
       return {
-        response: "I'm having trouble connecting right now. Please try again later.",
-      }
+        response:
+          "I'm having trouble connecting right now. Please try again later.",
+      };
     }
-  }
+  };
 
   const speakResponse = (text: string) => {
-    // This function would normally use text-to-speech
-    // For now, we'll just log the response
-    console.log("Speaking response:", text)
+    // Check if muted - if so, don't speak but still process
+    if (effectiveMuted) {
+      console.log("Voice is muted, not speaking response:", text)
+      setIsProcessing(false)
+      setIsSpeaking(false)
+      return
+    }
+
+    // If speech is already happening, stop it before starting new speech
+    if (isSpeaking) {
+      Speech.stop()
+      console.log("Speech interrupted.")
+    }
+
+    setIsSpeaking(true)
+
+    // Create speech options with the female voice if available
+    const speechOptions: Speech.SpeechOptions = {
+      language: currentLanguage,
+      pitch: 1.0,
+      rate: 0.9,
+      onDone: () => {
+        setIsSpeaking(false)
+        setIsProcessing(false)
+        setSpeakingMessageId(null)
+      },
+      onStopped: () => {
+        setIsSpeaking(false)
+        setIsProcessing(false)
+        setSpeakingMessageId(null)
+      },
+      onError: (error) => {
+        console.error("Speech error:", error)
+        setIsSpeaking(false)
+        setIsProcessing(false)
+        setSpeakingMessageId(null)
+      },
+    }
+
+    // Add the voice if we found a female one
+    if (femaleVoice) {
+      speechOptions.voice = femaleVoice.identifier
+    }
+
+    // Start speaking the text
+    Speech.speak(text, speechOptions)
   }
+
+   useEffect(() => {
+    fetchAndUpdateHealthData()
+  }, [])
+
+
+   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [femaleVoice, setFemaleVoice] = useState<Speech.Voice | null>(null);
+  const [localMuted, setLocalMuted] = useState(false)
+  const effectiveMuted = isMuted !== undefined ? isMuted : localMuted
+
+  useEffect(() => {
+    return () => {
+      // Cleanup speech when component unmounts
+      if (isSpeaking) {
+        Speech.stop()
+        setIsSpeaking(false)
+        setSpeakingMessageId(null)
+      }
+    }
+  }, [isSpeaking])
+
+  const wordsToNumbers = (text: string): string => {
+  const numberWords: { [key: string]: number } = {
+    zero: 0,
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    nine: 9,
+    ten: 10,
+    eleven: 11,
+    twelve: 12,
+    thirteen: 13,
+    fourteen: 14,
+    fifteen: 15,
+    sixteen: 16,
+    seventeen: 17,
+    eighteen: 18,
+    nineteen: 19,
+    twenty: 20,
+    thirty: 30,
+    forty: 40,
+    fifty: 50,
+    sixty: 60,
+    seventy: 70,
+    eighty: 80,
+    ninety: 90,
+    hundred: 100,
+    thousand: 1000,
+  };
+
+  const tokens = text.toLowerCase().split(/\s+/);
+  let result = 0;
+  let current = 0;
+
+  tokens.forEach((token) => {
+    if (numberWords[token] !== undefined) {
+      current += numberWords[token];
+    } else if (token === "hundred" && current !== 0) {
+      current *= 100;
+    } else if (token === "thousand" && current !== 0) {
+      current *= 1000;
+      result += current;
+      current = 0;
+    } else {
+      result += current;
+      current = 0;
+    }
+  });
+
+  result += current;
+  return text.replace(/\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand)\b/gi, result.toString());
+};
+
 
   const extractMetricFromText = (text: string, metricType: string) => {
     // Generic number extraction regex
@@ -754,12 +1528,12 @@ useEffect(() => {
 
       default:
         return {
-          value: Number.parseFloat(numbers[0]),
-        }
+          value: parseFloat(numbers[0]),
+        };
     }
-  }
+  };
 
-  const handleLogRequest = async (query: string): Promise<boolean> => {
+ const handleLogRequest = async (query: string): Promise<boolean> => {
     // Create a helper function to add messages to the chat
     const addResponseMessage = (content: string) => {
       setMessages((prevMessages) => [
@@ -785,6 +1559,7 @@ useEffect(() => {
 
     return result.handled
   }
+
 
   const handleGoalRequest = async (query: string): Promise<boolean> => {
     // Create a helper function to add messages to the chat
@@ -813,6 +1588,8 @@ useEffect(() => {
     return result.handled
   }
 
+
+
   const handleProcessUserQuery = async (query: string) => {
     // Create a function for the RAG service call
     const callRagService = async (query: string, conversationHistory: any[] = []) => {
@@ -822,6 +1599,7 @@ useEffect(() => {
         const response = await axios.post(`${RAG_SERVICE_URL}/${user?.user_id}`, {
           query: query,
           conversationHistory: conversationHistory,
+          currentLanguage: currentLanguage,
         })
 
         if (response.status === 200 && response.data.success) {
@@ -855,6 +1633,7 @@ useEffect(() => {
             payload: {
               query: query,
               conversationHistory: conversationHistory?.length || 0, // Just log length to avoid huge logs
+              currentLanguage: currentLanguage,
             },
           })
         } catch (logError) {
@@ -864,8 +1643,6 @@ useEffect(() => {
         return null
       }
     }
-
-    // Call the utility function with all the necessary dependencies
     await processUserQuery({
       query,
       userId: user.user_id,
@@ -881,6 +1658,7 @@ useEffect(() => {
         sendToAPI,
         callRagService,
       },
+      shouldSpeak
     })
   }
 
@@ -895,6 +1673,7 @@ useEffect(() => {
         timestamp: new Date(),
       }
 
+         Speech.stop();
       // Update messages state with the new message
       const updatedMessages = [...messages, userMessage]
       setMessages(updatedMessages as Message[])
@@ -949,7 +1728,14 @@ useEffect(() => {
     }
   }
 
-  const handleAudioSent = (audioUri: string, transcript?: string, assistantResponse?: string) => {
+
+
+
+  const handleAudioSent = async (
+    audioUri: string,
+    transcript?: string,
+    assistantResponse?: string
+  ) => {
     console.log("handleAudioSent called with:", {
       audioUri,
       transcript,
@@ -970,18 +1756,36 @@ useEffect(() => {
       ])
     }
 
+ 
+   
+
     // Process the transcript if available
     if (transcript) {
-      setIsTyping(true)
-      setIsAssistantResponding(true)
+      setIsTyping(true);
+      setIsAssistantResponding(true);
+  setIsSpeaking(true);
 
+  
       // Check for log/goal requests with the same processing logic as text
       // This ensures consistent handling between voice and text
-      handleProcessUserQuery(transcript).then(() => {
-        setIsTyping(false)
-        setIsAssistantResponding(false)
-      })
+      try {
+             const processedTranscript = wordsToNumbers(transcript);
+      console.log("Processed transcript:", processedTranscript);
+
+       const translationResult = await generateTranslation(processedTranscript, 'en');
+      const translatedText = translationResult.response;
+
+      // Pass the processed transcript to processUserQuery
+      await handleProcessUserQuery(transcript, true);
+        } finally {
+            setIsTyping(false);
+            setIsAssistantResponding(false);
+        }
     }
+
+      if(assistantResponse){
+          speakResponse(assistantResponse);
+      }
   }
 
   const handleOptionPress = (optionText: string) => {
@@ -1034,19 +1838,19 @@ useEffect(() => {
 
       // Show confirmation to the user with option to start questionnaire
       Alert.alert(
-        "Chat History Cleared",
-        "Your conversation history has been deleted. Would you like to start the health questionnaire now?",
+        t('askDoula.title1'),
+        t('askDoula.message'),
         [
           {
-            text: "Yes",
+            text: t('askDoula.yes'),
             onPress: () => {
               // Start the questionnaire
               questionnaireManager.startQuestionnaire()
             },
           },
-          { text: "Not now" },
-        ],
-      )
+          { text: t('askDoula.no') },
+        ]
+      );
     } catch (error) {
       console.error("Error clearing chat history:", error)
       Alert.alert("Error", "Failed to clear chat history. Please try again.")
@@ -1229,6 +2033,98 @@ useEffect(() => {
     } catch (error) {
       console.error("Error loading messages:", error)
     }
+  };
+
+  useEffect(() => {
+    const loadMuteState = async () => {
+      try {
+        const savedMuteState = await AsyncStorage.getItem("isMuted")
+        if (savedMuteState !== null) {
+          setIsMuted(savedMuteState === "true")
+        }
+      } catch (error) {
+        console.error("Error loading mute state:", error)
+      }
+    }
+
+    loadMuteState()
+  }, [])
+
+  useEffect(() => {
+    const saveMuteState = async () => {
+      try {
+        await AsyncStorage.setItem("isMuted", isMuted.toString())
+      } catch (error) {
+        console.error("Error saving mute state:", error)
+      }
+    }
+
+    saveMuteState()
+  }, [isMuted])
+
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+
+ const toggleMute = () => {
+    const newMuteState = !isMuted;
+    setIsMuted(newMuteState);
+    setIsProcessing(false);
+    
+    // Stop any ongoing speech when muting
+    if (newMuteState && isSpeaking) {
+        Speech.stop();
+        setIsSpeaking(false);
+    }
+}; 
+
+ const speakMessage = (messageId: string, messageContent: string) => {
+    // If this message is already being spoken, stop it
+    if (speakingMessageId === messageId) {
+      Speech.stop()
+      setIsSpeaking(false)
+      setSpeakingMessageId(null)
+      return
+    }
+
+    // If another message is being spoken, stop it first
+    if (isSpeaking) {
+      Speech.stop()
+    }
+
+    // If muted, unmute first
+    if (isMuted) {
+      setIsMuted(false)
+    }
+
+    // Set the speaking state and ID before starting speech
+    setIsSpeaking(true)
+    setSpeakingMessageId(messageId)
+
+    const speechOptions: Speech.SpeechOptions = {
+      language: currentLanguage,
+      pitch: 1.0,
+      rate: 0.9,
+      onDone: () => {
+        setIsSpeaking(false)
+        setSpeakingMessageId(null)
+      },
+      onStopped: () => {
+        setIsSpeaking(false)
+        setSpeakingMessageId(null)
+      },
+      onError: (error) => {
+        console.error("Speech error:", error)
+        setIsSpeaking(false)
+        setSpeakingMessageId(null)
+      },
+    }
+
+    // Add the voice if we found a female one
+    if (femaleVoice) {
+      speechOptions.voice = femaleVoice.identifier
+    }
+
+    // Start speaking the text
+    Speech.speak(messageContent, speechOptions)
   }
 
   return (
@@ -1244,18 +2140,17 @@ useEffect(() => {
         {fromModal && (
           <View style={styles.header}>
             {/* {fromModal && ( */}
-            <View
-              style={{
-                flexDirection: "row",
-                gap: 20,
-                alignItems: "center",
-              }}
-            >
-              <TouchableOpacity onPress={() => router.back()}>
-                <Ionicons name="chevron-back" size={20} color="#434343" />
-              </TouchableOpacity>
-              {/* )} */}
-              <Text style={styles.headerTitle}>Ask Your Doula</Text>
+            <View style={{
+              flexDirection: "row",
+              gap:20,
+              alignItems:'center'
+            }}>
+
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name="chevron-back" size={20} color="#434343" />
+            </TouchableOpacity>
+            {/* )} */}
+            <Text style={styles.headerTitle}>{t('askDoula.title')}</Text>
             </View>
             <View style={{ flexDirection: "row" }}>
               {}
@@ -1317,16 +2212,16 @@ useEffect(() => {
               </View>
 
               <Text style={styles.greeting}>
-                <Text>👋 Hi, </Text>
+                <Text>👋 {t('askDoula.hi')}, </Text>
                 <Text style={styles.name}>{user.user_name}</Text>
                 <Text>!</Text>
               </Text>
 
               <Text style={styles.title}>
-                I'm your Digital <Text style={styles.highlight}>Doula</Text>
+                {t('askDoula.description')} <Text style={styles.highlight}>Doula</Text>
               </Text>
 
-              <Text style={styles.subtitle}>How can I assist you today?</Text>
+              <Text style={styles.subtitle}>{t('askDoula.subtitle')}</Text>
             </View>
           ) : (
             <View style={styles.messagesContainer}>
@@ -1347,12 +2242,41 @@ useEffect(() => {
                   )}
 
                   {message.type === "text" ? (
-                    <View style={[styles.messageBubble, message.isUser ? styles.userBubble : styles.doulaBubble]}>
+                    <View
+                      style={[
+                        styles.messageBubble,
+                        message.isUser ? styles.userBubble : styles.doulaBubble,
+                      ]}
+                    >
                       <Text
-                        style={[styles.messageText, message.isUser ? styles.userMessageText : styles.doulaMessageText]}
+                        style={[
+                          styles.messageText,
+                          message.isUser
+                            ? styles.userMessageText
+                            : styles.doulaMessageText,
+                        ]}
                       >
                         {message.content}
                       </Text>
+
+                       {/* {message.isUser ? (
+      <Text
+        style={[
+          styles.messageText,
+          styles.userMessageText,
+        ]}
+      >
+        {message.content}
+      </Text>
+          ) : (
+      <Markdown
+        style={{
+          body: styles.doulaMessageText, // Customize markdown text style
+        }}
+      >
+        {message.content}
+      </Markdown>
+    )} */}
                     </View>
                   ) : (
                     <AudioMessage audioUri={message.content} isUser={message.isUser} />
@@ -1401,40 +2325,48 @@ useEffect(() => {
           >
             <TouchableOpacity
               style={styles.optionButton}
-              onPress={() => handleOptionPress("Show my health stats")}
+              onPress={() => handleOptionPress(t('options.healthStats1'))}
               disabled={isAssistantResponding}
             >
-              <Text style={styles.optionText}>Health Stats</Text>
+              <Text style={styles.optionText}>{t('options.healthStats')}</Text>
             </TouchableOpacity>
 
             {/* Standard advice options */}
             <TouchableOpacity
               style={styles.optionButton}
-              onPress={() => handleOptionPress("Give me nutrition advice?")}
+              onPress={() =>
+                handleOptionPress(
+                  t('options.nutritionAdvice1')
+                )
+              }
               disabled={isAssistantResponding}
             >
-              <Text style={styles.optionText}>Nutrition Advice</Text>
+              <Text style={styles.optionText}>{t('options.nutritionAdvice')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.optionButton}
-              onPress={() => handleOptionPress("What exercises are safe during pregnancy?")}
+              onPress={() =>
+                handleOptionPress(t('options.exerciseTips1'))
+              }
               disabled={isAssistantResponding}
             >
-              <Text style={styles.optionText}>Exercise Tips</Text>
+              <Text style={styles.optionText}>{t('options.exerciseTips')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.optionButton}
-              onPress={() => handleOptionPress("How do I create a birth plan?")}
+              onPress={() => handleOptionPress(t('options.birthPlanning1'))}
               disabled={isAssistantResponding}
             >
-              <Text style={styles.optionText}>Birth Planning</Text>
+              <Text style={styles.optionText}>{t('options.birthPlanning')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.optionButton}
-              onPress={() => handleOptionPress("Is it safe to travel during pregnancy?")}
+              onPress={() =>
+                handleOptionPress(t('options.travelSafety1'))
+              }
               disabled={isAssistantResponding}
             >
-              <Text style={styles.optionText}>Travel Safety</Text>
+              <Text style={styles.optionText}>{t('options.travelSafety')}</Text>
             </TouchableOpacity>
           </ScrollView>
 
@@ -1442,14 +2374,22 @@ useEffect(() => {
             <View style={styles.inputWrapper}>
               <TextInput
                 style={styles.input}
-                placeholder="Ask me anything or log your health data..."
+                placeholder={t('inputPlaceholder')}
                 placeholderTextColor="#999"
                 value={inputText}
                 onChangeText={(text) => setInputText(text)}
                 onSubmitEditing={(e) => sendMessage(e.nativeEvent.text)}
                 editable={!isAssistantResponding}
               />
-              <VoiceRecorder onSendAudio={handleAudioSent} systemPrompt={systemPrompt} />
+              <VoiceRecorder
+                onSendAudio={handleAudioSent}
+                systemPrompt={systemPrompt}
+                isMuted={isMuted}
+                isSpeaking={isSpeaking}
+                setIsSpeaking={setIsSpeaking}
+                isProcessing={isProcessing}
+                setIsProcessing={setIsProcessing}
+              />
             </View>
 
             <TouchableOpacity
@@ -1721,6 +2661,18 @@ const styles = StyleSheet.create({
     padding: 4,
     // paddingLeft,
   },
+  bubbleMuteButton: {
+    position: "absolute",
+    top: 5,
+    right: 5,
+    zIndex: 1,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   sendButton: {
     width: 48,
     height: 48,
@@ -1736,4 +2688,4 @@ const styles = StyleSheet.create({
   sendButtonDisabled: {
     opacity: 0.5,
   },
-})
+});

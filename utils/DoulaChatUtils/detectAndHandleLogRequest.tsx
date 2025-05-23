@@ -1,5 +1,6 @@
 import axios from "axios";
 import { detectLogRequestWithPatterns } from "./logRequestWithPatterns";
+import { useTranslation } from 'react-i18next';
 
 // Define the function parameters and return type
 export interface LogRequestResult {
@@ -15,6 +16,7 @@ export const detectAndHandleLogRequest = async (
   addResponseMessage: (content: string) => void
 ): Promise<LogRequestResult> => {
   // First try pattern-based recognition
+  const {t} = useTranslation();
   const patternMatch = detectLogRequestWithPatterns(query);
 
   if (patternMatch) {
@@ -37,12 +39,12 @@ export const detectAndHandleLogRequest = async (
           isIncrement: isIncrement,
         };
 
-        const incrementText = isIncrement ? " more" : "";
-        successMessage = `I've logged ${
+        const incrementText = isIncrement ? ` ${t('healthData.more')}` : "";
+        successMessage = `${t('healthData.ive_logged')} ${
           patternMatch.isGlasses
-            ? patternMatch.value + incrementText + " glasses"
+            ? patternMatch.value + incrementText + ` ${t('healthData.glasses')}`
             : patternMatch.value + incrementText + "ml"
-        } of water for you.`;
+        } ${t('healthData.of_water_for_you')}`;
 
         console.log("Water logging request:", { waterValue, isIncrement });
       } else if (patternMatch.type === "weight") {
@@ -51,15 +53,15 @@ export const detectAndHandleLogRequest = async (
           weight: patternMatch.value,
           weight_unit: patternMatch.unit,
         };
-        successMessage = `I've logged your weight of ${patternMatch.value} ${patternMatch.unit}.`;
+        successMessage = `${t('healthData.logged_weight')} ${patternMatch.value} ${patternMatch.unit}.`;
       } else if (patternMatch.type === "steps") {
         endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${userId}/steps`;
         requestData = { steps: patternMatch.value };
-        successMessage = `I've logged ${patternMatch.value} steps for you.`;
+        successMessage = `${t('healthData.ive_logged')} ${patternMatch.value} ${t('healthData.steps_for_you')}`;
       } else if (patternMatch.type === "heart") {
         endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${userId}/heart`;
         requestData = { heartRate: patternMatch.value };
-        successMessage = `I've logged your heart rate of ${patternMatch.value} bpm.`;
+        successMessage = `${t('healthData.logged_heart_rate')} ${patternMatch.value} bpm.`;
       } else if (patternMatch.type === "sleep") {
         endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${userId}/sleep`;
 
@@ -101,7 +103,7 @@ export const detectAndHandleLogRequest = async (
           sleepStart: sleepStart,
           sleepEnd: sleepEnd,
         };
-        successMessage = `I've logged your sleep from ${sleepStart} to ${sleepEnd}.`;
+        successMessage = `${t('healthData.logged_sleep_from')} ${sleepStart} ${t('healthData.to')} ${sleepEnd}.`;
       }
 
       // If we have valid data and an endpoint, make the API call
@@ -113,6 +115,10 @@ export const detectAndHandleLogRequest = async (
         if (response.status >= 200 && response.status < 300) {
           // Success - refresh health data
           await updateHealthData();
+
+          if(shouldSpeak){
+              speakResponse(successMessage);
+            }
 
           // Add response message
           addResponseMessage(successMessage);
@@ -126,7 +132,7 @@ export const detectAndHandleLogRequest = async (
       console.error("Error logging health metric:", error);
 
       addResponseMessage(
-        "I'm sorry, I couldn't log that health information. Please try again or use the tracking screens."
+        t('healthData.log_error')
       );
     }
 
@@ -167,11 +173,11 @@ export const detectAndHandleLogRequest = async (
           : Math.round(extractedData.value ?? 0 / 250);
 
         requestData = { water: waterValue };
-        successMessage = `I've logged ${
+        successMessage = `${t('healthData.ive_logged')} ${
           extractedData.isGlasses
-            ? extractedData.value + " glasses"
+            ? extractedData.value + ` ${t('healthData.glasses')}`
             : extractedData.value + "ml"
-        } of water for you.`;
+        } ${t('healthData.of_water_for_you')}`;
       }
     } else if (isWeightLog) {
       extractedData = extractMetricFromText(query, "weight");
@@ -182,7 +188,7 @@ export const detectAndHandleLogRequest = async (
           weight: extractedData.value,
           weight_unit: extractedData.unit,
         };
-        successMessage = `I've logged your weight of ${extractedData.value} ${extractedData.unit}.`;
+        successMessage = `${t('healthData.logged_weight')} ${extractedData.value} ${extractedData.unit}.`;
       }
     } else if (isStepsLog) {
       extractedData = extractMetricFromText(query, "steps");
@@ -190,7 +196,7 @@ export const detectAndHandleLogRequest = async (
       if (extractedData) {
         endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${userId}/steps`;
         requestData = { steps: extractedData.value };
-        successMessage = `I've logged ${extractedData.value} steps for you.`;
+        successMessage = `${t('healthData.ive_logged')} ${extractedData.value} ${t('healthData.steps_for_you')}`;
       }
     } else if (isHeartLog) {
       extractedData = extractMetricFromText(query, "heart");
@@ -198,7 +204,7 @@ export const detectAndHandleLogRequest = async (
       if (extractedData) {
         endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${userId}/heart`;
         requestData = { heartRate: extractedData.value };
-        successMessage = `I've logged your heart rate of ${extractedData.value} bpm.`;
+        successMessage = `${t('healthData.logged_heart_rate')} ${extractedData.value} bpm.`;
       }
     } else if (isSleepLog) {
       extractedData = extractMetricFromText(query, "sleep");
@@ -240,7 +246,7 @@ export const detectAndHandleLogRequest = async (
       } else {
         // If we couldn't extract specific sleep times, provide guidance
         addResponseMessage(
-          "To log sleep, please specify your sleep start and end times. For example, 'I slept from 10:30 PM to 6:45 AM' or 'Log my sleep from 11 PM to 7 AM'."
+          t('healthData.sleep_log_instruction'),
         );
         return { handled: true };
       }

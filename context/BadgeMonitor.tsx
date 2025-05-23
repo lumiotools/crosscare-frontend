@@ -22,7 +22,7 @@ export const BadgeMonitor: React.FC = () => {
     // Set up interval to check periodically
     const intervalId = setInterval(() => {
       checkForNewBadges(user.user_id, token, showBadge);
-    }, 300000); // Check every 30 seconds
+    }, 3000000); // Check every 30 seconds
     
     return () => {
       clearInterval(intervalId);

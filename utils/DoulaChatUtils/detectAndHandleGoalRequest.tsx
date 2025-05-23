@@ -1,5 +1,6 @@
 import axios from "axios";
 import { detectGoalRequestWithPatterns } from "./goalRequestWithPatterns";
+import { useTranslation } from 'react-i18next';
 
 // Define the function parameters and return type
 export interface GoalRequestResult {
@@ -15,6 +16,7 @@ export const detectAndHandleGoalRequest = async (
   addResponseMessage: (content: string) => void
 ): Promise<GoalRequestResult> => {
   // First try pattern-based recognition
+  const {t} = useTranslation();
   const patternMatch = detectGoalRequestWithPatterns(query);
 
   if (patternMatch) {
@@ -31,11 +33,11 @@ export const detectAndHandleGoalRequest = async (
           : Math.round(patternMatch.value / 250);
 
         requestData = { waterGoal: waterGoal };
-        successMessage = `I've set your water intake goal to ${waterGoal} glasses per day.`;
+        successMessage = `${t('healthData.water_goal_set')} ${waterGoal} ${t('healthData.glasses_per_day')}`;
       } else if (patternMatch.type === "steps") {
         endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${userId}/steps`;
         requestData = { stepsGoal: patternMatch.value };
-        successMessage = `I've set your step goal to ${patternMatch.value} steps per day.`;
+        successMessage = `${t('healthData.steps_goal_set')} ${patternMatch.value} ${t('healthData.steps_per_day')}`;
       }
 
       // If we have valid data and an endpoint, make the API call
@@ -60,7 +62,7 @@ export const detectAndHandleGoalRequest = async (
       console.error("Error setting health goal:", error);
       
       addResponseMessage(
-        "I'm sorry, I couldn't set that health goal. Please try again or use the tracking screens."
+        t('healthData.goal_set_error')
       );
     }
 
@@ -98,7 +100,7 @@ export const detectAndHandleGoalRequest = async (
           : Math.round((extractedData.value ?? 0) / 250);
 
         requestData = { waterGoal: waterGoal };
-        successMessage = `I've set your water intake goal to ${waterGoal} glasses per day.`;
+        successMessage = `${t('healthData.water_goal_set')} ${waterGoal} ${t('healthData.glasses_per_day')}`;
       }
     } else if (isStepsGoal) {
       extractedData = extractMetricFromText(query, "steps");
@@ -106,7 +108,7 @@ export const detectAndHandleGoalRequest = async (
       if (extractedData) {
         endpoint = `https://crosscare-backends.onrender.com/api/user/activity/${userId}/steps`;
         requestData = { stepsGoal: extractedData.value };
-        successMessage = `I've set your step goal to ${extractedData.value} steps per day.`;
+        successMessage = `${t('healthData.steps_goal_set')} ${extractedData.value} ${t('healthData.steps_per_day')}`;
       }
     }
 
@@ -120,6 +122,10 @@ export const detectAndHandleGoalRequest = async (
         // Success - refresh health data
         await updateHealthData();
 
+        if(shouldSpeak){
+            speakResponse(successMessage);
+          }
+
         // Add response message
         addResponseMessage(successMessage);
 
@@ -132,7 +138,7 @@ export const detectAndHandleGoalRequest = async (
     console.error("Error setting health goal:", error);
     
     addResponseMessage(
-      "I'm sorry, I couldn't set that health goal. Please try again or use the tracking screens."
+       t('healthData.goal_set_error')
     );
 
     return { handled: true };

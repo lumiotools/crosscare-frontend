@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 export interface ProcessUserQueryParams {
     query: string;
     userId: string;
@@ -17,8 +18,9 @@ export interface ProcessUserQueryParams {
       handleGoalRequest: (query: string) => Promise<boolean>;
       speakResponse: (text: string) => void;
       sendToAPI: (messageContent: string, messageType: 'text' | 'audio') => Promise<{ response: string }>;
-      callRagService?: (query: string, conversationHistory: any[]) => Promise<any>;
+      callRagService?: (query: string, conversationHistory: any[], currentLanguage: string) => Promise<any>;
     };
+    shouldSpeak:boolean
   }
 
 export const processUserQuery = async ({
@@ -29,6 +31,7 @@ export const processUserQuery = async ({
   questionnaireManager,
   callbacks
 }: ProcessUserQueryParams): Promise<void> => {
+  const {t} = useTranslation();
   try {
     console.log("processUserQuery started with:", query);
     callbacks.setIsProcessing(true);
@@ -163,7 +166,7 @@ export const processUserQuery = async ({
 
     // Check for comprehensive stats query
     const isComprehensiveQuery =
-      /all stats|all metrics|health summary|overview/i.test(query) ||
+      /all stats|all metrics|health summary|overview|Show my health stats/i.test(query) ||
       (/avg|average/i.test(query) &&
         /heart|water|steps|sleep|weight/i.test(query) &&
         /heart|water|steps|sleep|weight/i.test(query) &&
@@ -193,7 +196,7 @@ export const processUserQuery = async ({
       console.log("Detected comprehensive health stats query");
 
       // Format a comprehensive health stats response
-      let statsMessage = "Here's a summary of your health statistics:\n\n";
+      let statsMessage = `${t('healthData.statsMessage')}:\n\n`;
 
       // Determine time period to report
       let reportPeriod = "weekly"; // Default to weekly
@@ -202,74 +205,74 @@ export const processUserQuery = async ({
 
       // Water stats
       if (reportPeriod === "today") {
-        statsMessage += `Water: ${healthStats.water.today} glasses today\n`;
+        statsMessage += `${t('water')}: ${healthStats.water.today} ${t('healthData.glasses')} ${t('healthData.today')}\n`;
       } else if (reportPeriod === "weekly") {
-        statsMessage += `Water: ${healthStats.water.avgWeekly.toFixed(
+        statsMessage += `${t('water')}: ${healthStats.water.avgWeekly.toFixed(
           1
-        )} glasses per day (weekly average)\n`;
+        )} ${t('healthData.glasses_per_day_weekly_avg')}\n`;
       } else {
-        statsMessage += `Water: ${healthStats.water.avgMonthly.toFixed(
+        statsMessage += `${t('water')}: ${healthStats.water.avgMonthly.toFixed(
           1
-        )} glasses per day (monthly average)\n`;
+        )} ${t('healthData.glasses_per_day_monthly_avg')}\n`;
       }
 
       // Steps stats
       if (reportPeriod === "today") {
-        statsMessage += `Steps: ${healthStats.steps.today} steps today\n`;
+        statsMessage += `${t('steps')}: ${healthStats.steps.today} ${t('healthData.steps_today')}\n`;
       } else if (reportPeriod === "weekly") {
-        statsMessage += `Steps: ${healthStats.steps.avgWeekly.toFixed(
+        statsMessage += `${t('steps')}: ${healthStats.steps.avgWeekly.toFixed(
           0
-        )} steps per day (weekly average)\n`;
+        )} ${t('healthData.steps_per_day_weekly_avg')}\n`;
       } else {
-        statsMessage += `Steps: ${healthStats.steps.avgMonthly.toFixed(
+        statsMessage += `${t('steps')}: ${healthStats.steps.avgMonthly.toFixed(
           0
-        )} steps per day (monthly average)\n`;
+        )} ${t('healthData.steps_per_day_monthly_avg')}\n`;
       }
 
       // Weight stats
       if (healthStats.weight.avgWeekly > 0) {
         if (reportPeriod === "today") {
-          statsMessage += `Weight: ${healthStats.weight.today} ${healthStats.weight.unit} today\n`;
+          statsMessage += `${t('weight')}: ${healthStats.weight.today} ${healthStats.weight.unit} ${t('healthData.steps_today')}\n`;
         } else if (reportPeriod === "weekly") {
-          statsMessage += `Weight: ${healthStats.weight.avgWeekly.toFixed(
+          statsMessage += `${t('weight')}: ${healthStats.weight.avgWeekly.toFixed(
             1
-          )} ${healthStats.weight.unit} (weekly average)\n`;
+          )} ${healthStats.weight.unit} ${t('healthData.weekly_average')}\n`;
         } else {
-          statsMessage += `Weight: ${healthStats.weight.avgMonthly.toFixed(
+          statsMessage += `${t('weight')}: ${healthStats.weight.avgMonthly.toFixed(
             1
-          )} ${healthStats.weight.unit} (monthly average)\n`;
+          )} ${healthStats.weight.unit} ${t('healthData.monthly_average')}\n`;
         }
       }
 
       // Heart rate stats
       if (healthStats.heart.avgWeekly > 0) {
         if (reportPeriod === "today") {
-          statsMessage += `Heart rate: ${healthStats.heart.today} bpm today\n`;
+          statsMessage += `${t('healthData.heart_rate')}: ${healthStats.heart.today} ${t('healthData.bpm_today')}\n`;
         } else if (reportPeriod === "weekly") {
-          statsMessage += `Heart rate: ${healthStats.heart.avgWeekly.toFixed(
+          statsMessage += `${t('healthData.heart_rate')}: ${healthStats.heart.avgWeekly.toFixed(
             0
-          )} bpm (weekly average)\n`;
+          )} ${t('healthData.bpm_weekly_avg')}\n`;
         } else {
-          statsMessage += `Heart rate: ${healthStats.heart.avgMonthly.toFixed(
+          statsMessage += `${t('healthData.heart_rate')}: ${healthStats.heart.avgMonthly.toFixed(
             0
-          )} bpm (monthly average)\n`;
+          )} ${t('healthData.bpm_monthly_avg')}\n`;
         }
       }
 
       // Sleep stats
       if (healthStats.sleep.avgWeekly > 0) {
         if (reportPeriod === "today") {
-          statsMessage += `Sleep: ${healthStats.sleep.today.toFixed(
+          statsMessage += `${t('sleep')}: ${healthStats.sleep.today.toFixed(
             1
-          )} hours today\n`;
+          )} ${t('healthData.hours_today')}\n`;
         } else if (reportPeriod === "weekly") {
-          statsMessage += `Sleep: ${healthStats.sleep.avgWeekly.toFixed(
+          statsMessage += `${t('sleep')}: ${healthStats.sleep.avgWeekly.toFixed(
             1
-          )} hours per night (weekly average)\n`;
+          )} ${t('healthData.hours_per_night_weekly_avg')}\n`;
         } else {
-          statsMessage += `Sleep: ${healthStats.sleep.avgMonthly.toFixed(
+          statsMessage += `${t('sleep')}: ${healthStats.sleep.avgMonthly.toFixed(
             1
-          )} hours per night (monthly average)\n`;
+          )} ${t('healthData.hours_per_night_monthly_avg')}\n`;
         }
       }
 
@@ -279,11 +282,15 @@ export const processUserQuery = async ({
         healthStats.sleep.avgWeekly === 0
       ) {
         statsMessage +=
-          "\nSome metrics have no data. Regular tracking will provide more complete insights.";
+         `\n${t('healthData.message')}`;
       }
 
       // Speak the response
       callbacks.speakResponse(statsMessage);
+
+      if(shouldSpeak){
+          speakResponse(statsMessage);
+        }
 
       // Add the response to messages
       callbacks.setMessages((prevMessages) => [
@@ -306,31 +313,34 @@ export const processUserQuery = async ({
       let waterMessage = "";
 
       if (isTodayQuery) {
-        waterMessage = `You've consumed ${healthStats.water.today} glasses of water today.`;
+        waterMessage = `${t('healthData.youve_consumed')} ${healthStats.water.today} ${t('healthData.glasses_of_water_today')}`;
       } else if (isWeeklyQuery || isAverageQuery) {
-        waterMessage = `Your average water consumption is ${healthStats.water.avgWeekly.toFixed(
+        waterMessage = `${t('healthData.average_water_consumption')} ${healthStats.water.avgWeekly.toFixed(
           1
-        )} glasses per day over the past week. Your total weekly consumption was ${
+        )} ${t('healthData.glasses_per_day_week')} ${
           healthStats.water.weekly
-        } glasses.`;
+        } ${t('healthData.glasses')}.`;
       } else if (isMonthlyQuery) {
-        waterMessage = `Your average water consumption is ${healthStats.water.avgMonthly.toFixed(
+        waterMessage = `${t('healthData.average_water_consumption')} ${healthStats.water.avgMonthly.toFixed(
           1
-        )} glasses per day over the past month. Your total monthly consumption was ${
+        )} ${t('healthData.glasses_per_day_month')} ${
           healthStats.water.monthly
-        } glasses.`;
+        } ${t('healthData.glasses')}.`;
       } else {
         // Default to weekly if no time period specified
-        waterMessage = `Your average water consumption is ${healthStats.water.avgWeekly.toFixed(
+        waterMessage = `${t('healthData.average_water_consumption')} ${healthStats.water.avgWeekly.toFixed(
           1
-        )} glasses per day over the past week. Today you've had ${
+        )} ${t('healthData.glasses_per_day_week_today')} ${
           healthStats.water.today
-        } glasses.`;
+        } ${t('healthData.glasses')}.`;
       }
 
-      waterMessage += " Staying hydrated is important for your pregnancy!";
+      waterMessage += `${t('healthData.hydration_reminder')}`;
       // Speak the response
       callbacks.speakResponse(waterMessage);
+      if(shouldSpeak){
+          speakResponse(waterMessage);
+        }
 
       // Add the response to messages
       callbacks.setMessages((prevMessages) => [
@@ -357,7 +367,10 @@ export const processUserQuery = async ({
         healthStats.weight.today === 0
       ) {
         const noDataMessage =
-          "I don't have enough weight data to calculate statistics. Please log your weight regularly to track your pregnancy progress.";
+         `${t('healthData.no_weight_data')}`;
+            if(shouldSpeak){
+              speakResponse(noDataMessage);
+            }
         callbacks.speakResponse(noDataMessage);
 
         // Add the response to messages
@@ -379,15 +392,19 @@ export const processUserQuery = async ({
       let weightMessage = "";
 
       if (isMonthlyQuery) {
-        weightMessage = `Your average weight is ${healthStats.weight.avgMonthly.toFixed(
+        weightMessage = `${t('healthData.average_weight')} ${healthStats.weight.avgMonthly.toFixed(
           1
-        )} ${healthStats.weight.unit} over the past month.`;
+        )} ${healthStats.weight.unit} ${t('healthData.over_past_month')}`;
       } else {
         // Default to weekly average for "what is avg weight" queries
-        weightMessage = `Your average weight is ${healthStats.weight.avgWeekly.toFixed(
+        weightMessage = `${t('healthData.average_weight')} ${healthStats.weight.avgWeekly.toFixed(
           1
-        )} ${healthStats.weight.unit} over the past week.`;
+        )} ${healthStats.weight.unit} ${t('healthData.over_past_week')}`;
       }
+
+      if(shouldSpeak){
+          speakResponse(weightMessage);
+        }
 
       callbacks.speakResponse(weightMessage);
 
@@ -412,32 +429,35 @@ export const processUserQuery = async ({
       let stepsMessage = "";
 
       if (isTodayQuery) {
-        stepsMessage = `You've taken ${healthStats.steps.today} steps today.`;
+        stepsMessage = `${t('healthData.youve_taken')} ${healthStats.steps.today} ${t('healthData.steps_today1')}`;
       } else if (isWeeklyQuery || isAverageQuery) {
-        stepsMessage = `Your average daily step count is ${healthStats.steps.avgWeekly.toFixed(
+        stepsMessage = `${t('healthData.average_daily_steps')} ${healthStats.steps.avgWeekly.toFixed(
           0
-        )} steps over the past week. Your total steps this week were ${
+        )} ${t('healthData.steps_past_week')} ${
           healthStats.steps.weekly
         }.`;
       } else if (isMonthlyQuery) {
-        stepsMessage = `Your average daily step count is ${healthStats.steps.avgMonthly.toFixed(
+        stepsMessage = `${t('healthData.average_daily_steps')} ${healthStats.steps.avgMonthly.toFixed(
           0
-        )} steps over the past month. Your total steps this month were ${
+        )} ${t('healthData.steps_past_month')} ${
           healthStats.steps.monthly
         }.`;
       } else {
         // Default to weekly if no time period specified
-        stepsMessage = `Your average daily step count is ${healthStats.steps.avgWeekly.toFixed(
+        stepsMessage = `${t('healthData.average_daily_steps')} ${healthStats.steps.avgWeekly.toFixed(
           0
-        )} steps over the past week. Today you've taken ${
+        )} ${t('healthData.steps_week_today')} ${
           healthStats.steps.today
-        } steps.`;
+        } ${t('steps')}`;
       }
 
       stepsMessage +=
-        " Regular walking is excellent exercise during pregnancy!";
+          ` ${t('healthData.walking_encouragement')}`;
 
-      callbacks.speakResponse(stepsMessage);
+          if(shouldSpeak){
+            callbacks.speakResponse(stepsMessage);
+          }
+
 
       // Add the response to messages
       callbacks.setMessages((prevMessages) => [
@@ -462,8 +482,10 @@ export const processUserQuery = async ({
         healthStats.heart.today === 0
       ) {
         const noDataMessage =
-          "I don't have enough heart rate data to calculate statistics. Please log your heart rate regularly for better tracking.";
-        callbacks.speakResponse(noDataMessage);
+            `${t('healthData.no_heart_data')}`;
+            if(shouldSpeak){
+              callbacks.speakResponse(noDataMessage);
+            }
 
         callbacks.setMessages((prevMessages) => [
           ...prevMessages,
@@ -483,24 +505,27 @@ export const processUserQuery = async ({
       let heartMessage = "";
 
       if (isTodayQuery) {
-        heartMessage = `Your heart rate today is ${healthStats.heart.today} bpm.`;
+        heartMessage = `${t('healthData.heart_rate_today')} ${healthStats.heart.today} bpm.`;
       } else if (isWeeklyQuery || isAverageQuery) {
-        heartMessage = `Your average heart rate is ${healthStats.heart.avgWeekly.toFixed(
+        heartMessage = `${t('healthData.average_heart_rate')} ${healthStats.heart.avgWeekly.toFixed(
           0
-        )} bpm over the past week.`;
+        )} bpm ${t('healthData.over_past_week')}`;
       } else if (isMonthlyQuery) {
-        heartMessage = `Your average heart rate is ${healthStats.heart.avgMonthly.toFixed(
+        heartMessage = `${t('healthData.average_heart_rate')} ${healthStats.heart.avgMonthly.toFixed(
           0
-        )} bpm over the past month.`;
+        )} bpm ${t('healthData.over_past_month')}`;
       } else {
-        heartMessage = `Your current heart rate is ${
+        heartMessage = `${t('healthData.current_heart_rate')} ${
           healthStats.heart.today
-        } bpm, and your weekly average is ${healthStats.heart.avgWeekly.toFixed(
+        } bpm, ${t('healthData.and_weekly_average_is')} ${healthStats.heart.avgWeekly.toFixed(
           0
         )} bpm.`;
       }
 
-      callbacks.speakResponse(heartMessage);
+       if(shouldSpeak){
+          callbacks.speakResponse(heartMessage);
+        }
+
 
       callbacks.setMessages((prevMessages) => [
         ...prevMessages,
@@ -529,11 +554,15 @@ export const processUserQuery = async ({
     // Try to use RAG service if available
     if (callbacks.callRagService) {
       try {
-        const ragResponse = await callbacks.callRagService(query, recentMessages);
+        const ragResponse = await callbacks.callRagService(query, recentMessages, currentLanguage);
         
         if (ragResponse && ragResponse.success) {
           // Use the response from RAG service
           const assistantMessage = ragResponse.response;
+          if (shouldSpeak) {
+               setIsProcessing(true);
+           speakResponse(assistantMessage);
+        }
           callbacks.speakResponse(assistantMessage);
 
           // Add the response to messages
@@ -563,6 +592,11 @@ export const processUserQuery = async ({
       const assistantMessage = apiResponse.response;
       callbacks.speakResponse(assistantMessage);
 
+      if (shouldSpeak) {
+                 setIsProcessing(true);
+                  speakResponse(assistantMessage);
+            }
+
       // Add the response to messages
       callbacks.setMessages((prevMessages) => [
         ...prevMessages,
@@ -581,7 +615,9 @@ export const processUserQuery = async ({
     console.error("Error in processUserQuery:", error.message);
     console.error("Error stack:", error.stack);
     callbacks.setIsProcessing(false);
-    
+     if (shouldSpeak) {
+      setIsProcessing(false);
+    }
     // Add error message to chat
     callbacks.setMessages((prevMessages) => [
       ...prevMessages,
@@ -594,4 +630,9 @@ export const processUserQuery = async ({
       },
     ]);
   }
+  finally {
+    // Only reset isProcessing if it was a voice input
+    if (shouldSpeak) {
+      setIsProcessing(false);
+    }
 };

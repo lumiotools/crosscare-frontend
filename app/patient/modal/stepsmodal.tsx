@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Alert } from "react-native"
 import { useSelector } from "react-redux"
 
@@ -64,11 +65,13 @@ const StepsModal = ({ visible, onClose, onSave, reload }: StepGoalModalProps) =>
     onClose()
   }
 
+  const {t} = useTranslation();
+
   return (
     <Modal transparent={true} visible={visible} animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>Set New Goal</Text>
+          <Text style={styles.modalTitle}>{t('stepScreen.setGoal')}</Text>
 
           <View style={styles.inputContainer}>
             <TextInput
@@ -76,18 +79,18 @@ const StepsModal = ({ visible, onClose, onSave, reload }: StepGoalModalProps) =>
               value={steps}
               onChangeText={setSteps}
               keyboardType="numeric"
-              placeholder="-- Steps"
+              placeholder={t('steps')}
               placeholderTextColor="#ccc"
             />
           </View>
 
           <View style={styles.buttonContainer}>
             <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-              <Text style={styles.saveButtonText}>Save & Continue</Text>
+              <Text style={styles.saveButtonText} numberOfLines={1}>{t('stepScreen.saveGoal')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -164,6 +167,7 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: "white",
     fontSize: 14,
+    maxWidth:130,
     fontFamily: "Inter500",
   },
 })

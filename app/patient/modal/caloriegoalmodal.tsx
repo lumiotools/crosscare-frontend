@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   View,
   Text,
@@ -16,6 +17,8 @@ interface CalorieGoalModalProps {
 
 const CalorieGoalModal = ({ visible, onClose, onSave }: CalorieGoalModalProps) => {
   const [calories, setCalories] = useState("");
+
+  const {t} = useTranslation();
 
   const handleSave = () => {
     onSave(calories);
@@ -36,7 +39,7 @@ const CalorieGoalModal = ({ visible, onClose, onSave }: CalorieGoalModalProps) =
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>Set New Goal</Text>
+          <Text style={styles.modalTitle}>{t('meals.setNewGoal')}</Text>
           
           <View style={styles.inputContainer}>
             <TextInput
@@ -51,14 +54,14 @@ const CalorieGoalModal = ({ visible, onClose, onSave }: CalorieGoalModalProps) =
           
           <View style={styles.buttonContainer}>
             <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
               style={styles.saveButton}
               onPress={handleSave}
             >
-              <Text style={styles.saveButtonText}>Save & Continue</Text>
+              <Text style={styles.saveButtonText} numberOfLines={1}>{t('meals.saveContinue')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -141,6 +144,7 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: "white",
     fontSize: 14,
+    maxWidth:120,
     fontFamily: "Inter500",
   },
 });
