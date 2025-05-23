@@ -44,7 +44,7 @@ import {
   generateEmpathyResponse,
 } from "../../utils/ConversationalSystem/EmpathyResponses/generator";
 import axios from "axios";
-
+import { AppState, type AppStateStatus } from "react-native"
 // Default OpenAI API key (you'll want to store this securely)
 const DEFAULT_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY || "";
 
@@ -82,6 +82,45 @@ const ConversationalQuestionnaire = ({
     useState(false);
   const [nextDomainIndex, setNextDomainIndex] = useState(-1);
   const hasLoadedRef = useRef(false);
+
+   // Track app state for auto-pause/resume
+  const appStateRef = useRef(AppState.currentState);
+  const wasManuallyPaused = useRef(false);
+
+  // Add AppState listener to handle app going to background/foreground
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+   // Handle app state changes (active, background, inactive)
+  const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+    console.log(`App state changed from ${appStateRef.current} to ${nextAppState}`);
+    
+    // If app is going to background and questionnaire is active but not paused
+    if (
+      appStateRef.current.match(/active/) && 
+      (nextAppState === 'background' || nextAppState === 'inactive') &&
+      context.isActive && 
+      !context.isPaused && 
+      !context.isCompleted
+    ) {
+      console.log('App going to background - auto-pausing questionnaire');
+      wasManuallyPaused.current = false;
+      
+      // Auto-pause the questionnaire
+      await pauseQuestionnaire();
+      
+      // Save the auto-pause state
+      await AsyncStorage.setItem(`questionnaire_auto_paused_${userId}`, "true");
+    }
+    
+    appStateRef.current = nextAppState;
+  };
+
 
   // Save context whenever it changes
   useEffect(() => {
@@ -146,7 +185,15 @@ const ConversationalQuestionnaire = ({
           setIntroStep(4);
         }
 
-        hasLoadedRef.current = true;
+        // Check if questionnaire was auto-paused
+        const autoPaused = await AsyncStorage.getItem(`questionnaire_auto_paused_${userId}`);
+        if (autoPaused === "true") {
+          wasManuallyPaused.current = false;
+        } else {
+          wasManuallyPaused.current = true;
+        }
+
+        hasLoadedRef.current = true
       } catch (error) {
         console.error("Error loading conversation context:", error);
       }
@@ -1625,6 +1672,42 @@ const ConversationalQuestionnaire = ({
       });
   };
 
+  const pauseQuestionnaire = async (): Promise<any> => {
+    try {
+      console.log("Pausing questionnaire");
+      
+      // Mark as manually paused if called directly (not from app state change)
+      if (appStateRef.current === 'active') {
+        wasManuallyPaused.current = true;
+        await AsyncStorage.removeItem(`questionnaire_auto_paused_${userId}`);
+      } else {
+        // This is an auto-pause
+        wasManuallyPaused.current = false;
+        await AsyncStorage.setItem(`questionnaire_auto_paused_${userId}`, "true");
+      }
+      
+      // Save the current state first
+      await saveConversationState();
+      
+      // Then mark as paused
+      dispatch({
+        type: "SET_PAUSED",
+        payload: {},
+      });
+
+      // Save again with updated pause flag
+      await saveConversationState();
+
+      // Debug log the saved context
+      console.log("Paused questionnaire, saved context:", context);
+
+      return context;
+    } catch (error) {
+      console.error("Error pausing questionnaire:", error);
+      return null;
+    }
+  };
+
   // Resume a paused questionnaire
   const resumeQuestionnaire = async (): Promise<void> => {
     console.log("Resuming questionnaire");
@@ -1636,6 +1719,9 @@ const ConversationalQuestionnaire = ({
       // Reset transition flags
       setWaitingForDomainTransition(false);
       setNextDomainIndex(-1);
+
+      await AsyncStorage.removeItem(`questionnaire_auto_paused_${userId}`);
+      wasManuallyPaused.current = true;
 
       // Load the saved context
       const savedContext = await loadConversationContext(userId);
@@ -1783,7 +1869,11 @@ const ConversationalQuestionnaire = ({
           payload: {}
         });
       }
-      
+
+      // Check if it was auto-paused
+        const autoPaused = await AsyncStorage.getItem(`questionnaire_auto_paused_${userId}`);
+        wasManuallyPaused.current = autoPaused !== "true";
+        
       return true;
     }
     
@@ -1804,22 +1894,7 @@ const ConversationalQuestionnaire = ({
     isActive: context.isActive,
     isCompleted: context.isCompleted,
     isQuestionnaireCompleted,
-    pauseQuestionnaire: async () => {
-      await saveConversationState();
-      // Then mark as paused
-      dispatch({
-        type: "SET_PAUSED",
-        payload: {},
-      });
-
-      // Save again with updated pause flag
-      await saveConversationState();
-
-      // Debug log the saved context
-      console.log("Paused questionnaire, saved context:", context);
-
-      return context;
-    },
+    pauseQuestionnaire,
     reloadContextFromStorage,
     context,
   };

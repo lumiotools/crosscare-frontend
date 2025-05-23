@@ -12,6 +12,8 @@ import {
   Platform,
   Animated,
   Alert,
+  AppState,
+  type AppStateStatus,
 } from "react-native"
 import { Ionicons, Feather } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
@@ -30,6 +32,7 @@ import { detectAndHandleLogRequest } from "@/utils/DoulaChatUtils/detectAndHandl
 import { detectAndHandleGoalRequest } from "@/utils/DoulaChatUtils/detectAndHandleGoalRequest"
 import { processUserQuery } from "@/utils/DoulaChatUtils/processUserQuery"
 import ConversationalQuestionnaire from "@/components/ConversationalQuestionnaire"
+import { BackHandler } from "react-native"
 
 interface PauseStateStorage {
   paused: boolean
@@ -37,20 +40,19 @@ interface PauseStateStorage {
 }
 
 interface Message {
-  id: string;
-  isUser: boolean;
-  timestamp: Date;
-  type: "text" | "audio";
-  content: string; // text content or audio URI
+  id: string
+  isUser: boolean
+  timestamp: Date
+  type: "text" | "audio"
+  content: string // text content or audio URI
 }
 
-
 export default function askdoula() {
-  const [inputText, setInputText] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const user = useSelector((state: any) => state.user);
-  const [healthData, setHealthData] = useState<HealthData | null>(null);
+  const [inputText, setInputText] = useState("")
+  const [isTyping, setIsTyping] = useState(false)
+  const [messages, setMessages] = useState<Message[]>([])
+  const user = useSelector((state: any) => state.user)
+  const [healthData, setHealthData] = useState<HealthData | null>(null)
   const [healthStats, setHealthStats] = useState({
     water: { today: 0, weekly: 0, monthly: 0, avgWeekly: 0, avgMonthly: 0 },
     steps: { today: 0, weekly: 0, monthly: 0, avgWeekly: 0, avgMonthly: 0 },
@@ -64,21 +66,21 @@ export default function askdoula() {
     },
     heart: { today: 0, weekly: 0, monthly: 0, avgWeekly: 0, avgMonthly: 0 },
     sleep: { today: 0, weekly: 0, monthly: 0, avgWeekly: 0, avgMonthly: 0 },
-  });
+  })
 
   const [isPaused, setIsPaused] = useState(false)
+  const appState = useRef(AppState.currentState)
+  const wasActiveRef = useRef(true)
 
-  const params = useLocalSearchParams();
-  const fromModal = params.from_modal === "true";
-  const RAG_SERVICE_URL = "https://crosscare-rag.onrender.com/api/chat";
-  const [isAssistantResponding, setIsAssistantResponding] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const params = useLocalSearchParams()
+  const fromModal = params.from_modal === "true"
+  const RAG_SERVICE_URL = "https://crosscare-rag.onrender.com/api/chat"
+  const [isAssistantResponding, setIsAssistantResponding] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
 
-
-  const scrollViewRef = useRef<ScrollView>(null);
-  const loadingAnimation = useRef(new Animated.Value(0)).current;
-
+  const scrollViewRef = useRef<ScrollView>(null)
+  const loadingAnimation = useRef(new Animated.Value(0)).current
 
   // Initialize questionnaire manager
   const questionnaireManager = ConversationalQuestionnaire({
@@ -94,20 +96,20 @@ export default function askdoula() {
           isUser: false,
           timestamp: new Date(),
         },
-      ]);
+      ])
     },
     onQuestionnaireComplete: () => {
       // Questionnaire completion is handled internally by the ConversationalQuestionnaire
       // Any additional actions can be added here
-      console.log("Questionnaire completed");
+      console.log("Questionnaire completed")
     },
     onResponseSaved: (response: QuestionnaireResponse) => {
       // You can do additional processing here if needed
-      console.log("Response saved:", response);
+      console.log("Response saved:", response)
     },
     // You need to add your OpenAI API key here
-    openAIApiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY || ''
-  });
+    openAIApiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY || "",
+  })
 
   const checkQuestionnaireCompletionStatus = async () => {
     try {
@@ -119,56 +121,222 @@ export default function askdoula() {
     }
   }
 
-  useFocusEffect(
-    useCallback(() => {
-      console.log("Screen focused - loading progress and pause state")
+  // Add AppState listener to handle app going to background/foreground
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", handleAppStateChange)
 
-      // Load progress directly from storage
-      const loadProgressAndPauseState = async () => {
+    return () => {
+      subscription.remove()
+    }
+  }, [])
+
+  const contextSavingRef = useRef(false)
+const isNavigatingAwayRef = useRef(false)
+
+// 3. ADD this comprehensive go back handler function
+const handleGoBack = useCallback(async () => {
+  try {
+    console.log("Go back handler triggered - saving context before navigation")
+    
+    // Prevent multiple simultaneous saves
+    if (contextSavingRef.current) {
+      console.log("Context save already in progress, proceeding with navigation")
+      router.back()
+      return true
+    }
+
+    contextSavingRef.current = true
+    isNavigatingAwayRef.current = true
+
+    // Step 1: Check if questionnaire is active and needs saving
+    const isQuestionnaireActive = questionnaireManager.isActive && 
+                                 !questionnaireManager.isCompleted
+
+    if (isQuestionnaireActive) {
+      console.log("Active questionnaire detected - saving state before navigation")
+
+      // Step 2: Save current conversation context
+      const currentContext = questionnaireManager.context
+      if (currentContext) {
         try {
-          // First check the dedicated pause state storage
-          const pauseState = await AsyncStorage.getItem(`questionnaire_paused_${user?.user_id}`)
-          const isPausedFromDedicated = pauseState === "true"
-
-          // Get the progress
-          const storedProgress = await getProgressFromStorage()
-          setProgress(storedProgress)
-
-          // Also get the pause state from context as a fallback
-          const contextString = await AsyncStorage.getItem(`conversation_context_${user?.user_id}`)
-          if (contextString) {
-            const context = JSON.parse(contextString)
-            // Use dedicated storage value first, fall back to context
-            const wasPaused = isPausedFromDedicated || context?.isPaused || false
-
-            console.log(`Loaded pause state from storage: isPaused=${wasPaused}`)
-            setIsPaused(wasPaused)
-
-            // Also force the questionnaire manager to update its state if possible
-            if (questionnaireManager && wasPaused) {
-              console.log("Setting questionnaire manager to paused state")
-              // If we have a reloadContextFromStorage method, use it
-              if (typeof questionnaireManager.reloadContextFromStorage === "function") {
-                await questionnaireManager.reloadContextFromStorage()
-              }
-            }
-          } else if (pauseState === "true") {
-            // If we have no context but we do have a pause state, still set it
-            setIsPaused(true)
+          // Create a snapshot of the current state
+          const contextSnapshot = {
+            ...currentContext,
+            isPaused: true, // Always pause when navigating away
+            stage: questionnaireManager.isPaused ? currentContext.stage : "paused",
+            lastSaved: new Date().toISOString(),
+            navigationPaused: true // Flag to indicate paused due to navigation
           }
-        } catch (error) {
-          console.error("Error loading progress and pause state:", error)
+
+          // Convert dates to strings for storage
+          if (contextSnapshot.responses) {
+            contextSnapshot.responses = contextSnapshot.responses.map((r: any) => ({
+              ...r,
+              timestamp: r.timestamp instanceof Date ? r.timestamp.toISOString() : r.timestamp
+            }))
+          }
+
+          if (contextSnapshot.sensitiveDisclosures) {
+            contextSnapshot.sensitiveDisclosures = contextSnapshot.sensitiveDisclosures.map((d: any) => ({
+              ...d,
+              timestamp: d.timestamp instanceof Date ? d.timestamp.toISOString() : d.timestamp
+            }))
+          }
+
+          // Save to multiple storage keys for reliability
+          const contextKey = `conversation_context_${user?.user_id}`
+          const backupKey = `conversation_context_backup_${user?.user_id}`
+          
+          await Promise.all([
+            AsyncStorage.setItem(contextKey, JSON.stringify(contextSnapshot)),
+            AsyncStorage.setItem(backupKey, JSON.stringify(contextSnapshot)),
+            AsyncStorage.setItem(`questionnaire_paused_${user?.user_id}`, 'true'),
+            AsyncStorage.setItem(`questionnaire_navigation_paused_${user?.user_id}`, 'true'),
+            AsyncStorage.setItem(`last_navigation_time_${user?.user_id}`, Date.now().toString())
+          ])
+
+          console.log("Context saved successfully before navigation:", {
+            responses: contextSnapshot.responses?.length || 0,
+            isPaused: contextSnapshot.isPaused,
+            domainIndex: contextSnapshot.currentDomainIndex,
+            questionIndex: contextSnapshot.currentQuestionIndex
+          })
+
+        } catch (contextError) {
+          console.error("Error saving context:", contextError)
+          // Continue with navigation even if context save fails
         }
       }
 
-      loadProgressAndPauseState()
-
-      return () => {
-        // Nothing to clean up
+      // Step 3: Pause the questionnaire manager if it's not already paused
+      if (!questionnaireManager.isPaused) {
+        try {
+          await questionnaireManager.pauseQuestionnaire()
+          console.log("Questionnaire paused before navigation")
+        } catch (pauseError) {
+          console.error("Error pausing questionnaire:", pauseError)
+        }
       }
-    }, [user?.user_id]),
-  )
 
+      // Step 4: Save any unsaved responses to database
+      if (currentContext?.responses?.length > 0) {
+        try {
+          console.log("Saving responses to database before navigation")
+          
+          // Save in background, don't wait for completion
+          const savePromises = currentContext.responses.map(async (response: any) => {
+            try {
+              await axios.post(`https://crosscare-backends.onrender.com/api/user/${user?.user_id}/domain`, {
+                domainId: response.domainId,
+                questionId: response.questionId,
+                response: response.response,
+                flag: response.flag,
+                timestamp: response.timestamp instanceof Date 
+                  ? response.timestamp.toISOString() 
+                  : response.timestamp,
+              })
+            } catch (error) {
+              console.error(`Error saving response ${response.questionId}:`, error)
+            }
+          })
+
+          // Don't wait for all saves to complete - let them run in background
+          Promise.all(savePromises).then(() => {
+            console.log("All responses saved to database")
+          }).catch((error) => {
+            console.error("Some responses failed to save:", error)
+          })
+
+        } catch (saveError) {
+          console.error("Error initiating response save:", saveError)
+        }
+      }
+    }
+
+    // Step 5: Save current chat messages
+    if (messages.length > 0) {
+      try {
+        const serializedMessages = messages.map((msg) => ({
+          ...msg,
+          timestamp: msg.timestamp.toISOString(),
+        }))
+        
+        await AsyncStorage.setItem("chatHistory", JSON.stringify(serializedMessages))
+        await AsyncStorage.setItem("chatHistory_backup", JSON.stringify(serializedMessages))
+        console.log("Chat messages saved before navigation")
+      } catch (messageError) {
+        console.error("Error saving messages:", messageError)
+      }
+    }
+
+    // Step 6: Update UI state for navigation
+    setIsPaused(true)
+
+    console.log("All context saved successfully - proceeding with navigation")
+
+  } catch (error) {
+    console.error("Error in go back handler:", error)
+  } finally {
+    contextSavingRef.current = false
+    
+    // Always proceed with navigation, even if save fails
+    router.back()
+  }
+
+  return true // Indicate we handled the back press
+}, [questionnaireManager, messages, user?.user_id, router])
+
+// 4. ADD Android back button handler
+useEffect(() => {
+  const backAction = () => {
+    handleGoBack()
+    return true // Prevent default back action
+  }
+
+  const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction)
+
+  return () => backHandler.remove()
+}, [handleGoBack])
+
+  // Handle app state changes (active, background, inactive)
+  const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+    console.log(`App state changed from ${appState.current} to ${nextAppState}`)
+
+    // If app is going to background and questionnaire is active but not paused
+    if (
+      appState.current.match(/active/) &&
+      (nextAppState === "background" || nextAppState === "inactive") &&
+      questionnaireManager.isActive &&
+      !questionnaireManager.isPaused &&
+      !questionnaireManager.isCompleted
+    ) {
+      console.log("App going to background - auto-pausing questionnaire")
+      wasActiveRef.current = true
+
+      await AsyncStorage.setItem(`questionnaire_auto_paused_${user?.user_id}`, 'true')
+      await AsyncStorage.setItem(`questionnaire_paused_${user?.user_id}`, 'true')
+
+      // Auto-pause the questionnaire
+      await handlePauseResumeToggle()
+    }
+
+    // If app is coming back to foreground and was auto-paused
+    if (
+      (appState.current === "background" || appState.current === "inactive") &&
+      nextAppState === "active" &&
+      wasActiveRef.current
+    ) {
+      console.log("App returning to foreground - questionnaire was auto-paused")
+      wasActiveRef.current = false
+
+      setIsPaused(true)
+
+      // Don't auto-resume, but update UI to show the resume button
+      await loadPauseState()
+    }
+
+    appState.current = nextAppState
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -256,7 +424,6 @@ export default function askdoula() {
     }, []),
   )
 
-
   const calculateProgress = useCallback(() => {
     // Debug log to see the state values when calculating progress
     console.log("Calculate progress called with state:", {
@@ -299,140 +466,14 @@ export default function askdoula() {
     initProgress()
   }, [])
 
-
-  // useEffect(() => {
-  //   const checkQuestionnaireStatus = async () => {
-  //     const isPaused = await questionnaireManager.isPaused();
-
-  //     // In the useEffect for checkQuestionnaireStatus, modify the paused questionnaire section
-  //     // If there's a paused questionnaire and no messages yet, ask if they want to continue
-  //     if (isPaused && messages.length === 0) {
-  //       console.log("Found paused questionnaire, asking to continue");
-
-  //       // Try to load the last question that was asked
-  //       try {
-  //         const lastQuestionJson = await AsyncStorage.getItem(
-  //           `last_question_${user?.user_id}`
-  //         );
-  //         if (lastQuestionJson) {
-  //           const lastQuestion = JSON.parse(lastQuestionJson);
-  //           console.log(
-  //             "Found last question for paused questionnaire:",
-  //             lastQuestion
-  //           );
-
-  //           // If the last message was a pause confirmation, use a different message to resume
-  //           if (lastQuestion.domainId === "pause") {
-  //             setMessages([
-  //               {
-  //                 id: Date.now().toString(),
-  //                 type: "text",
-  //                 content: `Hey ${
-  //                   user?.user_name || "there"
-  //                 }, you have an unfinished questionnaire. Would you like to continue where you left off?`,
-  //                 isUser: false,
-  //                 timestamp: new Date(),
-  //               },
-  //             ]);
-  //             return;
-  //           }
-
-  //           // If it was a domain continuation question, use that context
-  //           if (lastQuestion.domainId === "continue") {
-  //             const savedState = await AsyncStorage.getItem(
-  //               `questionnaire_state_${user?.user_id}`
-  //             );
-  //             if (savedState) {
-  //               const parsedState = JSON.parse(savedState);
-  //               const nextDomainIndex = parsedState.currentDomainIndex + 1;
-
-  //               if (nextDomainIndex < QUESTIONNAIRE_DOMAINS.length) {
-  //                 const nextDomain =
-  //                   QUESTIONNAIRE_DOMAINS[parsedState.currentDomainIndex];
-  //                 setMessages([
-  //                   {
-  //                     id: Date.now().toString(),
-  //                     type: "text",
-  //                     content: `Hey ${
-  //                       user?.user_name || "there"
-  //                     }, we were discussing ${QUESTIONNAIRE_DOMAINS[
-  //                       parsedState.currentDomainIndex
-  //                     ].description.toLowerCase()} and about to move to ${nextDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
-  //                     isUser: false,
-  //                     timestamp: new Date(),
-  //                   },
-  //                 ]);
-  //                 return;
-  //               }
-  //             }
-  //           }
-
-  //           // For a regular question, use the domain context
-  //           const savedState = await AsyncStorage.getItem(
-  //             `questionnaire_state_${user?.user_id}`
-  //           );
-  //           if (savedState) {
-  //             const parsedState = JSON.parse(savedState);
-  //             const currentDomain =
-  //               QUESTIONNAIRE_DOMAINS[parsedState.currentDomainIndex];
-
-  //             if (currentDomain) {
-  //               setMessages([
-  //                 {
-  //                   id: Date.now().toString(),
-  //                   type: "text",
-  //                   content: `Hey ${
-  //                     user?.user_name || "there"
-  //                   }, you have an unfinished questionnaire about ${currentDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
-  //                   isUser: false,
-  //                   timestamp: new Date(),
-  //                 },
-  //               ]);
-  //               return;
-  //             }
-  //           }
-  //         }
-  //       } catch (error) {
-  //         console.error("Error getting last question:", error);
-  //       }
-
-  //       // Fallback message if we can't determine the context
-  //       setMessages([
-  //         {
-  //           id: Date.now().toString(),
-  //           type: "text",
-  //           content: `Hey ${
-  //             user?.user_name || "there"
-  //           }, you have an unfinished questionnaire. Would you like to continue where you left off?`,
-  //           isUser: false,
-  //           timestamp: new Date(),
-  //         },
-  //       ]);
-  //       return;
-  //     }
-  //   };
-
-  //   checkQuestionnaireStatus();
-  // }, [
-  //   questionnaireManager,
-  //   messages,
-  //   user,
-  //   checkQuestionnaireCompletionStatus,
-  // ]);
-
-  // Fetch health data when component mounts
-  useEffect(() => {
-    fetchAndUpdateHealthData();
-  }, []);
-
   // Auto-scroll to bottom when messages change or when typing indicator appears
   useEffect(() => {
     if (scrollViewRef.current && (messages.length > 0 || isTyping)) {
       setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+        scrollViewRef.current?.scrollToEnd({ animated: true })
+      }, 100)
     }
-  }, [messages, isTyping]);
+  }, [messages, isTyping])
 
   // Animate the typing indicator
   useEffect(() => {
@@ -442,12 +483,12 @@ export default function askdoula() {
           toValue: 1,
           duration: 1500,
           useNativeDriver: false,
-        })
-      ).start();
+        }),
+      ).start()
     } else {
-      loadingAnimation.setValue(0);
+      loadingAnimation.setValue(0)
     }
-  }, [isTyping, loadingAnimation]);
+  }, [isTyping, loadingAnimation])
 
   // Add useEffect to load messages when component mounts
   useFocusEffect(
@@ -460,7 +501,6 @@ export default function askdoula() {
       // No need to call questionnaireManager.loadConversationState here, as it does not exist.
     }, []),
   )
-
 
   // Add this function to directly get progress from AsyncStorage
   const getProgressFromStorage = async () => {
@@ -496,59 +536,58 @@ export default function askdoula() {
     }
   }, [messages])
 
-  const systemPrompt = `${systemPrompts}`;
+  const systemPrompt = `${systemPrompts}`
 
   const fetchAndUpdateHealthData = async () => {
     if (user && user.user_id) {
       try {
-        const { healthStats: newHealthStats, healthData: newHealthData } = await fetchHealthData(user.user_id);
-        
+        const { healthStats: newHealthStats, healthData: newHealthData } = await fetchHealthData(user.user_id)
+
         // Update state with the new health data
-        setHealthStats(newHealthStats);
-        setHealthData(newHealthData);
-        console.log("Health stats fetched and updated successfully");
+        setHealthStats(newHealthStats)
+        setHealthData(newHealthData)
+        console.log("Health stats fetched and updated successfully")
       } catch (error) {
-        console.error("Error fetching health data:", error);
+        console.error("Error fetching health data:", error)
       }
     } else {
-      console.log("No user ID available");
+      console.log("No user ID available")
     }
-  };
+  }
 
-  const sendToAPI = async (
-    messageContent: string,
-    messageType: "text" | "audio"
-  ) => {
+  // Fetch health data when component mounts
+  useEffect(() => {
+    fetchAndUpdateHealthData()
+  }, [])
+
+  const sendToAPI = async (messageContent: string, messageType: "text" | "audio") => {
     try {
       // Correct Gemini API endpoint
-      const apiUrl =
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+      const apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
       // Your API key should be stored in an environment variable in production
-      const apiKey = process.env.GEMINI_API; // Replace with your actual API key
+      const apiKey = process.env.GEMINI_API // Replace with your actual API key
 
       // Create enhanced prompt with health data if available
-      let enhancedPrompt = systemPrompt;
+      let enhancedPrompt = systemPrompt
 
       if (healthData) {
-        enhancedPrompt += `\n\nUser's health data:\n`;
+        enhancedPrompt += `\n\nUser's health data:\n`
 
         if (healthStats.steps) {
           enhancedPrompt += `- Steps: Today: ${
             healthStats.steps.today
           }, Weekly average: ${healthStats.steps.avgWeekly.toFixed(
-            0
-          )}, Monthly average: ${healthStats.steps.avgMonthly.toFixed(0)}\n`;
+            0,
+          )}, Monthly average: ${healthStats.steps.avgMonthly.toFixed(0)}\n`
         }
 
         if (healthStats.water) {
           enhancedPrompt += `- Water: Today: ${
             healthStats.water.today
           } glasses, Weekly average: ${healthStats.water.avgWeekly.toFixed(
-            1
-          )} glasses, Monthly average: ${healthStats.water.avgMonthly.toFixed(
-            1
-          )} glasses\n`;
+            1,
+          )} glasses, Monthly average: ${healthStats.water.avgMonthly.toFixed(1)} glasses\n`
         }
 
         if (healthStats.weight && healthStats.weight.avgWeekly > 0) {
@@ -556,32 +595,26 @@ export default function askdoula() {
             healthStats.weight.unit
           }, Weekly average: ${healthStats.weight.avgWeekly.toFixed(1)} ${
             healthStats.weight.unit
-          }, Monthly average: ${healthStats.weight.avgMonthly.toFixed(1)} ${
-            healthStats.weight.unit
-          }\n`;
+          }, Monthly average: ${healthStats.weight.avgMonthly.toFixed(1)} ${healthStats.weight.unit}\n`
         }
 
         if (healthStats.heart && healthStats.heart.avgWeekly > 0) {
           enhancedPrompt += `- Heart rate: Current: ${
             healthStats.heart.today
           } bpm, Weekly average: ${healthStats.heart.avgWeekly.toFixed(
-            0
-          )} bpm, Monthly average: ${healthStats.heart.avgMonthly.toFixed(
-            0
-          )} bpm\n`;
+            0,
+          )} bpm, Monthly average: ${healthStats.heart.avgMonthly.toFixed(0)} bpm\n`
         }
 
         if (healthStats.sleep && healthStats.sleep.avgWeekly > 0) {
           enhancedPrompt += `- Sleep: Last night: ${healthStats.sleep.today.toFixed(
-            1
+            1,
           )} hours, Weekly average: ${healthStats.sleep.avgWeekly.toFixed(
-            1
-          )} hours, Monthly average: ${healthStats.sleep.avgMonthly.toFixed(
-            1
-          )} hours\n`;
+            1,
+          )} hours, Monthly average: ${healthStats.sleep.avgMonthly.toFixed(1)} hours\n`
         }
 
-        enhancedPrompt += `\nPlease answer the user's question about their health metrics using this data. Be specific and encouraging.`;
+        enhancedPrompt += `\nPlease answer the user's question about their health metrics using this data. Be specific and encouraging.`
       }
 
       // Create the parts array with the system prompt
@@ -589,26 +622,24 @@ export default function askdoula() {
         {
           text: enhancedPrompt,
         },
-      ];
+      ]
 
       // Add conversation history - limit to last 10 messages to avoid token limits
-      const recentMessages = messages.slice(-20);
+      const recentMessages = messages.slice(-20)
 
       for (const msg of recentMessages) {
         // Skip audio messages as they don't have text content we can send
         if (msg.type === "text") {
           parts.push({
-            text: msg.isUser
-              ? `User: ${msg.content}`
-              : `Assistant: ${msg.content}`,
-          });
+            text: msg.isUser ? `User: ${msg.content}` : `Assistant: ${msg.content}`,
+          })
         }
       }
 
       // Add the current message
       parts.push({
         text: `User: ${messageContent}`,
-      });
+      })
 
       const requestBody = {
         contents: [
@@ -622,7 +653,7 @@ export default function askdoula() {
           topP: 0.95,
           maxOutputTokens: 1000,
         },
-      };
+      }
 
       const response = await fetch(`${apiUrl}?key=${apiKey}`, {
         method: "POST",
@@ -630,52 +661,47 @@ export default function askdoula() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(requestBody),
-      });
+      })
 
       if (!response.ok) {
-        const errorData = await response.text();
-        console.error("API Error:", errorData);
-        throw new Error(
-          `Failed to send message to Gemini API: ${response.status}`
-        );
+        const errorData = await response.text()
+        console.error("API Error:", errorData)
+        throw new Error(`Failed to send message to Gemini API: ${response.status}`)
       }
 
-      const data = await response.json();
+      const data = await response.json()
 
       // Extract the response text from Gemini's response format
       let responseText =
-        data.candidates?.[0]?.content?.parts?.[0]?.text ||
-        "I'm sorry, I couldn't process your request at this time.";
+        data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm sorry, I couldn't process your request at this time."
 
-      responseText = responseText.replace(/\*/g, "");
+      responseText = responseText.replace(/\*/g, "")
       return {
         response: responseText,
-      };
+      }
     } catch (error) {
-      console.error("Error sending message to Gemini API:", error);
+      console.error("Error sending message to Gemini API:", error)
       return {
-        response:
-          "I'm having trouble connecting right now. Please try again later.",
-      };
+        response: "I'm having trouble connecting right now. Please try again later.",
+      }
     }
-  };
+  }
 
   const speakResponse = (text: string) => {
     // This function would normally use text-to-speech
     // For now, we'll just log the response
-    console.log("Speaking response:", text);
-  };
-
+    console.log("Speaking response:", text)
+  }
 
   const extractMetricFromText = (text: string, metricType: string) => {
     // Generic number extraction regex
-    const numberRegex = /(\d+(?:\.\d+)?)/g;
+    const numberRegex = /(\d+(?:\.\d+)?)/g
 
     // Extract all numbers from the text
-    const numbers = text.match(numberRegex);
+    const numbers = text.match(numberRegex)
 
     if (!numbers || numbers.length === 0) {
-      return null;
+      return null
     }
 
     // Different metrics might need different parsing logic
@@ -686,52 +712,52 @@ export default function askdoula() {
           ? text.match(/\b(kg|kgs|kilograms)\b/i)
             ? "kg"
             : "lbs"
-          : "kg"; // Default to kg
+          : "kg" // Default to kg
 
         return {
-          value: parseFloat(numbers[0]),
+          value: Number.parseFloat(numbers[0]),
           unit: unit,
-        };
+        }
 
       case "water":
         // Find if talking about glasses or ml
-        const isGlasses = /\b(glass|glasses|cup|cups)\b/i.test(text);
+        const isGlasses = /\b(glass|glasses|cup|cups)\b/i.test(text)
         return {
-          value: parseFloat(numbers[0]),
+          value: Number.parseFloat(numbers[0]),
           isGlasses: isGlasses,
-        };
+        }
 
       case "steps":
         return {
-          value: parseInt(numbers[0], 10),
-        };
+          value: Number.parseInt(numbers[0], 10),
+        }
 
       case "heart":
         return {
-          value: parseInt(numbers[0], 10),
-        };
+          value: Number.parseInt(numbers[0], 10),
+        }
 
       case "sleep":
         // Extract sleep start and end times
         // Look for patterns like "from 10:30 pm to 6:45 am" or "10pm to 6am"
         const sleepPattern =
-          /(?:from|at)?\s*(\d+(?::\d+)?\s*(?:am|pm)?).*?(?:to|until|till)\s+(\d+(?::\d+)?\s*(?:am|pm)?)/i;
-        const sleepMatch = text.match(sleepPattern);
+          /(?:from|at)?\s*(\d+(?::\d+)?\s*(?:am|pm)?).*?(?:to|until|till)\s+(\d+(?::\d+)?\s*(?:am|pm)?)/i
+        const sleepMatch = text.match(sleepPattern)
 
         if (sleepMatch && sleepMatch[1] && sleepMatch[2]) {
           return {
             sleepStart: sleepMatch[1].trim(),
             sleepEnd: sleepMatch[2].trim(),
-          };
+          }
         }
-        return null;
+        return null
 
       default:
         return {
-          value: parseFloat(numbers[0]),
-        };
+          value: Number.parseFloat(numbers[0]),
+        }
     }
-  };
+  }
 
   const handleLogRequest = async (query: string): Promise<boolean> => {
     // Create a helper function to add messages to the chat
@@ -745,20 +771,20 @@ export default function askdoula() {
           isUser: false,
           timestamp: new Date(),
         },
-      ]);
-    };
-  
+      ])
+    }
+
     // Call the utility function with the necessary parameters
     const result = await detectAndHandleLogRequest(
       query,
       user.user_id,
       extractMetricFromText,
       fetchAndUpdateHealthData,
-      addResponseMessage
-    );
-  
-    return result.handled;
-  };
+      addResponseMessage,
+    )
+
+    return result.handled
+  }
 
   const handleGoalRequest = async (query: string): Promise<boolean> => {
     // Create a helper function to add messages to the chat
@@ -772,74 +798,73 @@ export default function askdoula() {
           isUser: false,
           timestamp: new Date(),
         },
-      ]);
-    };
-  
+      ])
+    }
+
     // Call the utility function with the necessary parameters
     const result = await detectAndHandleGoalRequest(
       query,
       user.user_id,
       extractMetricFromText,
       fetchAndUpdateHealthData,
-      addResponseMessage
-    );
-  
-    return result.handled;
-  };
+      addResponseMessage,
+    )
+
+    return result.handled
+  }
 
   const handleProcessUserQuery = async (query: string) => {
     // Create a function for the RAG service call
     const callRagService = async (query: string, conversationHistory: any[] = []) => {
       try {
+        console.log(`Calling RAG service with query: "${query}"`)
 
-        console.log(`Calling RAG service with query: "${query}"`);
-        
         const response = await axios.post(`${RAG_SERVICE_URL}/${user?.user_id}`, {
           query: query,
-          conversationHistory: conversationHistory
-        });
-        
+          conversationHistory: conversationHistory,
+        })
+
         if (response.status === 200 && response.data.success) {
-          console.log("RAG service responded successfully");
-          return response.data;
+          console.log("RAG service responded successfully")
+          return response.data
         } else {
-          console.error("RAG service error:", response.data);
-          return null;
+          console.error("RAG service error:", response.data)
+          return null
         }
       } catch (error: any) {
-        console.error("Error calling RAG service:", error.message);
-        
+        console.error("Error calling RAG service:", error.message)
+
         // Add enhanced error logging
         if (error.response) {
           // The server responded with a status code outside of 2xx
-          console.error("RAG service error status:", error.response.status);
-          console.error("RAG service error data:", error.response.data);
-          console.error("RAG service error headers:", error.response.headers);
+          console.error("RAG service error status:", error.response.status)
+          console.error("RAG service error data:", error.response.data)
+          console.error("RAG service error headers:", error.response.headers)
         } else if (error.request) {
           // The request was made but no response was received
-          console.error("RAG service no response received:", error.request);
+          console.error("RAG service no response received:", error.request)
         } else {
           // Something happened in setting up the request
-          console.error("RAG service error details:", error.stack);
+          console.error("RAG service error details:", error.stack)
         }
-        
+
         // Log the request that was sent
         try {
           console.error("Request that caused error:", {
             url: `${RAG_SERVICE_URL}/${user?.user_id}`,
             payload: {
               query: query,
-              conversationHistory: conversationHistory?.length || 0 // Just log length to avoid huge logs
-            }
-          });
+              conversationHistory: conversationHistory?.length || 0, // Just log length to avoid huge logs
+            },
+          })
         } catch (logError) {
-          console.error("Error while logging request details:", logError);
+          console.error("Error while logging request details:", logError)
         }
-        
-        return null;
+
+        return null
       }
-    };
-  
+    }
+
     // Call the utility function with all the necessary dependencies
     await processUserQuery({
       query,
@@ -854,10 +879,10 @@ export default function askdoula() {
         handleGoalRequest,
         speakResponse,
         sendToAPI,
-        callRagService
-      }
-    });
-  };
+        callRagService,
+      },
+    })
+  }
 
   const sendMessage = async (messageContent: string = inputText) => {
     if (messageContent.trim()) {
@@ -924,16 +949,12 @@ export default function askdoula() {
     }
   }
 
-  const handleAudioSent = (
-    audioUri: string,
-    transcript?: string,
-    assistantResponse?: string
-  ) => {
+  const handleAudioSent = (audioUri: string, transcript?: string, assistantResponse?: string) => {
     console.log("handleAudioSent called with:", {
       audioUri,
       transcript,
       assistantResponse,
-    });
+    })
 
     // Add the user's audio message to the chat
     if (audioUri) {
@@ -946,27 +967,27 @@ export default function askdoula() {
           isUser: true,
           timestamp: new Date(),
         },
-      ]);
+      ])
     }
 
     // Process the transcript if available
     if (transcript) {
-      setIsTyping(true);
-      setIsAssistantResponding(true);
+      setIsTyping(true)
+      setIsAssistantResponding(true)
 
       // Check for log/goal requests with the same processing logic as text
       // This ensures consistent handling between voice and text
       handleProcessUserQuery(transcript).then(() => {
-      setIsTyping(false);
-      setIsAssistantResponding(false);
-    });
+        setIsTyping(false)
+        setIsAssistantResponding(false)
+      })
     }
-  };
+  }
 
   const handleOptionPress = (optionText: string) => {
-    setInputText(optionText); // Update the inputText with the selected option
-    sendMessage(optionText);
-  };
+    setInputText(optionText) // Update the inputText with the selected option
+    sendMessage(optionText)
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -997,19 +1018,19 @@ export default function askdoula() {
   const clearChatHistory = async () => {
     try {
       // Clear chat history from AsyncStorage
-      await AsyncStorage.removeItem("chatHistory");
+      await AsyncStorage.removeItem("chatHistory")
 
       // Clear messages from state
-      setMessages([]);
+      setMessages([])
 
       // Reset questionnaire state in AsyncStorage
-      await AsyncStorage.removeItem(`conversation_context_${user?.user_id}`);
-      await AsyncStorage.removeItem(`questionnaire_completed_${user?.user_id}`);
-      await AsyncStorage.removeItem(`questionnaire_state_${user?.user_id}`);
-      await AsyncStorage.removeItem(`last_question_${user?.user_id}`);
-      await AsyncStorage.removeItem(`intro_shown_${user?.user_id}`);
+      await AsyncStorage.removeItem(`conversation_context_${user?.user_id}`)
+      await AsyncStorage.removeItem(`questionnaire_completed_${user?.user_id}`)
+      await AsyncStorage.removeItem(`questionnaire_state_${user?.user_id}`)
+      await AsyncStorage.removeItem(`last_question_${user?.user_id}`)
+      await AsyncStorage.removeItem(`intro_shown_${user?.user_id}`)
 
-      console.log("Chat history cleared successfully");
+      console.log("Chat history cleared successfully")
 
       // Show confirmation to the user with option to start questionnaire
       Alert.alert(
@@ -1020,48 +1041,45 @@ export default function askdoula() {
             text: "Yes",
             onPress: () => {
               // Start the questionnaire
-              questionnaireManager.startQuestionnaire();
+              questionnaireManager.startQuestionnaire()
             },
           },
           { text: "Not now" },
-        ]
-      );
+        ],
+      )
     } catch (error) {
-      console.error("Error clearing chat history:", error);
-      Alert.alert("Error", "Failed to clear chat history. Please try again.");
+      console.error("Error clearing chat history:", error)
+      Alert.alert("Error", "Failed to clear chat history. Please try again.")
     }
-  };
+  }
 
   const renderTypingIndicator = () => {
     const dot1Opacity = loadingAnimation.interpolate({
       inputRange: [0, 0.3, 0.6, 1],
       outputRange: [0.3, 1, 0.3, 0.3],
-    });
+    })
 
     const dot2Opacity = loadingAnimation.interpolate({
       inputRange: [0, 0.3, 0.6, 1],
       outputRange: [0.3, 0.3, 1, 0.3],
-    });
+    })
 
     const dot3Opacity = loadingAnimation.interpolate({
       inputRange: [0, 0.3, 0.6, 1],
       outputRange: [0.3, 0.3, 0.3, 1],
-    });
+    })
 
     return (
       <View style={styles.messageRow}>
-        <Image
-          source={{uri : user?.avatar_url}}
-          style={styles.doulaAvatar}
-        />
+        <Image source={{ uri: user?.avatar_url }} style={styles.doulaAvatar} />
         <View style={styles.typingIndicator}>
           <Animated.View style={[styles.typingDot, { opacity: dot1Opacity }]} />
           <Animated.View style={[styles.typingDot, { opacity: dot2Opacity }]} />
           <Animated.View style={[styles.typingDot, { opacity: dot3Opacity }]} />
         </View>
       </View>
-    );
-  };
+    )
+  }
 
   // Function to save messages to AsyncStorage
   const saveMessages = async (messagesToSave: Message[]) => {
@@ -1070,19 +1088,16 @@ export default function askdoula() {
       const serializedMessages = messagesToSave.map((msg) => ({
         ...msg,
         timestamp: msg.timestamp.toISOString(),
-      }));
+      }))
 
-      await AsyncStorage.setItem(
-        "chatHistory",
-        JSON.stringify(serializedMessages)
-      );
-      console.log("Messages saved to storage");
+      await AsyncStorage.setItem("chatHistory", JSON.stringify(serializedMessages))
+      console.log("Messages saved to storage")
     } catch (error) {
-      console.error("Error saving messages:", error);
+      console.error("Error saving messages:", error)
     }
-  };
+  }
 
-    // Calculate progress percentage based on completed questions
+  // Calculate progress percentage based on completed questions
   const savePauseState = async (paused: boolean): Promise<void> => {
     try {
       await AsyncStorage.setItem(`questionnaire_paused_${user?.user_id}`, paused ? "true" : "false")
@@ -1093,12 +1108,11 @@ export default function askdoula() {
   }
 
   const getCurrentDomainTitle = () => {
-    const domainIndex = getCurrentDomainIndex();
-    const domain = QUESTIONNAIRE_DOMAINS[domainIndex];
-    return domain ? domain.description : "Getting to Know You";
-  };
+    const domainIndex = getCurrentDomainIndex()
+    const domain = QUESTIONNAIRE_DOMAINS[domainIndex]
+    return domain ? domain.description : "Getting to Know You"
+  }
 
- 
   // Handle pause/resume button press
   const handlePauseResumeToggle = async () => {
     try {
@@ -1145,7 +1159,7 @@ export default function askdoula() {
         try {
           // Get the current responses from context
           const responses = context?.responses || []
-          console.log("this is the responses:", responses);
+          console.log("this is the responses:", responses)
 
           // Submit each response to database
           for (const response of responses) {
@@ -1230,23 +1244,22 @@ export default function askdoula() {
         {fromModal && (
           <View style={styles.header}>
             {/* {fromModal && ( */}
-            <View style={{
-              flexDirection: "row",
-              gap:20,
-              alignItems:'center'
-            }}>
-
-            <TouchableOpacity onPress={() => router.back()}>
-              <Ionicons name="chevron-back" size={20} color="#434343" />
-            </TouchableOpacity>
-            {/* )} */}
-            <Text style={styles.headerTitle}>Ask Your Doula</Text>
+            <View
+              style={{
+                flexDirection: "row",
+                gap: 20,
+                alignItems: "center",
+              }}
+            >
+              <TouchableOpacity onPress={() => router.back()}>
+                <Ionicons name="chevron-back" size={20} color="#434343" />
+              </TouchableOpacity>
+              {/* )} */}
+              <Text style={styles.headerTitle}>Ask Your Doula</Text>
             </View>
-            <View style={{ flexDirection: "row" }}>{}
-              <TouchableOpacity
-                onPress={clearChatHistory}
-                style={{ marginRight: 12 }}
-              >
+            <View style={{ flexDirection: "row" }}>
+              {}
+              <TouchableOpacity onPress={clearChatHistory} style={{ marginRight: 12 }}>
                 <Feather name="trash-2" size={20} color={messages.length > 0 ? "#434343" : "#f5f5f5"} />
               </TouchableOpacity>
               {/* <TouchableOpacity>
@@ -1271,12 +1284,12 @@ export default function askdoula() {
             </View>
 
             {/* Progress Bar */}
-             <View style={styles.progressBarContainer}>
+            <View style={styles.progressBarContainer}>
               <View style={[styles.progressBar, { width: `${progress}%` }]} />
               <Text style={[styles.progressText, { left: `${progress}%` }]}>{progress}%</Text>
             </View>
           </View>
-        )}    
+        )}
 
         {/* Chat Container */}
         <ScrollView
@@ -1286,7 +1299,7 @@ export default function askdoula() {
           contentContainerStyle={styles.chatContent}
           onContentSizeChange={() => {
             if (messages.length > 0 || isTyping) {
-              scrollViewRef.current?.scrollToEnd({ animated: true });
+              scrollViewRef.current?.scrollToEnd({ animated: true })
             }
           }}
         >
@@ -1297,7 +1310,7 @@ export default function askdoula() {
                   source={
                     user?.avatar_url
                       ? { uri: user.avatar_url } // If avatar_url exists, use the URI
-                      : require('../../assets/images/hairs/h1/face/c1.png') // Fallback to local image if no avatar_url
+                      : require("../../assets/images/hairs/h1/face/c1.png") // Fallback to local image if no avatar_url
                   }
                   style={styles.profileImage}
                 />
@@ -1320,69 +1333,51 @@ export default function askdoula() {
               {messages.map((message) => (
                 <View
                   key={message.id}
-                  style={[
-                    styles.messageRow,
-                    message.isUser
-                      ? styles.userMessageRow
-                      : styles.doulaMessageRow,
-                  ]}
+                  style={[styles.messageRow, message.isUser ? styles.userMessageRow : styles.doulaMessageRow]}
                 >
                   {!message.isUser && (
                     <Image
                       source={{
-    uri: user?.avatar_url || 'https://tskzddfyjazcirdvloch.supabase.co/storage/v1/object/public/cross-care/avatars/avatar-660e8400-e29b-41d4-a716-446655440014-46d376a4-820f-45d8-82cb-82766db041fa.jpg'
-  }}
+                        uri:
+                          user?.avatar_url ||
+                          "https://tskzddfyjazcirdvloch.supabase.co/storage/v1/object/public/cross-care/avatars/avatar-660e8400-e29b-41d4-a716-446655440014-46d376a4-820f-45d8-82cb-82766db041fa.jpg",
+                      }}
                       style={styles.doulaAvatar}
                     />
                   )}
 
                   {message.type === "text" ? (
-                    <View
-                      style={[
-                        styles.messageBubble,
-                        message.isUser ? styles.userBubble : styles.doulaBubble,
-                      ]}
-                    >
+                    <View style={[styles.messageBubble, message.isUser ? styles.userBubble : styles.doulaBubble]}>
                       <Text
-                        style={[
-                          styles.messageText,
-                          message.isUser
-                            ? styles.userMessageText
-                            : styles.doulaMessageText,
-                        ]}
+                        style={[styles.messageText, message.isUser ? styles.userMessageText : styles.doulaMessageText]}
                       >
                         {message.content}
                       </Text>
                     </View>
                   ) : (
-                    <AudioMessage
-                      audioUri={message.content}
-                      isUser={message.isUser}
-                    />
+                    <AudioMessage audioUri={message.content} isUser={message.isUser} />
                   )}
 
-                {message.isUser && (
-                  <>
-                    {user?.user_photo ? (
-                      <Image
-                        source={{ uri: user.user_photo }}
-                        style={styles.userAvatar}
-                      />
-                    ) : (
-                      <>
-                      <View style={{
-                        borderWidth: 1.44,
-                        borderRadius: 25,
-                        borderColor: "#FDE8F8",
-                        boxShadow: "0px 0px 0.72px 0px rgba(0, 0, 0, 0.30);",
-                      }}>
-
-                        <User  width={36} height={36}/>
-                      </View>
-                      </>
-                    )}
-                  </>
-                )}
+                  {message.isUser && (
+                    <>
+                      {user?.user_photo ? (
+                        <Image source={{ uri: user.user_photo }} style={styles.userAvatar} />
+                      ) : (
+                        <>
+                          <View
+                            style={{
+                              borderWidth: 1.44,
+                              borderRadius: 25,
+                              borderColor: "#FDE8F8",
+                              boxShadow: "0px 0px 0.72px 0px rgba(0, 0, 0, 0.30);",
+                            }}
+                          >
+                            <User width={36} height={36} />
+                          </View>
+                        </>
+                      )}
+                    </>
+                  )}
                 </View>
               ))}
 
@@ -1415,20 +1410,14 @@ export default function askdoula() {
             {/* Standard advice options */}
             <TouchableOpacity
               style={styles.optionButton}
-              onPress={() =>
-                handleOptionPress(
-                  "Give me nutrition advice?"
-                )
-              }
+              onPress={() => handleOptionPress("Give me nutrition advice?")}
               disabled={isAssistantResponding}
             >
               <Text style={styles.optionText}>Nutrition Advice</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.optionButton}
-              onPress={() =>
-                handleOptionPress("What exercises are safe during pregnancy?")
-              }
+              onPress={() => handleOptionPress("What exercises are safe during pregnancy?")}
               disabled={isAssistantResponding}
             >
               <Text style={styles.optionText}>Exercise Tips</Text>
@@ -1442,9 +1431,7 @@ export default function askdoula() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.optionButton}
-              onPress={() =>
-                handleOptionPress("Is it safe to travel during pregnancy?")
-              }
+              onPress={() => handleOptionPress("Is it safe to travel during pregnancy?")}
               disabled={isAssistantResponding}
             >
               <Text style={styles.optionText}>Travel Safety</Text>
@@ -1462,17 +1449,11 @@ export default function askdoula() {
                 onSubmitEditing={(e) => sendMessage(e.nativeEvent.text)}
                 editable={!isAssistantResponding}
               />
-              <VoiceRecorder
-                onSendAudio={handleAudioSent}
-                systemPrompt={systemPrompt}
-              />
+              <VoiceRecorder onSendAudio={handleAudioSent} systemPrompt={systemPrompt} />
             </View>
 
             <TouchableOpacity
-              style={[
-                styles.sendButton,
-                (!inputText.trim() || isTyping) && styles.sendButtonDisabled,
-              ]}
+              style={[styles.sendButton, (!inputText.trim() || isTyping) && styles.sendButtonDisabled]}
               onPress={() => sendMessage()}
               disabled={!inputText.trim() || isTyping}
             >
@@ -1482,7 +1463,7 @@ export default function askdoula() {
         </View>
       </SafeAreaView>
     </KeyboardAvoidingView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -1515,13 +1496,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 8,
-
   },
   questionnaireStatusTitle: {
     fontSize: 12,
     fontFamily: "DMSans500",
     color: "rgba(136, 59, 114, 1)",
-    maxWidth:'90%'
+    maxWidth: "90%",
   },
   pauseButton: {
     paddingHorizontal: 14,
@@ -1546,11 +1526,11 @@ const styles = StyleSheet.create({
   progressBarContainer: {
     height: 16,
     backgroundColor: "#F0F0F0",
-    borderRadius: 4,
+    borderRadius: 10,
     overflow: "hidden",
   },
   progressBar: {
-    height: '100%',
+    height: "100%",
     backgroundColor: "#F76CCF",
     borderRadius: 10,
   },
@@ -1558,9 +1538,9 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 8,
     color: "rgba(136, 59, 114, 1)",
-    fontSize: 9,
+    fontSize: 12,
     fontFamily: "DMSans500",
-    flex: 1
+    flex: 1,
     // alignSelf: "center",
   },
   profileSection: {
@@ -1735,7 +1715,7 @@ const styles = StyleSheet.create({
     fontFamily: "DMSans400",
     fontSize: 12,
     // height: 48,
-    height:'100%'
+    height: "100%",
   },
   micButton: {
     padding: 4,
@@ -1751,13 +1731,9 @@ const styles = StyleSheet.create({
     borderColor: "#F989D9",
     alignItems: "center",
     marginLeft: 8,
-    boxShadow:
-      "0px 0px 4px 0px rgba(0, 0, 0, 0.25) inset, 0px 0px 2.6px 0px rgba(0, 0, 0, 0.32);",
+    boxShadow: "0px 0px 4px 0px rgba(0, 0, 0, 0.25) inset, 0px 0px 2.6px 0px rgba(0, 0, 0, 0.32);",
   },
   sendButtonDisabled: {
     opacity: 0.5,
-    
   },
-});
-
-
+})
