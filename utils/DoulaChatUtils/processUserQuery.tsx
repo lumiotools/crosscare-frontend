@@ -630,9 +630,10 @@ export const processUserQuery = async ({
       },
     ]);
   }
-  finally {
+   finally {
     // Only reset isProcessing if it was a voice input
     if (shouldSpeak) {
       setIsProcessing(false);
     }
+  }
 };

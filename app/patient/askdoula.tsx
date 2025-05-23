@@ -509,130 +509,127 @@ useEffect(() => {
   )
 
 
-  useEffect(() => {
-    const checkQuestionnaireStatus = async () => {
-      const isPaused = await questionnaireManager.checkForPausedQuestionnaire();
+  // useEffect(() => {
+  //   const checkQuestionnaireStatus = async () => {
+  //     const isPaused = await questionnaireManager.checkForPausedQuestionnaire();
 
-      // In the useEffect for checkQuestionnaireStatus, modify the paused questionnaire section
-      // If there's a paused questionnaire and no messages yet, ask if they want to continue
-      if (isPaused && messages.length === 0) {
-        console.log("Found paused questionnaire, asking to continue");
+  //     // In the useEffect for checkQuestionnaireStatus, modify the paused questionnaire section
+  //     // If there's a paused questionnaire and no messages yet, ask if they want to continue
+  //     if (isPaused && messages.length === 0) {
+  //       console.log("Found paused questionnaire, asking to continue");
 
-        // Try to load the last question that was asked
-        try {
-          const lastQuestionJson = await AsyncStorage.getItem(
-            `last_question_${user?.user_id}`
-          );
-          if (lastQuestionJson) {
-            const lastQuestion = JSON.parse(lastQuestionJson);
-            console.log(
-              "Found last question for paused questionnaire:",
-              lastQuestion
-            );
+  //       // Try to load the last question that was asked
+  //       try {
+  //         const lastQuestionJson = await AsyncStorage.getItem(
+  //           `last_question_${user?.user_id}`
+  //         );
+  //         if (lastQuestionJson) {
+  //           const lastQuestion = JSON.parse(lastQuestionJson);
+  //           console.log(
+  //             "Found last question for paused questionnaire:",
+  //             lastQuestion
+  //           );
 
-            // If the last message was a pause confirmation, use a different message to resume
-            if (lastQuestion.domainId === "pause") {
-              setMessages([
-                {
-                  id: Date.now().toString(),
-                  type: "text",
-                  content: `Hey ${
-                    user?.user_name || "there"
-                  }, you have an unfinished questionnaire. Would you like to continue where you left off?`,
-                  isUser: false,
-                  timestamp: new Date(),
-                },
-              ]);
-              return;
-            }
+  //           // If the last message was a pause confirmation, use a different message to resume
+  //           if (lastQuestion.domainId === "pause") {
+  //             setMessages([
+  //               {
+  //                 id: Date.now().toString(),
+  //                 type: "text",
+  //                 content: `Hey ${
+  //                   user?.user_name || "there"
+  //                 }, you have an unfinished questionnaire. Would you like to continue where you left off?`,
+  //                 isUser: false,
+  //                 timestamp: new Date(),
+  //               },
+  //             ]);
+  //             return;
+  //           }
 
-            // If it was a domain continuation question, use that context
-            if (lastQuestion.domainId === "continue") {
-              const savedState = await AsyncStorage.getItem(
-                `questionnaire_state_${user?.user_id}`
-              );
-              if (savedState) {
-                const parsedState = JSON.parse(savedState);
-                const nextDomainIndex = parsedState.currentDomainIndex + 1;
+  //           // If it was a domain continuation question, use that context
+  //           if (lastQuestion.domainId === "continue") {
+  //             const savedState = await AsyncStorage.getItem(
+  //               `questionnaire_state_${user?.user_id}`
+  //             );
+  //             if (savedState) {
+  //               const parsedState = JSON.parse(savedState);
+  //               const nextDomainIndex = parsedState.currentDomainIndex + 1;
 
-                if (nextDomainIndex < QUESTIONNAIRE_DOMAINS.length) {
-                  const nextDomain =
-                    QUESTIONNAIRE_DOMAINS[parsedState.currentDomainIndex];
-                  setMessages([
-                    {
-                      id: Date.now().toString(),
-                      type: "text",
-                      content: `Hey ${
-                        user?.user_name || "there"
-                      }, we were discussing ${QUESTIONNAIRE_DOMAINS[
-                        parsedState.currentDomainIndex
-                      ].description.toLowerCase()} and about to move to ${nextDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
-                      isUser: false,
-                      timestamp: new Date(),
-                    },
-                  ]);
-                  return;
-                }
-              }
-            }
+  //               if (nextDomainIndex < QUESTIONNAIRE_DOMAINS.length) {
+  //                 const nextDomain =
+  //                   QUESTIONNAIRE_DOMAINS[parsedState.currentDomainIndex];
+  //                 setMessages([
+  //                   {
+  //                     id: Date.now().toString(),
+  //                     type: "text",
+  //                     content: `Hey ${
+  //                       user?.user_name || "there"
+  //                     }, we were discussing ${QUESTIONNAIRE_DOMAINS[
+  //                       parsedState.currentDomainIndex
+  //                     ].description.toLowerCase()} and about to move to ${nextDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
+  //                     isUser: false,
+  //                     timestamp: new Date(),
+  //                   },
+  //                 ]);
+  //                 return;
+  //               }
+  //             }
+  //           }
 
-            // For a regular question, use the domain context
-            const savedState = await AsyncStorage.getItem(
-              `questionnaire_state_${user?.user_id}`
-            );
-            if (savedState) {
-              const parsedState = JSON.parse(savedState);
-              const currentDomain =
-                QUESTIONNAIRE_DOMAINS[parsedState.currentDomainIndex];
+  //           // For a regular question, use the domain context
+  //           const savedState = await AsyncStorage.getItem(
+  //             `questionnaire_state_${user?.user_id}`
+  //           );
+  //           if (savedState) {
+  //             const parsedState = JSON.parse(savedState);
+  //             const currentDomain =
+  //               QUESTIONNAIRE_DOMAINS[parsedState.currentDomainIndex];
 
-              if (currentDomain) {
-                setMessages([
-                  {
-                    id: Date.now().toString(),
-                    type: "text",
-                    content: `Hey ${
-                      user?.user_name || "there"
-                    }, you have an unfinished questionnaire about ${currentDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
-                    isUser: false,
-                    timestamp: new Date(),
-                  },
-                ]);
-                return;
-              }
-            }
-          }
-        } catch (error) {
-          console.error("Error getting last question:", error);
-        }
+  //             if (currentDomain) {
+  //               setMessages([
+  //                 {
+  //                   id: Date.now().toString(),
+  //                   type: "text",
+  //                   content: `Hey ${
+  //                     user?.user_name || "there"
+  //                   }, you have an unfinished questionnaire about ${currentDomain.description.toLowerCase()}. Would you like to continue where you left off?`,
+  //                   isUser: false,
+  //                   timestamp: new Date(),
+  //                 },
+  //               ]);
+  //               return;
+  //             }
+  //           }
+  //         }
+  //       } catch (error) {
+  //         console.error("Error getting last question:", error);
+  //       }
 
-        // Fallback message if we can't determine the context
-        setMessages([
-          {
-            id: Date.now().toString(),
-            type: "text",
-            content: `Hey ${
-              user?.user_name || "there"
-            }, you have an unfinished questionnaire. Would you like to continue where you left off?`,
-            isUser: false,
-            timestamp: new Date(),
-          },
-        ]);
-        return;
-      }
-    };
+  //       // Fallback message if we can't determine the context
+  //       setMessages([
+  //         {
+  //           id: Date.now().toString(),
+  //           type: "text",
+  //           content: `Hey ${
+  //             user?.user_name || "there"
+  //           }, you have an unfinished questionnaire. Would you like to continue where you left off?`,
+  //           isUser: false,
+  //           timestamp: new Date(),
+  //         },
+  //       ]);
+  //       return;
+  //     }
+  //   };
 
-    checkQuestionnaireStatus();
-  }, [
-    questionnaireManager,
-    messages,
-    user,
-    checkQuestionnaireCompletionStatus,
-  ]);
+  //   checkQuestionnaireStatus();
+  // }, [
+  //   questionnaireManager,
+  //   messages,
+  //   user,
+  //   checkQuestionnaireCompletionStatus,
+  // ]);
 
   // Fetch health data when component mounts
-  useEffect(() => {
-    fetchHealthData();
-  }, []);
 
   // Auto-scroll to bottom when messages change or when typing indicator appears
   useEffect(() => {
@@ -681,6 +678,39 @@ useEffect(() => {
     }
     return languages[langCode as keyof typeof languages] || "English"
   }
+
+  useFocusEffect(
+    useCallback(() => {
+      const loadContextAndUpdateProgress = async () => {
+        console.log("Screen focused - updating progress bar")
+        setIsContextLoaded(false)
+
+        // Wait a moment to allow context to load
+        setTimeout(async () => {
+          // If questionnaireManager exists, make sure it's properly initialized
+          if (questionnaireManager) {
+            try {
+              const savedContext = await AsyncStorage.getItem(`conversation_context_${user?.user_id}`)
+              if (savedContext) {
+                console.log("Found saved context for progress calculation")
+                // Force a re-render of the progress bar
+                setForceUpdate((prev) => prev + 1)
+              }
+            } catch (error) {
+              console.error("Error checking saved context:", error)
+            }
+          }
+          setIsContextLoaded(true)
+        }, 500)
+      }
+
+      loadContextAndUpdateProgress()
+
+      return () => {
+        // Nothing to clean up
+      }
+    }, []),
+  )
 
 
   const calculateProgress = useCallback(() => {
@@ -749,321 +779,321 @@ useEffect(() => {
   }, [isTyping, loadingAnimation])
 
 
-  const fetchHealthData = async () => {
-    if (user && user.user_id) {
-      try {
-        // Use the specified endpoint format
-        const apiUrl = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}`;
-        console.log(`Making API call to: ${apiUrl}`);
+  // const fetchHealthData = async () => {
+  //   if (user && user.user_id) {
+  //     try {
+  //       // Use the specified endpoint format
+  //       const apiUrl = `https://crosscare-backends.onrender.com/api/user/activity/${user.user_id}`;
+  //       console.log(`Making API call to: ${apiUrl}`);
 
-        // Make the API call
-        const response = await axios.get(apiUrl);
-        const apiData = response.data.activities 
-
-
-
-        // Process the data if we got a response
-        if (
-          apiData &&
-          Array.isArray(apiData) &&
-          apiData.length > 0
-        ) {
-          console.log(
-            "API data found. First record:",
-            JSON.stringify(apiData[0], null, 2)
-          );
-
-          // Sort by date (newest first)
-          const sortedRecords = [...apiData].sort(
-            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-          );
+  //       // Make the API call
+  //       const response = await axios.get(apiUrl);
+  //       const apiData = response.data.activities 
 
 
-          // Get the most recent record
-          const latestRecord = sortedRecords[0];
 
-          // Get the last 7 days of records for weekly stats
-          const last7Days = sortedRecords.slice(0, 7);
+  //       // Process the data if we got a response
+  //       if (
+  //         apiData &&
+  //         Array.isArray(apiData) &&
+  //         apiData.length > 0
+  //       ) {
+  //         console.log(
+  //           "API data found. First record:",
+  //           JSON.stringify(apiData[0], null, 2)
+  //         );
 
-          // Get the last 30 days of records for monthly stats
-          const last30Days = sortedRecords.slice(0, 30);
+  //         // Sort by date (newest first)
+  //         const sortedRecords = [...apiData].sort(
+  //           (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  //         );
 
-          // Calculate sleep duration in hours for a record
-          const calculateSleepDuration = (record: any) => {
-            if (
-              record.details &&
-              record.details.sleep &&
-              record.details.sleep.start &&
-              record.details.sleep.end
-            ) {
-              const start = new Date(record.details.sleep.start);
-              const end = new Date(record.details.sleep.end);
-              return (end.getTime() - start.getTime()) / (1000 * 60 * 60); // Convert ms to hours
-            }
-            return 0;
-          };
 
-          // Create a new stats object to update state
-          const newHealthStats = {
-            water: {
-              today: 0,
-              weekly: 0,
-              monthly: 0,
-              avgWeekly: 0,
-              avgMonthly: 0,
-            },
-            steps: {
-              today: 0,
-              weekly: 0,
-              monthly: 0,
-              avgWeekly: 0,
-              avgMonthly: 0,
-            },
-            weight: {
-              today: 0,
-              weekly: 0,
-              monthly: 0,
-              avgWeekly: 0,
-              avgMonthly: 0,
-              unit: "kg",
-            },
-            heart: {
-              today: 0,
-              weekly: 0,
-              monthly: 0,
-              avgWeekly: 0,
-              avgMonthly: 0,
-            },
-            sleep: {
-              today: 0,
-              weekly: 0,
-              monthly: 0,
-              avgWeekly: 0,
-              avgMonthly: 0,
-            },
-          };
+  //         // Get the most recent record
+  //         const latestRecord = sortedRecords[0];
 
-          // TODAY'S STATS
-          newHealthStats.water.today = latestRecord.details?.water || 0;
-          newHealthStats.steps.today = latestRecord.details?.steps || 0;
-          newHealthStats.heart.today = latestRecord.details?.heart || 0;
-          newHealthStats.sleep.today = calculateSleepDuration(latestRecord);
-          if (latestRecord.details?.weight?.value) {
-            newHealthStats.weight.today = latestRecord.details.weight.value;
-            newHealthStats.weight.unit =
-              latestRecord.details.weight.unit || "kg";
-          }
+  //         // Get the last 7 days of records for weekly stats
+  //         const last7Days = sortedRecords.slice(0, 7);
 
-          // WEEKLY STATS
-          // Filter records with valid data for each metric
-          const weeklyWaterRecords = last7Days.filter(
-            (r) =>
-              r.details &&
-              typeof r.details.water === "number" &&
-              r.details.water > 0
-          );
-          const weeklyStepsRecords = last7Days.filter(
-            (r) =>
-              r.details &&
-              typeof r.details.steps === "number" &&
-              r.details.steps > 0
-          );
-          const weeklyHeartRecords = last7Days.filter(
-            (r) =>
-              r.details &&
-              typeof r.details.heart === "number" &&
-              r.details.heart > 0
-          );
-          const weeklySleepRecords = last7Days.filter(
-            (r) => calculateSleepDuration(r) > 0
-          );
-          const weeklyWeightRecords = last7Days.filter(
-            (r) =>
-              r.details &&
-              r.details.weight &&
-              typeof r.details.weight.value === "number" &&
-              r.details.weight.value > 0
-          );
+  //         // Get the last 30 days of records for monthly stats
+  //         const last30Days = sortedRecords.slice(0, 30);
 
-          // Calculate totals
-          newHealthStats.water.weekly = weeklyWaterRecords.reduce(
-            (sum, r) => sum + r.details.water,
-            0
-          );
-          newHealthStats.steps.weekly = weeklyStepsRecords.reduce(
-            (sum, r) => sum + r.details.steps,
-            0
-          );
-          newHealthStats.heart.weekly = weeklyHeartRecords.reduce(
-            (sum, r) => sum + r.details.heart,
-            0
-          );
-          newHealthStats.sleep.weekly = weeklySleepRecords.reduce(
-            (sum, r) => sum + calculateSleepDuration(r),
-            0
-          );
-          newHealthStats.weight.weekly = weeklyWeightRecords.reduce(
-            (sum, r) => sum + r.details.weight.value,
-            0
-          );
+  //         // Calculate sleep duration in hours for a record
+  //         const calculateSleepDuration = (record: any) => {
+  //           if (
+  //             record.details &&
+  //             record.details.sleep &&
+  //             record.details.sleep.start &&
+  //             record.details.sleep.end
+  //           ) {
+  //             const start = new Date(record.details.sleep.start);
+  //             const end = new Date(record.details.sleep.end);
+  //             return (end.getTime() - start.getTime()) / (1000 * 60 * 60); // Convert ms to hours
+  //           }
+  //           return 0;
+  //         };
 
-          // Calculate averages
-          newHealthStats.water.avgWeekly =
-            weeklyWaterRecords.length > 0
-              ? newHealthStats.water.weekly / weeklyWaterRecords.length
-              : 0;
-          newHealthStats.steps.avgWeekly =
-            weeklyStepsRecords.length > 0
-              ? newHealthStats.steps.weekly / weeklyStepsRecords.length
-              : 0;
-          newHealthStats.heart.avgWeekly =
-            weeklyHeartRecords.length > 0
-              ? newHealthStats.heart.weekly / weeklyHeartRecords.length
-              : 0;
-          newHealthStats.sleep.avgWeekly =
-            weeklySleepRecords.length > 0
-              ? newHealthStats.sleep.weekly / weeklySleepRecords.length
-              : 0;
-          newHealthStats.weight.avgWeekly =
-            weeklyWeightRecords.length > 0
-              ? newHealthStats.weight.weekly / weeklyWeightRecords.length
-              : 0;
+  //         // Create a new stats object to update state
+  //         const newHealthStats = {
+  //           water: {
+  //             today: 0,
+  //             weekly: 0,
+  //             monthly: 0,
+  //             avgWeekly: 0,
+  //             avgMonthly: 0,
+  //           },
+  //           steps: {
+  //             today: 0,
+  //             weekly: 0,
+  //             monthly: 0,
+  //             avgWeekly: 0,
+  //             avgMonthly: 0,
+  //           },
+  //           weight: {
+  //             today: 0,
+  //             weekly: 0,
+  //             monthly: 0,
+  //             avgWeekly: 0,
+  //             avgMonthly: 0,
+  //             unit: "kg",
+  //           },
+  //           heart: {
+  //             today: 0,
+  //             weekly: 0,
+  //             monthly: 0,
+  //             avgWeekly: 0,
+  //             avgMonthly: 0,
+  //           },
+  //           sleep: {
+  //             today: 0,
+  //             weekly: 0,
+  //             monthly: 0,
+  //             avgWeekly: 0,
+  //             avgMonthly: 0,
+  //           },
+  //         };
 
-          // MONTHLY STATS
-          // Filter records with valid data for each metric
-          const monthlyWaterRecords = last30Days.filter(
-            (r) =>
-              r.details &&
-              typeof r.details.water === "number" &&
-              r.details.water > 0
-          );
-          const monthlyStepsRecords = last30Days.filter(
-            (r) =>
-              r.details &&
-              typeof r.details.steps === "number" &&
-              r.details.steps > 0
-          );
-          const monthlyHeartRecords = last30Days.filter(
-            (r) =>
-              r.details &&
-              typeof r.details.heart === "number" &&
-              r.details.heart > 0
-          );
-          const monthlySleepRecords = last30Days.filter(
-            (r) => calculateSleepDuration(r) > 0
-          );
-          const monthlyWeightRecords = last30Days.filter(
-            (r) =>
-              r.details &&
-              r.details.weight &&
-              typeof r.details.weight.value === "number" &&
-              r.details.weight.value > 0
-          );
+  //         // TODAY'S STATS
+  //         newHealthStats.water.today = latestRecord.details?.water || 0;
+  //         newHealthStats.steps.today = latestRecord.details?.steps || 0;
+  //         newHealthStats.heart.today = latestRecord.details?.heart || 0;
+  //         newHealthStats.sleep.today = calculateSleepDuration(latestRecord);
+  //         if (latestRecord.details?.weight?.value) {
+  //           newHealthStats.weight.today = latestRecord.details.weight.value;
+  //           newHealthStats.weight.unit =
+  //             latestRecord.details.weight.unit || "kg";
+  //         }
 
-          // Calculate totals
-          newHealthStats.water.monthly = monthlyWaterRecords.reduce(
-            (sum, r) => sum + r.details.water,
-            0
-          );
-          newHealthStats.steps.monthly = monthlyStepsRecords.reduce(
-            (sum, r) => sum + r.details.steps,
-            0
-          );
-          newHealthStats.heart.monthly = monthlyHeartRecords.reduce(
-            (sum, r) => sum + r.details.heart,
-            0
-          );
-          newHealthStats.sleep.monthly = monthlySleepRecords.reduce(
-            (sum, r) => sum + calculateSleepDuration(r),
-            0
-          );
-          newHealthStats.weight.monthly = monthlyWeightRecords.reduce(
-            (sum, r) => sum + r.details.weight.value,
-            0
-          );
+  //         // WEEKLY STATS
+  //         // Filter records with valid data for each metric
+  //         const weeklyWaterRecords = last7Days.filter(
+  //           (r) =>
+  //             r.details &&
+  //             typeof r.details.water === "number" &&
+  //             r.details.water > 0
+  //         );
+  //         const weeklyStepsRecords = last7Days.filter(
+  //           (r) =>
+  //             r.details &&
+  //             typeof r.details.steps === "number" &&
+  //             r.details.steps > 0
+  //         );
+  //         const weeklyHeartRecords = last7Days.filter(
+  //           (r) =>
+  //             r.details &&
+  //             typeof r.details.heart === "number" &&
+  //             r.details.heart > 0
+  //         );
+  //         const weeklySleepRecords = last7Days.filter(
+  //           (r) => calculateSleepDuration(r) > 0
+  //         );
+  //         const weeklyWeightRecords = last7Days.filter(
+  //           (r) =>
+  //             r.details &&
+  //             r.details.weight &&
+  //             typeof r.details.weight.value === "number" &&
+  //             r.details.weight.value > 0
+  //         );
 
-          // Calculate averages
-          newHealthStats.water.avgMonthly =
-            monthlyWaterRecords.length > 0
-              ? newHealthStats.water.monthly / monthlyWaterRecords.length
-              : 0;
-          newHealthStats.steps.avgMonthly =
-            monthlyStepsRecords.length > 0
-              ? newHealthStats.steps.monthly / monthlyStepsRecords.length
-              : 0;
-          newHealthStats.heart.avgMonthly =
-            monthlyHeartRecords.length > 0
-              ? newHealthStats.heart.monthly / monthlyHeartRecords.length
-              : 0;
-          newHealthStats.sleep.avgMonthly =
-            monthlySleepRecords.length > 0
-              ? newHealthStats.sleep.monthly / monthlySleepRecords.length
-              : 0;
-          newHealthStats.weight.avgMonthly =
-            monthlyWeightRecords.length > 0
-              ? newHealthStats.weight.monthly / monthlyWeightRecords.length
-              : 0;
+  //         // Calculate totals
+  //         newHealthStats.water.weekly = weeklyWaterRecords.reduce(
+  //           (sum, r) => sum + r.details.water,
+  //           0
+  //         );
+  //         newHealthStats.steps.weekly = weeklyStepsRecords.reduce(
+  //           (sum, r) => sum + r.details.steps,
+  //           0
+  //         );
+  //         newHealthStats.heart.weekly = weeklyHeartRecords.reduce(
+  //           (sum, r) => sum + r.details.heart,
+  //           0
+  //         );
+  //         newHealthStats.sleep.weekly = weeklySleepRecords.reduce(
+  //           (sum, r) => sum + calculateSleepDuration(r),
+  //           0
+  //         );
+  //         newHealthStats.weight.weekly = weeklyWeightRecords.reduce(
+  //           (sum, r) => sum + r.details.weight.value,
+  //           0
+  //         );
 
-          // Create health data object with safer property access (for backward compatibility)
-          const newHealthData = {
-            steps: {
-              today: newHealthStats.steps.today,
-              weekly: newHealthStats.steps.weekly,
-            },
-            water: {
-              today: newHealthStats.water.today,
-              weekly: newHealthStats.water.weekly,
-            },
-            weight: {
-              current: latestRecord.details?.weight?.value || 0,
-              unit: latestRecord.details?.weight?.unit || "kg",
-              previous: 0,
-            },
-          };
+  //         // Calculate averages
+  //         newHealthStats.water.avgWeekly =
+  //           weeklyWaterRecords.length > 0
+  //             ? newHealthStats.water.weekly / weeklyWaterRecords.length
+  //             : 0;
+  //         newHealthStats.steps.avgWeekly =
+  //           weeklyStepsRecords.length > 0
+  //             ? newHealthStats.steps.weekly / weeklyStepsRecords.length
+  //             : 0;
+  //         newHealthStats.heart.avgWeekly =
+  //           weeklyHeartRecords.length > 0
+  //             ? newHealthStats.heart.weekly / weeklyHeartRecords.length
+  //             : 0;
+  //         newHealthStats.sleep.avgWeekly =
+  //           weeklySleepRecords.length > 0
+  //             ? newHealthStats.sleep.weekly / weeklySleepRecords.length
+  //             : 0;
+  //         newHealthStats.weight.avgWeekly =
+  //           weeklyWeightRecords.length > 0
+  //             ? newHealthStats.weight.weekly / weeklyWeightRecords.length
+  //             : 0;
 
-          // Find previous weight record for backward compatibility
-          const prevWeightRecord = sortedRecords.find(
-            (r) =>
-              r !== latestRecord &&
-              r.details &&
-              r.details.weight &&
-              typeof r.details.weight.value === "number" &&
-              r.details.weight.value > 0
-          );
+  //         // MONTHLY STATS
+  //         // Filter records with valid data for each metric
+  //         const monthlyWaterRecords = last30Days.filter(
+  //           (r) =>
+  //             r.details &&
+  //             typeof r.details.water === "number" &&
+  //             r.details.water > 0
+  //         );
+  //         const monthlyStepsRecords = last30Days.filter(
+  //           (r) =>
+  //             r.details &&
+  //             typeof r.details.steps === "number" &&
+  //             r.details.steps > 0
+  //         );
+  //         const monthlyHeartRecords = last30Days.filter(
+  //           (r) =>
+  //             r.details &&
+  //             typeof r.details.heart === "number" &&
+  //             r.details.heart > 0
+  //         );
+  //         const monthlySleepRecords = last30Days.filter(
+  //           (r) => calculateSleepDuration(r) > 0
+  //         );
+  //         const monthlyWeightRecords = last30Days.filter(
+  //           (r) =>
+  //             r.details &&
+  //             r.details.weight &&
+  //             typeof r.details.weight.value === "number" &&
+  //             r.details.weight.value > 0
+  //         );
 
-          if (
-            prevWeightRecord &&
-            prevWeightRecord.details &&
-            prevWeightRecord.details.weight
-          ) {
-            newHealthData.weight.previous =
-              prevWeightRecord.details.weight.value;
-          }
+  //         // Calculate totals
+  //         newHealthStats.water.monthly = monthlyWaterRecords.reduce(
+  //           (sum, r) => sum + r.details.water,
+  //           0
+  //         );
+  //         newHealthStats.steps.monthly = monthlyStepsRecords.reduce(
+  //           (sum, r) => sum + r.details.steps,
+  //           0
+  //         );
+  //         newHealthStats.heart.monthly = monthlyHeartRecords.reduce(
+  //           (sum, r) => sum + r.details.heart,
+  //           0
+  //         );
+  //         newHealthStats.sleep.monthly = monthlySleepRecords.reduce(
+  //           (sum, r) => sum + calculateSleepDuration(r),
+  //           0
+  //         );
+  //         newHealthStats.weight.monthly = monthlyWeightRecords.reduce(
+  //           (sum, r) => sum + r.details.weight.value,
+  //           0
+  //         );
 
-          // Update state with the new health data
-          setHealthStats(newHealthStats);
-          setHealthData(newHealthData as any);
-          console.log(
-            "Health stats calculated successfully:",
-            JSON.stringify(newHealthStats, null, 2)
-          );
-        } else {
-          console.log("No valid data in API response");
-        }
-      } catch (error: any) {
-        console.error("API call error:", error.message);
-        if (error.response) {
-          console.error("API error response status:", error.response.status);
-          console.error(
-            "API error response data:",
-            JSON.stringify(error.response.data, null, 2)
-          );
-        }
-      }
-    } else {
-      console.log("No user ID available")
-    }
-  };
+  //         // Calculate averages
+  //         newHealthStats.water.avgMonthly =
+  //           monthlyWaterRecords.length > 0
+  //             ? newHealthStats.water.monthly / monthlyWaterRecords.length
+  //             : 0;
+  //         newHealthStats.steps.avgMonthly =
+  //           monthlyStepsRecords.length > 0
+  //             ? newHealthStats.steps.monthly / monthlyStepsRecords.length
+  //             : 0;
+  //         newHealthStats.heart.avgMonthly =
+  //           monthlyHeartRecords.length > 0
+  //             ? newHealthStats.heart.monthly / monthlyHeartRecords.length
+  //             : 0;
+  //         newHealthStats.sleep.avgMonthly =
+  //           monthlySleepRecords.length > 0
+  //             ? newHealthStats.sleep.monthly / monthlySleepRecords.length
+  //             : 0;
+  //         newHealthStats.weight.avgMonthly =
+  //           monthlyWeightRecords.length > 0
+  //             ? newHealthStats.weight.monthly / monthlyWeightRecords.length
+  //             : 0;
+
+  //         // Create health data object with safer property access (for backward compatibility)
+  //         const newHealthData = {
+  //           steps: {
+  //             today: newHealthStats.steps.today,
+  //             weekly: newHealthStats.steps.weekly,
+  //           },
+  //           water: {
+  //             today: newHealthStats.water.today,
+  //             weekly: newHealthStats.water.weekly,
+  //           },
+  //           weight: {
+  //             current: latestRecord.details?.weight?.value || 0,
+  //             unit: latestRecord.details?.weight?.unit || "kg",
+  //             previous: 0,
+  //           },
+  //         };
+
+  //         // Find previous weight record for backward compatibility
+  //         const prevWeightRecord = sortedRecords.find(
+  //           (r) =>
+  //             r !== latestRecord &&
+  //             r.details &&
+  //             r.details.weight &&
+  //             typeof r.details.weight.value === "number" &&
+  //             r.details.weight.value > 0
+  //         );
+
+  //         if (
+  //           prevWeightRecord &&
+  //           prevWeightRecord.details &&
+  //           prevWeightRecord.details.weight
+  //         ) {
+  //           newHealthData.weight.previous =
+  //             prevWeightRecord.details.weight.value;
+  //         }
+
+  //         // Update state with the new health data
+  //         setHealthStats(newHealthStats);
+  //         setHealthData(newHealthData as any);
+  //         console.log(
+  //           "Health stats calculated successfully:",
+  //           JSON.stringify(newHealthStats, null, 2)
+  //         );
+  //       } else {
+  //         console.log("No valid data in API response");
+  //       }
+  //     } catch (error: any) {
+  //       console.error("API call error:", error.message);
+  //       if (error.response) {
+  //         console.error("API error response status:", error.response.status);
+  //         console.error(
+  //           "API error response data:",
+  //           JSON.stringify(error.response.data, null, 2)
+  //         );
+  //       }
+  //     }
+  //   } else {
+  //     console.log("No user ID available")
+  //   }
+  // };
 
   useFocusEffect(
     useCallback(() => {
@@ -1177,7 +1207,7 @@ useEffect(() => {
   }, [messages])
 
 
-  const fetchAndUpdateHealthData = async () => {
+ const fetchAndUpdateHealthData = async () => {
     if (user && user.user_id) {
       try {
         const { healthStats: newHealthStats, healthData: newHealthData } = await fetchHealthData(user.user_id)
@@ -1193,6 +1223,11 @@ useEffect(() => {
       console.log("No user ID available")
     }
   }
+
+  // Fetch health data when component mounts
+  useEffect(() => {
+    fetchAndUpdateHealthData()
+  }, [])
 
   const sendToAPI = async (messageContent: string, messageType: "text" | "audio") => {
     try {
@@ -1387,11 +1422,6 @@ useEffect(() => {
     // Start speaking the text
     Speech.speak(text, speechOptions)
   }
-
-   useEffect(() => {
-    fetchAndUpdateHealthData()
-  }, [])
-
 
    const [isSpeaking, setIsSpeaking] = useState(false);
   const [femaleVoice, setFemaleVoice] = useState<Speech.Voice | null>(null);
@@ -1916,6 +1946,9 @@ useEffect(() => {
     const domain = QUESTIONNAIRE_DOMAINS[domainIndex]
     return domain ? domain.description : "Getting to Know You"
   }
+
+    const [isContextLoaded, setIsContextLoaded] = useState(false)
+  const [forceUpdate, setForceUpdate] = useState(0)
 
   // Handle pause/resume button press
   const handlePauseResumeToggle = async () => {
